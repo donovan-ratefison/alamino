@@ -4,7 +4,7 @@
 import { db, insertDebt, insertTrader, newId } from "./db.ts";
 import type { Trader } from "./types.ts";
 
-const email = (id: string) => process.env[`PAYPAL_EMAIL_${id.toUpperCase()}`] ?? `${id}@alamino.example`;
+const email = (id: string) => process.env[`PAYPAL_EMAIL_${id.toUpperCase()}`] || `${id}@alamino.example`;
 
 const TRADERS: Omit<Trader, "paypalEmail">[] = [
   { id: "hery", name: "Hery", business: "Rice wholesale", aliases: ["Hery vary", "the rice seller", "mpivarotra vary"] },
