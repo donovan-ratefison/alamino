@@ -102,6 +102,7 @@ export interface Settlement {
   status: PaymentStatus;
   paypalOrderId?: string; // pay-ins
   paypalPayoutItemId?: string; // pay-outs
+  paypalPayoutBatchId?: string; // pay-outs, needed to poll the batch
 }
 
 export interface Round {
