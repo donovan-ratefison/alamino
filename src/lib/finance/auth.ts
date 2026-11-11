@@ -19,13 +19,19 @@ export function authenticated(req: Request): boolean {
 export function requireAdmin(req: Request) {
   if (!authenticated(req)) throw new HttpError(401, "Sign in to access the PayPal Sandbox account and AI tools.");
 }
+// The host the browser used. Behind a proxy or on a network address, req.url holds
+// an internal host, so the Host and X-Forwarded-Host headers are checked too.
+function hosts(req: Request): (string | null)[] {
+  return [new URL(req.url).host, req.headers.get("host"), req.headers.get("x-forwarded-host")?.split(",")[0].trim() ?? null];
+}
 export function sameOrigin(req: Request) {
   const origin = req.headers.get("origin");
-  if (!origin || origin !== new URL(req.url).origin) throw new HttpError(403, "This action must come from the application.");
+  const host = origin && URL.canParse(origin) ? new URL(origin).host : null;
+  if (!host || !hosts(req).includes(host)) throw new HttpError(403, "This action must come from the application.");
 }
 export function sessionCookie(req: Request, clear = false): string {
   const value = `${Date.now() + lifetime * 1000}.${randomBytes(16).toString("hex")}`;
-  return `${COOKIE}=${clear ? "" : `${value}.${signature(value)}`}; HttpOnly; SameSite=Strict; Path=/api; Max-Age=${clear ? 0 : lifetime}${new URL(req.url).protocol === "https:" ? "; Secure" : ""}`;
+  return `${COOKIE}=${clear ? "" : `${value}.${signature(value)}`}; HttpOnly; SameSite=Strict; Path=/api; Max-Age=${clear ? 0 : lifetime}${new URL(req.url).protocol === "https:" || req.headers.get("x-forwarded-proto") === "https" ? "; Secure" : ""}`;
 }
 
 const windows = new Map<string, { count: number; until: number }>();

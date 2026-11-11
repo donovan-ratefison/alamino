@@ -93,3 +93,15 @@ test("assistant uses server totals, UTC periods and warns when comparison covera
   assert.match(financialAnswer(snapshot, "compare", "USD", now), /incomplete/);
   assert.match(financialAnswer(snapshot, "overview", "USD", now), /DEMO fixtures/);
 });
+
+test("same-origin check accepts the host the browser used behind a proxy or on a network address", () => {
+  const internal = "http://localhost:10000/api/finance/session";
+  const viaProxy = (origin: string, headers: Record<string, string>) => new Request(internal, { method: "POST", headers: { origin, ...headers } });
+  assert.doesNotThrow(() => sameOrigin(viaProxy("https://alamino.example", { host: "alamino.example", "x-forwarded-proto": "https" })));
+  assert.doesNotThrow(() => sameOrigin(viaProxy("https://alamino.example", { "x-forwarded-host": "alamino.example" })));
+  assert.doesNotThrow(() => sameOrigin(viaProxy("http://192.168.1.20:3000", { host: "192.168.1.20:3000" })));
+  assert.throws(() => sameOrigin(viaProxy("https://evil.test", { host: "alamino.example" })));
+  assert.throws(() => sameOrigin(viaProxy("not a url", { host: "alamino.example" })));
+  assert.throws(() => sameOrigin(new Request(internal, { method: "POST", headers: { host: "alamino.example" } })));
+  assert.match(sessionCookie(viaProxy("https://alamino.example", { host: "alamino.example", "x-forwarded-proto": "https" })), /; Secure/);
+});
