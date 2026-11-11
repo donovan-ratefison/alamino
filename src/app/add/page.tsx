@@ -212,7 +212,7 @@ export default function AddPage() {
               >
                 Try &quot;{sample}&quot;
               </button>
-              <p className="text-center text-sm text-zinc-500">The AI reads it. You check every line before it is saved.</p>
+              <p className="text-sm text-zinc-500">The AI reads it. You check each line first.</p>
             </div>
             <form id="capture-form" onSubmit={submit} className={`space-y-3 sm:order-first ${typing ? "" : "max-sm:hidden"}`}>
               <label htmlFor="capture-text" className={label}>

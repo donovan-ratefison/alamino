@@ -47,7 +47,7 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
 
     for (const c of cancellations) {
       const circle = [...c.path, c.path[0]].map(name).join(" → ");
-      show({ highlight: c.path, caption: `${circle}: ${formatUsd(c.amountCents)} cancels on each debt` });
+      show({ highlight: c.path, caption: `${circle}: ${formatUsd(c.amountCents)} off each debt` });
       await wait(1100);
       c.path.forEach((id, i) => {
         const key = pair(id, c.path[(i + 1) % c.path.length]);
@@ -136,8 +136,27 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
       </dl>
 
       {traders.length > 0 && (
-        <div className="relative">
-          <div role="group" aria-label="Network view" className="absolute left-3 top-3 z-10 inline-flex rounded-full border border-zinc-200 bg-zinc-50 p-0.5">
+        <Network
+          traders={traders}
+          edges={edges}
+          highlight={running ? frame?.highlight : before ? highlight : undefined}
+          circles={before && !highlight ? cancellations.map((c) => c.path) : undefined}
+          interactive={!running}
+          label={running ? "Debts during the clearing replay" : before ? "Debts before the round" : "Debts after circles cancel"}
+        />
+      )}
+      <div className="flex items-start justify-between gap-3">
+        <p aria-live="polite" className="min-h-10 min-w-0 flex-1 text-sm text-zinc-700">
+          {running && frame
+            ? frame.caption
+            : !before
+              ? endCaption
+              : highlight
+                ? "The selected circle is in blue."
+                : "Green debts form circles. They cancel."}
+        </p>
+        <div className="flex shrink-0 items-center gap-2">
+          <div role="group" aria-label="Network view" className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 p-0.5">
             {toggle("before", "Before")}
             {toggle("after", "After")}
           </div>
@@ -145,7 +164,7 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
             type="button"
             aria-label="Replay clearing"
             title="Replay clearing"
-            className="absolute right-3 top-3 z-10 grid size-8 place-items-center rounded-full border border-zinc-200 bg-white text-brand hover:bg-blue-50 disabled:opacity-45"
+            className="grid size-8 place-items-center rounded-full border border-zinc-200 bg-white text-brand hover:bg-blue-50 disabled:opacity-45"
             disabled={running}
             onClick={replay}
           >
@@ -153,25 +172,8 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
               <path d="M16 10a6 6 0 1 1-1.8-4.3M16 3.5v3.2h-3.2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          <Network
-            traders={traders}
-            edges={edges}
-            highlight={running ? frame?.highlight : before ? highlight : undefined}
-            circles={before && !highlight ? cancellations.map((c) => c.path) : undefined}
-            interactive={!running}
-            label={running ? "Debts during the clearing replay" : before ? "Debts before the round" : "Debts after circles cancel"}
-          />
         </div>
-      )}
-      <p aria-live="polite" className="min-h-10 text-sm text-zinc-700">
-        {running && frame
-          ? frame.caption
-          : !before
-            ? endCaption
-            : highlight
-              ? "The selected circle is in blue."
-              : "Green debts form circles. Circles cancel with no money."}
-      </p>
+      </div>
     </div>
   );
 }
