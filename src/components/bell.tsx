@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Debt } from "@/lib/types";
 import { api, formatUsd, toCents, waitingFor } from "./api";
 import { useApp } from "./app";
+import { TraderChip } from "./trader-chip";
 import { btn, ErrorNote, field } from "./ui";
 
 const approve = `${btn.primary} ui-button-compact`;
@@ -36,12 +37,15 @@ function BellItem({ debt, onDone }: { debt: Debt; onDone: (message: string) => v
 
   return (
     <li className="bell-item">
-      <p className="text-sm leading-6">
-        <span className="font-semibold">{name(disputed ? debt.counterBy : other)}</span> says: {relation}{" "}
-        <span className="font-semibold tabular-nums">{formatUsd(amount)}</span>
-        {disputed && <>, not {formatUsd(debt.amountCents)}</>}
-        {debt.note && <>, {debt.note}</>}.
-      </p>
+      <div className="flex items-start gap-2.5">
+        <TraderChip id={(disputed ? debt.counterBy : other) ?? other} name={name(disputed ? debt.counterBy : other)} />
+        <p className="text-sm leading-6">
+          <span className="font-semibold">{name(disputed ? debt.counterBy : other)}</span> says: {relation}{" "}
+          <span className="font-semibold tabular-nums">{formatUsd(amount)}</span>
+          {disputed && <>, not {formatUsd(debt.amountCents)}</>}
+          {debt.note && <>, {debt.note}</>}.
+        </p>
+      </div>
       <div className="flex flex-wrap gap-2">
         {disputed ? (
           <button type="button" className={approve} disabled={busy} onClick={() => send({ ok: true, counterAmountCents: amount })}>

@@ -16,7 +16,7 @@ export function inferIntent(question: string): FinanceIntent {
 }
 
 export function financialAnswer(snapshot: FinanceSnapshot, intent: FinanceIntent, currency: string, now = new Date()): string {
-  const scope = `${snapshot.source === "demo" ? "DEMO fixtures" : "PayPal Sandbox"} · ${currency} · UTC. `;
+  const scope = `${{ ledger: "Alamino ledger", demo: "DEMO fixtures", sandbox: "PayPal Sandbox" }[snapshot.source]} · ${currency} · UTC. `;
   const all = snapshot.transactions;
   const t = totals(all, currency);
   const amount = (n: number) => money(n, currency);

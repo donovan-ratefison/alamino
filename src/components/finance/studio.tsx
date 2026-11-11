@@ -6,6 +6,9 @@ import { AgStudioAiModule, AgStudioLicenseManager, clientToolRunner, createAiHar
 import type { FinanceSnapshot } from "@/lib/finance/types";
 import { defaultFinanceReport, financePages } from "./presets";
 import { btn, ErrorNote } from "../ui";
+
+const LAYOUT_KEY = "alamino.finance.layout.v2";
+const MAIN_PAGES: string[] = ["overview", "monitoring"];
 import { financeStudioTheme } from "./studio-theme";
 
 if (process.env.NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY) AgStudioLicenseManager.setLicenseKey(process.env.NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY);
@@ -77,7 +80,7 @@ export default function FinanceStudio({ snapshot, currency, authenticated }: { s
           if (!response.ok) throw new Error(json.error);
           if (active && json.state) ref.current?.api?.setState(json.state);
         } else {
-          const saved = localStorage.getItem("alamino.finance.demo.layout.v1");
+          const saved = localStorage.getItem(LAYOUT_KEY);
           if (active && saved) ref.current?.api?.setState(JSON.parse(saved));
         }
       } catch { if (active) setError(new Error("Saved layout could not be restored. The default layout is available.")); }
@@ -89,9 +92,9 @@ export default function FinanceStudio({ snapshot, currency, authenticated }: { s
     const state = ref.current?.api?.getState(); if (!state) return;
     setError(null);
     try {
-      if (snapshot.source === "demo") localStorage.setItem("alamino.finance.demo.layout.v1", JSON.stringify(state));
+      if (snapshot.source !== "sandbox") localStorage.setItem(LAYOUT_KEY, JSON.stringify(state));
       else { const response = await fetch("/api/finance/dashboard", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ state }) }); if (!response.ok) throw new Error((await response.json()).error); }
-      setNotice(snapshot.source === "demo" ? "Demo layout saved in this browser." : "Sandbox layout saved on the server.");
+      setNotice(snapshot.source !== "sandbox" ? "Layout saved in this browser." : "Sandbox layout saved on the server.");
     } catch (e) { setError(e as Error); }
   }
   function choosePage(id: string) {
@@ -102,21 +105,37 @@ export default function FinanceStudio({ snapshot, currency, authenticated }: { s
     const state = ref.current?.api?.getState();
     if (state) ref.current?.api?.setState({ ...state, panels: { ...state.panels, ai: { collapsed: false }, data: { collapsed: true }, edit: { collapsed: true }, filters: { collapsed: true } } });
   }
-  return <section id="financial-workspace" className="finance-studio space-y-5" aria-label="AG Studio financial dashboards">
+  return <section id="financial-workspace" className="space-y-4" aria-label="AG Studio financial dashboards">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><p className="eyebrow text-accent">Made to make sense</p><h2 className="section-title mt-3">Your financial workspace.</h2><p className="mt-3 max-w-lg text-sm leading-6 text-zinc-500">Explore the details. Make the dashboard yours. Ask a question when you need a clearer picture.</p></div>
-      <div className="flex flex-wrap gap-2"><button className={btn.secondary} onClick={openAssistant} disabled={!ready}>Finance assistant</button><button className={btn.secondary} onClick={() => setMode(mode === "edit" ? "view" : "edit")}>{mode === "edit" ? "Switch to view" : "Customise dashboard"}</button><button className={btn.primary} onClick={save} disabled={!ready}>Save layout</button><button className={btn.small} onClick={() => { ref.current?.api?.setState(defaultFinanceReport()); setPage("overview"); setNotice("Default layout restored. Save to keep it."); }}>Reset layout</button></div>
+      <nav aria-label="Finance dashboards" className="flex flex-wrap items-center gap-2">
+        {financePages.filter(([id]) => MAIN_PAGES.includes(id)).map(([id, title]) => <button key={id} type="button" onClick={() => choosePage(id)} aria-pressed={page === id} className="finance-studio-tab">{title}</button>)}
+        <select aria-label="More views" value={MAIN_PAGES.includes(page) ? "" : page} onChange={(e) => choosePage(e.target.value)}
+          className={`min-h-11 rounded-full border px-4 text-xs font-medium ${MAIN_PAGES.includes(page) ? "border-[#dce5f2] bg-white text-[#4b607e]" : "border-[#003087] bg-[#003087] text-white"}`}>
+          <option value="" disabled>More views</option>
+          {financePages.filter(([id]) => !MAIN_PAGES.includes(id)).map(([id, title]) => <option key={id} value={id}>{title}</option>)}
+        </select>
+      </nav>
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" className={btn.secondary} onClick={openAssistant} disabled={!ready}>Finance assistant</button>
+        <details className="relative">
+          <summary className={`${btn.secondary} list-none [&::-webkit-details-marker]:hidden`}>{mode === "edit" ? "Layout (editing)" : "Layout"}</summary>
+          {/* A click on a menu item bubbles here and closes the menu. */}
+          <div onClick={(e) => e.currentTarget.closest("details")?.removeAttribute("open")} className="absolute right-0 z-20 mt-2 grid w-56 gap-1 rounded-[16px] border border-[#dce5f2] bg-white p-2 shadow-lg">
+            <button type="button" className={btn.small} onClick={() => setMode(mode === "edit" ? "view" : "edit")}>{mode === "edit" ? "Stop customising" : "Customise dashboard"}</button>
+            <button type="button" className={btn.small} onClick={save} disabled={!ready}>Save layout</button>
+            <button type="button" className={btn.small} onClick={() => { ref.current?.api?.setState(defaultFinanceReport()); setPage("overview"); setNotice("Default layout restored. Save to keep it."); }}>Reset layout</button>
+          </div>
+        </details>
+      </div>
     </div>
-    <nav aria-label="Finance dashboards" className="finance-studio-tabs">{financePages.map(([id, title]) => <button key={id} onClick={() => choosePage(id)} aria-pressed={page === id} className="finance-studio-tab">{title}</button>)}</nav>
     {notice && <p role="status" className="text-sm text-emerald-800">{notice}</p>}
     {error && <ErrorNote error={error} />}
-    <div className="finance-studio-canvas">
+    <div className={`min-w-0 overflow-hidden rounded-[20px] border border-[#dce5f2] bg-white ${mode === "edit" ? "h-[760px]" : "h-[520px] max-md:h-[680px]"}`}>
       <AgStudioProvider modules={MODULES}><AgStudio<AgDefaultRegistry> ref={ref} style={STUDIO_STYLE} theme={financeStudioTheme} data={data} mode={mode} initialState={initial} ai={ai} loadThemeGoogleFonts={false}
         onStudioReady={() => setReady(true)} onStateUpdated={({ state }: { state: AgReportState }) => setPage(state.selectedPageId)}
         panels={{ edit: { right: ["ai", "edit", "data", "filters"] }, view: { right: ["filters"] } }}
-        responsiveLayoutBreakpoints={[{ maxWidth: 650, layout: (items) => { let y = 0; return items.map((item) => { const position = { ...item.layout, xTrack: 0, yTrack: y, xSpan: 24 }; y += position.ySpan; return position; }); } }, {}]} />
+        responsiveLayoutBreakpoints={[{ maxWidth: 650, layout: (items) => { let y = 0; return items.map((item) => { const position = { ...item.layout, xTrack: 0, yTrack: y, xSpan: 24, ySpan: 12 }; y += position.ySpan; return position; }); } }, {}]} />
       </AgStudioProvider>
     </div>
-    {!process.env.NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY && <p className="text-xs text-amber-800">AG Studio evaluation mode. Configure a valid Studio licence before deployment; its built-in watermark is preserved.</p>}
   </section>;
 }

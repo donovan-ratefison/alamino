@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   try {
     sameOrigin(req); rateLimit("finance-assistant", 30);
     const body = await readBody(req);
-    const source = body.source === "sandbox" ? "sandbox" : "demo";
+    const source = body.source === "sandbox" || body.source === "demo" ? body.source : "ledger";
     if (source === "sandbox") requireAdmin(req);
     const messages = Array.isArray(body.messages) ? body.messages.slice(-20).filter(isObject) : [];
     const lastUser = messages.findLastIndex((m) => m.role === "user");

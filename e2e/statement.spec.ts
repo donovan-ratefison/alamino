@@ -17,12 +17,15 @@ test.describe("Statement", () => {
     const main = page.getByRole("main");
 
     await viewAs(page, "soa");
-    await expect(main).toContainText(/pay[^.]*\$170(?!\d)/i);
+    await expect(main.getByRole("heading", { level: 1 })).toHaveText(/pay[^.]*\$170(?!\d)/i);
+    const receipt = main.getByRole("region", { name: "Receipt" });
+    await expect(receipt).toContainText(/You pay\s*\$170(?!\d)/);
+    await expect(receipt).toContainText("Cleared by Alamino");
 
     await viewAs(page, "hery");
-    await expect(main).toContainText(/receive[^.]*\$290(?!\d)/i);
+    await expect(main.getByRole("heading", { level: 1 })).toHaveText(/receive[^.]*\$290(?!\d)/i);
 
     await viewAs(page, "rivo");
-    await expect(main).toContainText(/receive[^.]*\$30(?!\d)/i);
+    await expect(main.getByRole("heading", { level: 1 })).toHaveText(/receive[^.]*\$30(?!\d)/i);
   });
 });

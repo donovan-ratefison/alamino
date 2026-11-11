@@ -51,6 +51,8 @@ export async function askJson(system: string, parts: Part[], schemaName: string,
 export const isObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-export const usd = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+// The app's one money format: "$80" for whole dollars, "$12.50" otherwise. Same rule as formatUsd on screen.
+const usdFormat = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", trailingZeroDisplay: "stripIfInteger" });
+export const usd = (cents: number) => usdFormat.format(cents / 100);
 
 export const nullable = (type: string) => ({ anyOf: [{ type }, { type: "null" }] });

@@ -28,7 +28,7 @@ export default function Transactions({ rows }: { rows: FinanceTransaction[] }) {
         if (column.getColId() === "amountMinor" && node?.data) return (node.data.amountMinor / 10 ** currencyDigits(node.data.currency)).toFixed(currencyDigits(node.data.currency));
         return typeof value === "string" && /^[=+@\t\r-]/.test(value) ? `'${value}` : value;
       } })}>Export CSV</button></div>
-    <div id="transaction-explorer" className="h-[500px] w-full min-w-0 scroll-mt-8"><AgGridReact<FinanceTransaction> ref={grid} theme={financeGridTheme} rowData={filtered} columnDefs={columns}
+    <div id="transaction-explorer" className="w-full min-w-0 scroll-mt-8"><AgGridReact<FinanceTransaction> ref={grid} theme={financeGridTheme} rowData={filtered} columnDefs={columns} domLayout="autoHeight"
       defaultColDef={{ sortable: true, filter: true, resizable: true, flex: 1 }} quickFilterText={search} pagination paginationPageSize={10} paginationPageSizeSelector={[10, 25, 50]}
       getRowId={({ data }) => `${data.id}:${data.eventCode ?? "order"}:${data.date}`} overlayNoRowsTemplate="<span>No transactions match this selection.</span>" /></div>
   </Card>;

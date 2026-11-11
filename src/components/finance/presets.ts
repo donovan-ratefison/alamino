@@ -24,7 +24,7 @@ export function defaultFinanceReport(): AgReportState {
   };
   return { version: "3.1.0", selectedPageId: "overview", pages: financePages.map(([id]) => ({ id,
     widgets: Object.fromEntries(definitions[id].map((w, i) => [`widget-${i}`, w])),
-    widgetLayout: { "widget-0": { xTrack: 0, yTrack: 0, xSpan: 24, ySpan: 16 }, "widget-1": { xTrack: 0, yTrack: 16, xSpan: 24, ySpan: 16 } },
+    widgetLayout: { "widget-0": { xTrack: 0, yTrack: 0, xSpan: 12, ySpan: 16 }, "widget-1": { xTrack: 12, yTrack: 0, xSpan: 12, ySpan: 16 } },
     layout: { columns: 24, rowHeight: 24, widgetBorderRadius: 20, pagePadding: 16, backgroundColor: "#f5f9ff", widgetBackgroundColor: "#ffffff", widgetBorderEnabled: true, widgetBorderColor: "#dce5f2", widgetBorderWidth: 1 },
   })), panels: { filters: { collapsed: true }, data: { collapsed: true }, edit: { collapsed: true }, ai: { collapsed: true } } };
 }

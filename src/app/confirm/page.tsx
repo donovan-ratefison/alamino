@@ -26,7 +26,14 @@ function DebtItem({ debt, onChange }: { debt: Debt; onChange: () => void }) {
   const other = debt.debtorId === traderId ? debt.creditorId : debt.debtorId;
   const counterCents = counter === null ? null : toCents(counter);
   const otherOk = debt.debtorId === traderId ? debt.creditorOk : debt.debtorOk;
-  // One sentence from the side of the current trader.
+  // The debt and its state, from the side of the current trader.
+  const amount = formatUsd(debt.amountCents);
+  const sentence =
+    debt.debtorId === traderId
+      ? `You owe ${name(debt.creditorId)} ${amount}`
+      : debt.creditorId === traderId
+        ? `${name(debt.debtorId)} owes you ${amount}`
+        : `${name(debt.debtorId)} owes ${name(debt.creditorId)} ${amount}`;
   const message = disputed
     ? debt.counterBy === traderId
       ? `You said ${formatUsd(debt.counterAmountCents!)}. Waiting for ${name(other)}.`
@@ -66,9 +73,7 @@ function DebtItem({ debt, onChange }: { debt: Debt; onChange: () => void }) {
     <Card>
       <div className="space-y-3">
         <div>
-          <p className="text-sm font-semibold text-zinc-900">
-            {name(debt.debtorId)} owes {name(debt.creditorId)} {formatUsd(debt.amountCents)}
-          </p>
+          <p className="text-sm font-semibold text-zinc-900">{sentence}</p>
           {debt.note && <p className="mt-0.5 text-sm text-zinc-600">{debt.note}</p>}
         </div>
 
@@ -169,7 +174,7 @@ export default function ConfirmPage() {
   const changed = refreshPending; // reloads the shared list
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
+    <div className="mx-auto max-w-[640px] space-y-8">
       <PageHeader title="Confirm debts">
         Both sides must approve a debt before it enters a clearing round. You view the app as{" "}
         <span className="font-medium text-zinc-900">{name(traderId)}</span>.
@@ -190,19 +195,22 @@ export default function ConfirmPage() {
         <>
           {[
             { title: "Waiting for you", list: forYou, empty: "No debt waits for your approval." },
-            { title: "Waiting for the other side", list: forOthers, empty: "No debt waits for the other side." },
-          ].map((group) => (
-            <section key={group.title} className="space-y-3">
-              <h2 className="text-sm font-semibold text-zinc-900">
-                {group.title} ({group.list.length})
-              </h2>
-              {group.list.length === 0 ? (
-                <p className="text-sm text-zinc-600">{group.empty}</p>
-              ) : (
-                group.list.map((d) => <DebtItem key={d.id} debt={d} onChange={changed} />)
-              )}
-            </section>
-          ))}
+            { title: "Waiting for the other side", list: forOthers, empty: "" },
+          ]
+            // A group with no empty text shows only when it has a debt.
+            .filter((group) => group.empty || group.list.length > 0)
+            .map((group) => (
+              <section key={group.title} className="space-y-3">
+                <h2 className="text-sm font-semibold text-zinc-900">
+                  {group.title} ({group.list.length})
+                </h2>
+                {group.list.length === 0 ? (
+                  <p className="text-sm text-zinc-600">{group.empty}</p>
+                ) : (
+                  group.list.map((d) => <DebtItem key={d.id} debt={d} onChange={changed} />)
+                )}
+              </section>
+            ))}
         </>
       )}
     </div>

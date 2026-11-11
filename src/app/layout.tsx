@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { AppProvider, Header } from "@/components/app";
 import { BottomBar } from "@/components/bottom-bar";
+import { DemoGuide } from "@/components/demo-guide";
 import { Footer } from "@/components/footer";
 import { GuidedTourProvider } from "@/components/guided-tour";
 import "driver.js/dist/driver.css";
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <AppProvider>
           <GuidedTourProvider>
             <Header />
+            <DemoGuide />
             <main className="app-main"><div className="app-content">{children}</div></main>
             <Footer />
             <BottomBar />

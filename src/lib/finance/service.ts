@@ -1,4 +1,5 @@
-import { db, HttpError, listDebts, listTraders } from "../db.ts";
+import { db, getRound, HttpError, listDebts, listTraders } from "../db.ts";
+import type { PaymentStatus, Round } from "../types.ts";
 import { paypalMode, paypalFetch } from "../paypal/client.ts";
 import { demoTransactions } from "./demo.ts";
 import { currencyDigits, parseMoney } from "./metrics.ts";
@@ -11,6 +12,30 @@ function ledger() {
   return listDebts().map((d) => ({ id: d.id, debtor: names.get(d.debtorId) ?? d.debtorId, creditor: names.get(d.creditorId) ?? d.creditorId,
     amount: d.amountCents / 100, remaining: ["settled", "cleared"].includes(d.status) ? 0 : d.remainingCents / 100,
     date: d.createdAt, status: d.status, currency: "USD" as const }));
+}
+
+const LEDGER_STATUS: Partial<Record<PaymentStatus, TransactionStatus>> = { captured: "completed", confirmed: "completed", pending: "pending", sent: "pending", failed: "failed" };
+
+// One record per settlement of a clearing round. A pay-in is money received by the
+// clearing account, a pay-out is money paid out. Status `none` means no payment yet.
+export function roundTransactions(round: Round, names: Map<string, string>): FinanceTransaction[] {
+  return round.settlements.flatMap((s) => {
+    const status = LEDGER_STATUS[s.status];
+    if (!status) return [];
+    const payIn = s.direction === "pay_in";
+    const amountMinor = payIn ? s.amountCents : -s.amountCents;
+    const simulated = (payIn ? s.paypalOrderId : s.paypalPayoutBatchId)?.startsWith("SIM-");
+    return [{ id: `${round.id}-${s.traderId}`, customer: names.get(s.traderId) ?? s.traderId, amountMinor, amount: amountMinor / 100,
+      currency: "USD", date: round.createdAt, status, rawStatus: s.status, method: `${payIn ? "PayPal Checkout" : "PayPal Payouts"}${simulated ? " (simulated)" : ""}`,
+      kind: payIn ? "payment" : "payout", source: "ledger" }];
+  });
+}
+
+// db.ts has no listRounds helper: read the round ids here and load each round with getRound.
+function ledgerTransactions(start: string, end: string): FinanceTransaction[] {
+  const names = new Map(listTraders().map((t) => [t.id, t.name]));
+  const ids = db().prepare("SELECT id FROM rounds WHERE createdAt >= ? AND createdAt <= ? ORDER BY rowid DESC").all(start, end) as { id: string }[];
+  return ids.flatMap(({ id }) => { const round = getRound(id); return round ? roundTransactions(round, names) : []; });
 }
 
 interface Order {
@@ -66,6 +91,8 @@ async function recentPayouts(start: string, end: string): Promise<FinanceTransac
 
 export async function financeSnapshot(source: FinanceSource, start: string, end: string, refresh = false): Promise<FinanceSnapshot> {
   const base = { source, start, end, debts: ledger() };
+  if (source === "ledger") return { ...base, transactions: ledgerTransactions(start, end), syncedAt: null,
+    warnings: ["Payments from the clearing rounds in this app. Debt Tracker shows the app debt ledger."] };
   if (source === "demo") return { ...base, transactions: demoTransactions().filter((t) => t.date >= start && t.date <= end), syncedAt: null,
     warnings: ["Demonstration transactions are generated fixtures, not PayPal payments. Debt Tracker shows the local Alamino demonstration ledger."] };
   if (paypalMode() !== "sandbox") throw new HttpError(503, "Configure PayPal Sandbox credentials on the server first.");

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { askJson, buildRequest, parseCompletion } from "./model.ts";
+import { askJson, buildRequest, parseCompletion, usd } from "./model.ts";
 import { captureDebts, SCHEMA as CAPTURE_SCHEMA } from "./capture.ts";
 import { SCHEMA as RESOLVE_SCHEMA } from "./resolve.ts";
 import { buildStatement, explainRound, SCHEMA as EXPLAIN_SCHEMA } from "./explain.ts";
@@ -131,7 +131,7 @@ test("the plain statement (?text=plain) makes no model call and has the same num
   const before = requests.length;
   const plain = buildStatement(round, "hery", debts, []);
   assert.equal(requests.length, before);
-  assert.match(plain.summary, /You pay \$20\.00/);
+  assert.match(plain.summary, /You pay \$20 into/);
 
   reply = { summary: "You pay $20.", reasons: [{ debtId: "d1", reason: "A circle cancelled $30." }] };
   const full = await explainRound(round, "hery", debts, []);
@@ -139,4 +139,8 @@ test("the plain statement (?text=plain) makes no model call and has the same num
   assert.equal(full.summary, "You pay $20.");
   const numbers = (s: typeof plain) => [s.roundId, s.netCents, s.action, s.lines.map((l) => [l.debtId, l.direction, l.beforeCents, l.afterCents])];
   assert.deepEqual(numbers(full), numbers(plain));
+});
+
+test("usd: whole dollars without cents, two decimals otherwise", () => {
+  assert.deepEqual([usd(8000), usd(1250), usd(5), usd(120000)], ["$80", "$12.50", "$0.05", "$1,200"]);
 });

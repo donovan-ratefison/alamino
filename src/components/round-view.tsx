@@ -9,7 +9,9 @@ import type { Edge, PaymentStatus, Round, Settlement, TraderId } from "@/lib/typ
 import { api, formatUsd, useApi } from "./api";
 import { useApp } from "./app";
 import { ClearingReplay } from "./clearing-replay";
-import { Badge, btn, Card, Empty, ErrorNote, Loading, PageHeader, Stat } from "./ui";
+import { CountUp } from "./count-up";
+import { TraderChip } from "./trader-chip";
+import { Badge, btn, Card, Empty, ErrorNote, Loading, PageHeader } from "./ui";
 
 const listFormat = new Intl.ListFormat("en", { type: "conjunction" });
 const sum = (edges: Edge[]) => edges.reduce((n, e) => n + e.amountCents, 0);
@@ -25,6 +27,8 @@ const statusBadge: Record<PaymentStatus, { text: string; tone: "neutral" | "ambe
   failed: { text: "Failed", tone: "red" },
 };
 
+const placeholder = "grid min-h-12 place-items-center rounded-full border border-blue-200 bg-blue-50 text-sm font-medium text-brand";
+
 // The sandbox buttons, with a readable placeholder until PayPal has drawn them.
 function SandboxButtons(props: PayPalButtonsComponentProps) {
   const [{ isRejected }] = usePayPalScriptReducer();
@@ -34,7 +38,7 @@ function SandboxButtons(props: PayPalButtonsComponentProps) {
     <div className="relative min-h-12">
       <PayPalButtons {...props} onInit={() => setReady(true)} />
       {!ready && (
-        <p role="status" className="absolute inset-0 grid place-items-center rounded-full border border-blue-200 bg-blue-50 text-sm font-medium text-brand">
+        <p role="status" className={`absolute inset-0 ${placeholder}`}>
           Loading PayPal
         </p>
       )}
@@ -44,6 +48,9 @@ function SandboxButtons(props: PayPalButtonsComponentProps) {
 
 function PayIn({ roundId, s, onPaid }: { roundId: string; s: Settlement; onPaid: () => void }) {
   const { config } = useApp();
+  const sandbox = config?.paypalMode === "sandbox" && !!paypalOptions.clientId;
+  // Sandbox orders need the finance admin session: check it first, so the button area never stays empty.
+  const session = useApi<{ authenticated: boolean }>(sandbox ? "/api/finance/session" : null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const base = `/api/rounds/${roundId}/payin/${s.traderId}`;
@@ -64,24 +71,41 @@ function PayIn({ roundId, s, onPaid }: { roundId: string; s: Settlement; onPaid:
     setBusy(false);
   }
 
-  if (!config) return null;
   return (
-    <div className="w-full space-y-2 sm:w-auto sm:min-w-56">
-      {config.paypalMode === "simulated" ? (
+    <div className="w-full space-y-2 sm:max-w-sm">
+      {!config ? (
+        <p role="status" className={placeholder}>
+          Loading payment
+        </p>
+      ) : config.paypalMode === "simulated" ? (
         <button type="button" className={btn.primary} disabled={busy} onClick={paySimulated}>
           {busy ? "Paying..." : `Pay ${formatUsd(s.amountCents)} (simulated)`}
         </button>
-      ) : paypalOptions.clientId ? (
-        <div className="space-y-2"><p className="text-xs text-zinc-600">Sandbox payments require <Link href="/finance" className="text-accent underline">finance admin sign-in</Link>.</p><PayPalScriptProvider options={paypalOptions}>
+      ) : !sandbox ? (
+        <p className="text-sm text-red-700">The PayPal button needs NEXT_PUBLIC_PAYPAL_CLIENT_ID.</p>
+      ) : session.error ? (
+        <ErrorNote error={session.error} onRetry={session.reload} />
+      ) : !session.data ? (
+        <p role="status" className={placeholder}>
+          Loading PayPal
+        </p>
+      ) : !session.data.authenticated ? (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Sandbox payments need the finance admin.{" "}
+          <Link href="/finance" className="font-medium text-accent underline">
+            Sign in on the Finance page
+          </Link>
+          , then come back to pay {formatUsd(s.amountCents)}.
+        </p>
+      ) : (
+        <PayPalScriptProvider options={paypalOptions}>
           <SandboxButtons
             style={{ layout: "horizontal", height: 48, tagline: false, shape: "pill", color: "blue" }}
             createOrder={createOrder}
             onApprove={(data) => capture(data.orderID).catch((e) => setError(e as Error))}
             onError={(e) => setError(new Error(String(e?.message ?? "PayPal error")))}
           />
-        </PayPalScriptProvider></div>
-      ) : (
-        <p className="text-sm text-red-700">The PayPal button needs NEXT_PUBLIC_PAYPAL_CLIENT_ID.</p>
+        </PayPalScriptProvider>
       )}
       {error && <ErrorNote error={error} />}
     </div>
@@ -94,7 +118,6 @@ export function RoundView({ id }: { id: string }) {
   const { set, reload } = round;
   const [hover, setHover] = useState<number | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
-  const [open, setOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [actionError, setActionError] = useState<Error | null>(null);
 
@@ -168,8 +191,9 @@ export function RoundView({ id }: { id: string }) {
     return (
       <li key={`${s.direction}-${s.traderId}`} className="flex flex-wrap items-center justify-between gap-3 py-3">
         <div className="flex items-center gap-3">
-          <span className="w-16 text-sm font-medium text-zinc-900">{name(s.traderId)}</span>
-          <span className="w-20 text-sm tabular-nums text-zinc-900">{formatUsd(s.amountCents)}</span>
+          <TraderChip id={s.traderId} name={name(s.traderId)} />
+          <span className="w-14 text-sm font-medium text-zinc-900">{name(s.traderId)}</span>
+          <span className="w-16 text-sm tabular-nums text-zinc-900">{formatUsd(s.amountCents)}</span>
           <Badge tone={badge.tone}>{badge.text}</Badge>
         </div>
         {s.direction === "pay_in" && s.status !== "captured" && s.traderId !== traderId && (
@@ -181,94 +205,47 @@ export function RoundView({ id }: { id: string }) {
     );
   };
 
+  // The current trader's own part, for the finished round.
+  const myResult =
+    me?.direction === "pay_in"
+      ? `You paid ${formatUsd(me.amountCents)}`
+      : me?.direction === "pay_out"
+        ? `You received ${formatUsd(me.amountCents)}`
+        : "Nothing to pay";
+
   return (
     <div className="space-y-8">
       <PageHeader
         title={`${formatUsd(stats.grossCents)} of debt ${r.status === "done" ? "settled" : "to settle"} with ${formatUsd(stats.cashMovedCents)}`}
       >
-        <Badge tone={progress.tone}>{progress.text}</Badge>
+        <div className="flex flex-wrap items-center gap-3">
+          <span>
+            {formatUsd(stats.clearedByCirclesCents)} cancelled with no money · {stats.savedPct.toFixed(1)}% less cash
+          </span>
+          <Badge tone={progress.tone}>{progress.text}</Badge>
+        </div>
       </PageHeader>
       <GuideTip topic="payments" />
 
       <Card>
-        <div className="max-w-xl space-y-4">
-          {me?.direction === "pay_in" ? (
-            <>
-              <p className="eyebrow text-zinc-500">You pay once</p>
-              <p className="text-5xl font-medium leading-none tracking-tight tabular-nums text-brand">{formatUsd(me.amountCents)}</p>
-              <p className="text-sm text-zinc-600">
-                {facts}
-                {me.amountCents < owed && " Alamino cancelled the rest."}
-              </p>
-              {me.status === "captured" ? (
-                <p role="status" className="flex flex-wrap items-center gap-2 text-sm text-zinc-700">
-                  <Badge tone="green">Paid in</Badge> You paid {formatUsd(me.amountCents)} into the clearing account.
-                </p>
-              ) : (
-                <PayIn key={me.traderId} roundId={r.id} s={me} onPaid={reload} />
-              )}
-            </>
-          ) : me?.direction === "pay_out" ? (
-            <>
-              <p className="eyebrow text-zinc-500">You receive</p>
-              <p className="text-5xl font-medium leading-none tracking-tight tabular-nums text-brand">{formatUsd(me.amountCents)}</p>
-              <p className="text-sm text-zinc-600">
-                {`You were owed ${formatUsd(owedToMe)}. You owed ${formatUsd(owed)}.`}
-                {me.amountCents < owedToMe && " Alamino cancelled the rest."}
-              </p>
-              {me.status === "none" ? (
-                <p className="text-sm font-medium text-zinc-800">
-                  {waiting.length > 0
-                    ? `Paid to you when ${names(waiting)} ${waiting.length === 1 ? "has" : "have"} paid in.`
-                    : "Every pay-in is paid. Your payout can start."}
-                </p>
-              ) : (
-                <p role="status" className="flex flex-wrap items-center gap-2 text-sm text-zinc-700">
-                  Your payout: <Badge tone={statusBadge[me.status].tone}>{statusBadge[me.status].text}</Badge>
-                </p>
-              )}
-            </>
-          ) : (
-            <>
-              <p className="eyebrow text-zinc-500">Nothing to pay</p>
-              <p className="text-2xl font-medium tracking-tight text-brand">
-                {owed + owedToMe > 0 ? "Nothing to pay. Your debts cancelled." : "Nothing to pay. You have no debt in this round."}
-              </p>
-              {owed + owedToMe > 0 && <p className="text-sm text-zinc-600">{facts}</p>}
-            </>
-          )}
-
-          {payIns.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-600">
-              <ul className="flex gap-1.5">
-                {payIns.map((s) => {
-                  const paid = s.status === "captured";
-                  const text = `${name(s.traderId)}: ${paid ? "paid in" : "not paid in"}`;
-                  return (
-                    <li
-                      key={s.traderId}
-                      title={text}
-                      className={`grid size-7 place-items-center rounded-full border text-[11px] font-semibold ${
-                        paid ? "border-emerald-700 bg-emerald-700 text-white" : "border-dashed border-zinc-400 bg-white text-zinc-600"
-                      }`}
-                    >
-                      <span aria-hidden="true">{name(s.traderId).charAt(0)}</span>
-                      <span className="sr-only">{text}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-              <span>
-                {paidIn.length} of {payIns.length} {payIns.length === 1 ? "trader" : "traders"} paid in
-              </span>
-            </div>
-          )}
-
-          <div className="space-y-3 border-t border-zinc-200 pt-4">
+        <div className="grid gap-8 lg:grid-cols-2 lg:gap-10">
+          <div className="min-w-0 space-y-4">
             {r.status === "done" ? (
-              <div role="status" className="space-y-3">
-                <p className="text-sm font-medium text-emerald-800">Round complete. Every pay-in and pay-out is done.</p>
-                <div className="flex flex-wrap gap-2">
+              <div role="status" className="space-y-4">
+                <p className="flex items-center gap-2 text-sm font-semibold text-emerald-800">
+                  <svg aria-hidden="true" viewBox="0 0 20 20" className="size-5 fill-current">
+                    <path d="M10 1.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Zm4.1 6.3-4.9 5.4a.9.9 0 0 1-1.3 0L5.9 11a.9.9 0 1 1 1.3-1.2l1.4 1.5 4.2-4.7a.9.9 0 1 1 1.3 1.2Z" />
+                  </svg>
+                  Done
+                </p>
+                <p className="text-3xl font-medium leading-tight tracking-tight text-brand">
+                  {formatUsd(stats.grossCents)} of debt settled with {formatUsd(stats.cashMovedCents)}
+                </p>
+                <p className="text-sm text-zinc-600">
+                  {payIns.length} paid in, {payOuts.length} paid out
+                </p>
+                <p className="text-base font-medium text-zinc-900">{myResult}</p>
+                <div className="flex flex-wrap gap-2 pt-2">
                   <Link href="/statement" className={btn.primary}>
                     Read your statement
                   </Link>
@@ -277,34 +254,108 @@ export function RoundView({ id }: { id: string }) {
                   </Link>
                 </div>
               </div>
-            ) : r.status === "paying" ? (
-              <p role="status" className="text-sm text-zinc-700">
-                Payouts sent. Waiting for PayPal to confirm them...
-              </p>
-            ) : canSendPayouts ? (
-              <button type="button" className={btn.primary} disabled={sending} onClick={sendPayouts}>
-                {sending ? "Sending payouts..." : "Send payouts"}
-              </button>
             ) : (
-              <p className="text-sm text-zinc-600">Payouts start when every pay-in is paid.</p>
+              <>
+                {me?.direction === "pay_in" ? (
+                  <>
+                    <p className="eyebrow text-zinc-500">You pay once</p>
+                    <CountUp cents={me.amountCents} className="block text-5xl font-medium leading-none tracking-tight tabular-nums text-brand" />
+                    <p className="text-sm text-zinc-600">
+                      {facts}
+                      {me.amountCents < owed && " Alamino cancelled the rest."}
+                    </p>
+                    {me.status === "captured" ? (
+                      <p role="status" className="flex flex-wrap items-center gap-2 text-sm text-zinc-700">
+                        <Badge tone="green">Paid in</Badge> You paid {formatUsd(me.amountCents)} into the clearing account.
+                      </p>
+                    ) : (
+                      <PayIn key={me.traderId} roundId={r.id} s={me} onPaid={reload} />
+                    )}
+                  </>
+                ) : me?.direction === "pay_out" ? (
+                  <>
+                    <p className="eyebrow text-zinc-500">You receive</p>
+                    <CountUp cents={me.amountCents} className="block text-5xl font-medium leading-none tracking-tight tabular-nums text-brand" />
+                    <p className="text-sm text-zinc-600">
+                      {`You were owed ${formatUsd(owedToMe)}. You owed ${formatUsd(owed)}.`}
+                      {me.amountCents < owedToMe && " Alamino cancelled the rest."}
+                    </p>
+                    {me.status === "none" ? (
+                      <p className="text-sm font-medium text-zinc-800">
+                        {waiting.length > 0
+                          ? `Paid to you when ${names(waiting)} ${waiting.length === 1 ? "has" : "have"} paid in.`
+                          : "Every pay-in is paid. Your payout can start."}
+                      </p>
+                    ) : (
+                      <p role="status" className="flex flex-wrap items-center gap-2 text-sm text-zinc-700">
+                        Your payout: <Badge tone={statusBadge[me.status].tone}>{statusBadge[me.status].text}</Badge>
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="eyebrow text-zinc-500">Nothing to pay</p>
+                    <p className="text-2xl font-medium tracking-tight text-brand">
+                      {owed + owedToMe > 0 ? "Nothing to pay. Your debts cancelled." : "Nothing to pay. You have no debt in this round."}
+                    </p>
+                    {owed + owedToMe > 0 && <p className="text-sm text-zinc-600">{facts}</p>}
+                  </>
+                )}
+
+                {payIns.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-600">
+                    <ul className="flex gap-1.5">
+                      {payIns.map((s) => {
+                        const paid = s.status === "captured";
+                        const text = `${name(s.traderId)}: ${paid ? "paid in" : "not paid in"}`;
+                        // Paid: full chip with a check mark. Not paid: faded chip. The text says it for screen readers.
+                        return (
+                          <li key={s.traderId} title={text} className={`relative ${paid ? "" : "opacity-40"}`}>
+                            <TraderChip id={s.traderId} name={name(s.traderId)} label={text} />
+                            {paid && (
+                              <svg
+                                aria-hidden="true"
+                                viewBox="0 0 12 12"
+                                className="absolute -right-1 -bottom-1 size-3.5 rounded-full bg-emerald-700 fill-none stroke-white stroke-2 p-0.5 ring-2 ring-white"
+                              >
+                                <path d="M2.5 6.2 5 8.5l4.5-5" />
+                              </svg>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <span>
+                      {paidIn.length} of {payIns.length} {payIns.length === 1 ? "trader" : "traders"} paid in
+                    </span>
+                  </div>
+                )}
+
+                <div className="space-y-3 border-t border-zinc-200 pt-4">
+                  {r.status === "paying" ? (
+                    <p role="status" className="text-sm text-zinc-700">
+                      Payouts sent. Waiting for PayPal to confirm them...
+                    </p>
+                  ) : canSendPayouts ? (
+                    <button type="button" className={btn.primary} disabled={sending} onClick={sendPayouts}>
+                      {sending ? "Sending payouts..." : "Send payouts"}
+                    </button>
+                  ) : (
+                    <p className="text-sm text-zinc-600">Payouts start when every pay-in is paid.</p>
+                  )}
+                </div>
+              </>
             )}
             {actionError && <ErrorNote error={actionError} />}
           </div>
+
+          <ClearingReplay round={r} highlight={active === null ? undefined : cancellations[active]?.path} />
         </div>
       </Card>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 max-sm:[&_.ui-stat]:p-4! max-sm:[&_.ui-stat-value]:text-2xl! max-sm:[&_.ui-stat>div+div]:mt-2!">
-        <Stat value={formatUsd(stats.grossCents)} label="of debt" />
-        <Stat value={formatUsd(stats.clearedByCirclesCents)} label="cancelled by circles, no money moved" />
-        <Stat value={formatUsd(stats.cashMovedCents)} label={r.status === "done" ? "settled through PayPal" : "planned through PayPal"} />
-        <Stat value={`${stats.savedPct.toFixed(1)}%`} label="cash saved" />
-      </div>
-
-      <details className="border-t border-zinc-200 pt-4" onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <details className="border-t border-zinc-200 pt-4">
         <summary className="cursor-pointer text-sm font-medium text-accent">See what cancelled</summary>
         <div className="mt-6 space-y-6">
-          {open && <ClearingReplay round={r} highlight={active === null ? undefined : cancellations[active]?.path} />}
-
           <Card title={`Circles cancelled (${cancellations.length})`}>
             {cancellations.length === 0 ? (
               <p className="text-sm text-zinc-600">No circle in these debts. All debts go to the settlement plan.</p>
