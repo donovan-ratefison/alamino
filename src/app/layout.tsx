@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { AppProvider, Header } from "@/components/app";
+import { BottomBar } from "@/components/bottom-bar";
 import { Footer } from "@/components/footer";
 import "./globals.css";
 
@@ -11,6 +12,9 @@ export const metadata: Metadata = {
   description: "Debt clearing for market traders: circles cancel with no money, PayPal settles the rest.",
 };
 
+// "cover" lets the phone bottom bar read env(safe-area-inset-bottom).
+export const viewport: Viewport = { viewportFit: "cover" };
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full antialiased">
@@ -19,6 +23,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Header />
           <main className="app-main"><div className="app-content">{children}</div></main>
           <Footer />
+          <BottomBar />
         </AppProvider>
       </body>
     </html>

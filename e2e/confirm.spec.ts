@@ -27,6 +27,28 @@ test.describe("Confirm a debt", () => {
     await expect(confirmLink).not.toHaveAccessibleName(/\d/);
   });
 
+  test("Hery approves Rivo's debt from the bell", async ({ page, request }) => {
+    await page.goto("/");
+    await viewAs(page, "hery");
+
+    const bell = page.getByRole("button", { name: /notifications/i });
+    await expect(bell).toHaveAccessibleName("Notifications, 1 waiting");
+    await bell.click();
+    await expect(bell).toHaveAttribute("aria-expanded", "true");
+
+    const panel = page.getByRole("dialog", { name: /waiting for you/i });
+    await expect(panel).toContainText(/Rivo says: Rivo owes you \$50, rice/);
+    await panel.getByRole("button", { name: /approve/i }).click();
+
+    await expect(panel.getByRole("status")).toHaveText("Confirmed.");
+    await expect.poll(async () => (await debtById(request, debt.id))?.status).toBe("confirmed");
+    await expect(bell).toHaveAccessibleName("Notifications");
+    await expect(panel).toContainText(/nothing waits for you/i);
+
+    await page.keyboard.press("Escape");
+    await expect(panel).toHaveCount(0);
+  });
+
   test("Hery gives a different amount, then Rivo accepts it", async ({ page, request }) => {
     await page.goto("/confirm");
     await viewAs(page, "hery");

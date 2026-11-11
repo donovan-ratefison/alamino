@@ -7,6 +7,7 @@ import type { Debt, Trader, TraderId } from "@/lib/types";
 import { useApi, waitingFor } from "./api";
 import { Badge } from "./ui";
 import { Brand } from "./brand";
+import { Bell } from "./bell";
 
 export interface AppConfig {
   paypalMode: "sandbox" | "simulated";
@@ -19,6 +20,7 @@ interface AppState {
   traderId: TraderId;
   setTraderId: (id: TraderId) => void;
   name: (id: TraderId | null | undefined) => string;
+  debts: ReturnType<typeof useApi<Debt[]>>; // shared list: reload it after a change
   pendingCount: number;
   refreshPending: () => void;
 }
@@ -66,6 +68,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     traderId,
     setTraderId,
     name: (id) => traders.find((t) => t.id === id)?.name ?? id ?? "Unknown",
+    debts,
     pendingCount: (debts.data ?? []).filter((d) => waitingFor(d, traderId)).length,
     refreshPending: debts.reload,
   };
@@ -123,7 +126,7 @@ export function Header() {
             <Link href="/" aria-label="Alamino home"><Brand preload /></Link>
             <span className="hidden border-l border-zinc-200 pl-4 text-xs text-zinc-500 lg:inline">A clearer way to settle together.</span>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
             {config && <Badge tone="blue">{config.paypalMode === "simulated" ? "PayPal simulated" : "PayPal Sandbox"}</Badge>}
             {config?.aiMode === "fallback" && <Badge>AI fallback</Badge>}
             <div className="profile-control">
@@ -144,6 +147,7 @@ export function Header() {
               ))}
             </select>
             </div>
+            <Bell />
           </div>
         </div>
         <Suspense fallback={<NavLinks pathname="" />}>

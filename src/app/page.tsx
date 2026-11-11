@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, type ColDef } from "ag-grid-community";
-import type { Debt, Round } from "@/lib/types";
+import type { ClearingStats, Debt, Round } from "@/lib/types";
 import { api, formatUsd, useApi } from "@/components/api";
 import { useApp } from "@/components/app";
 import { Network } from "@/components/network";
 import { Badge, btn, Card, Empty, ErrorNote, Loading } from "@/components/ui";
-import { Workflow } from "@/components/workflow";
+import { Rhythm } from "@/components/workflow";
 import { financeGridTheme } from "@/components/finance/theme";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -19,38 +19,40 @@ const money = { valueFormatter: (p: { value: number }) => formatUsd(p.value), ty
 
 export default function MarketPage() {
   const router = useRouter();
-  const { traders, name, refreshPending } = useApp();
-  const debts = useApi<Debt[]>("/api/debts");
+  const { traders, name, debts } = useApp();
   const latest = useApi<Round>("/api/rounds/latest");
   const [busy, setBusy] = useState<"run" | "reset" | null>(null);
-  const [actionError, setActionError] = useState<Error | null>(null);
+  const [runError, setRunError] = useState<Error | null>(null);
+  const [resetError, setResetError] = useState<Error | null>(null);
 
   const confirmed = (debts.data ?? []).filter((d) => d.status === "confirmed");
   const total = confirmed.reduce((sum, d) => sum + d.remainingCents, 0);
+  // The route ignores the query. It changes the path, so the preview loads again when the confirmed debts change.
+  const preview = useApi<{ stats: ClearingStats | null }>(debts.data ? `/api/rounds/preview?v=${confirmed.length}-${total}` : null);
   const openRound = latest.data && latest.data.status !== "done" ? latest.data : null;
 
   async function runClearing() {
     setBusy("run");
-    setActionError(null);
+    setRunError(null);
     try {
       const round = await api<Round>("/api/rounds", {});
       router.push(`/rounds/${round.id}`);
     } catch (e) {
-      setActionError(e as Error);
+      setRunError(e as Error);
       setBusy(null);
     }
   }
 
   async function reset() {
     setBusy("reset");
-    setActionError(null);
+    setResetError(null);
+    setRunError(null);
     try {
       await api("/api/demo/reset", {});
       debts.reload();
       latest.reload();
-      refreshPending();
     } catch (e) {
-      setActionError(e as Error);
+      setResetError(e as Error);
     }
     setBusy(null);
   }
@@ -78,24 +80,22 @@ export default function MarketPage() {
           </div>
           <div className="hero-snapshot">
             <div className="hero-snapshot-title"><p className="text-sm font-medium">Your market, at a glance</p><span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-soft text-brand" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 10a8 8 0 0 1 14-5l2 2M20 3v4h-4M20 14A8 8 0 0 1 6 19l-2-2M4 21v-4h4" /></svg></span></div>
-            <p className="snapshot-value">{debts.loading || debts.error ? "—" : formatUsd(total)}</p>
+            <p className="snapshot-value">{debts.loading || debts.error ? "..." : formatUsd(total)}</p>
             <p className="mt-3 text-xs text-zinc-500">Total confirmed debts · USD</p>
-            <div className="snapshot-grid"><div><p className="text-3xl font-medium tracking-tight">{debts.loading || debts.error ? "—" : confirmed.length}</p><p className="mt-2 text-xs text-zinc-500">Confirmed debts</p></div><div><p className="text-3xl font-medium tracking-tight">{traders.length || "—"}</p><p className="mt-2 text-xs text-zinc-500">Connected traders</p></div></div>
+            <div className="snapshot-grid"><div><p className="text-3xl font-medium tracking-tight">{debts.loading || debts.error ? "..." : confirmed.length}</p><p className="mt-2 text-xs text-zinc-500">Confirmed debts</p></div><div><p className="text-3xl font-medium tracking-tight">{traders.length || "..."}</p><p className="mt-2 text-xs text-zinc-500">Connected traders</p></div></div>
             <div className="mt-7 flex items-center gap-3"><div className="flex -space-x-2">{traders.slice(0, 5).map((t, i) => <span key={t.id} title={t.name} className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-xs font-semibold ${i % 2 === 0 ? "bg-brand text-white" : "bg-blue-100 text-brand"}`}>{t.name[0]}</span>)}</div><span className="text-xs leading-5 text-zinc-500">One market.<br />A shared way forward.</span></div>
           </div>
         </div>
       </section>
 
-      <section className="market-section">
-        <div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><p className="eyebrow text-accent">Simple by design</p><h2 className="section-title mt-3">A clearer way to settle.</h2></div><p className="max-w-xs text-sm leading-6 text-zinc-500">From a notebook entry to a payment.<br />Four steps, with everyone in the loop.</p></div>
-        <Workflow />
-      </section>
-
-      <section className="market-section space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-5">
-          <div><p className="eyebrow text-accent">The market ledger</p><h2 className="section-title mt-3">See the bigger picture.</h2></div>
-          <div className="flex flex-wrap items-center gap-3">
-          {latest.loading ? null : openRound ? (
+      <section className="market-section space-y-4">
+        <div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><p className="eyebrow text-accent">The market rhythm</p><h2 className="section-title mt-3">Every day, then clearing day.</h2></div><p className="max-w-xs text-sm leading-6 text-zinc-500">Debts come in all week. One clearing cancels the circles and settles the rest.</p></div>
+        <Rhythm
+          debts={debts.data}
+          stats={preview.data?.stats}
+          statsError={preview.error}
+          onRetry={preview.reload}
+          clearing={latest.loading ? null : openRound ? (
             <Link href={`/rounds/${openRound.id}`} className={btn.primary}>
               Continue round
             </Link>
@@ -104,12 +104,18 @@ export default function MarketPage() {
               {busy === "run" ? "Running clearing..." : "Run clearing"}
             </button>
           )}
+        />
+        {runError && <ErrorNote error={runError} />}
+      </section>
+
+      <section id="ledger" className="market-section space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-5">
+          <div><p className="eyebrow text-accent">The market ledger</p><h2 className="section-title mt-3">See the bigger picture.</h2></div>
           <button type="button" className={btn.small} onClick={reset} disabled={busy !== null}>
             {busy === "reset" ? "Resetting..." : "Reset demo"}
           </button>
-          </div>
         </div>
-        {actionError && <ErrorNote error={actionError} />}
+        {resetError && <ErrorNote error={resetError} />}
 
       {debts.error ? (
         <ErrorNote error={debts.error} onRetry={debts.reload} />

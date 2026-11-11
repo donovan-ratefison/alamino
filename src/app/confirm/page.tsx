@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { Debt } from "@/lib/types";
-import { api, formatUsd, toCents, useApi, waitingFor } from "@/components/api";
+import { api, formatUsd, toCents, waitingFor } from "@/components/api";
 import { useApp } from "@/components/app";
 import { Badge, btn, Card, Empty, ErrorNote, field, Loading, PageHeader } from "@/components/ui";
 import { Workflow } from "@/components/workflow";
@@ -166,8 +166,8 @@ function DebtItem({ debt, onChange }: { debt: Debt; onChange: () => void }) {
 }
 
 export default function ConfirmPage() {
-  const { traderId, name, refreshPending } = useApp();
-  const debts = useApi<Debt[]>("/api/debts");
+  // The shared list: an answer from the bell updates this page too.
+  const { traderId, name, refreshPending, debts } = useApp();
 
   const open = (debts.data ?? []).filter(
     (d) => (d.status === "proposed" || d.status === "disputed") && (d.debtorId === traderId || d.creditorId === traderId),
@@ -175,10 +175,7 @@ export default function ConfirmPage() {
   const forYou = open.filter((d) => waitingFor(d, traderId));
   const forOthers = open.filter((d) => !waitingFor(d, traderId));
 
-  function changed() {
-    debts.reload();
-    refreshPending();
-  }
+  const changed = refreshPending; // reloads the shared list
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
