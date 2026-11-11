@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { AppProvider, Header } from "@/components/app";
 import { BottomBar } from "@/components/bottom-bar";
+import { DemoGuide } from "@/components/demo-guide";
 import { Footer } from "@/components/footer";
 import "./globals.css";
 
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className={`${inter.variable} flex min-h-full flex-col font-sans`}>
         <AppProvider>
           <Header />
+          <DemoGuide />
           <main className="app-main"><div className="app-content">{children}</div></main>
           <Footer />
           <BottomBar />

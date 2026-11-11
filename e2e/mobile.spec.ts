@@ -5,7 +5,7 @@ test.use({ viewport: { width: 375, height: 800 } });
 
 // For each page: the path and a check that the main content has loaded.
 const pages: [string, (page: Page) => Promise<void>][] = [
-  ["/", (page) => expect(page.getByRole("gridcell").first()).toBeVisible()],
+  ["/", (page) => expect(page.getByRole("main").locator("[data-status]").first()).toBeVisible()],
   [
     "/add",
     async (page) => {

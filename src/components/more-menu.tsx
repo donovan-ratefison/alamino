@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "./app";
+import { startGuide } from "./demo-guide";
 import { Badge } from "./ui";
 
-// The PayPal and AI modes. In the header on a desktop, in the "More" menu on a phone.
+// The PayPal and AI modes, shown in the "More" menu.
 export function ModeBadges() {
   const { config } = useApp();
   if (!config) return null;
@@ -17,7 +18,7 @@ export function ModeBadges() {
   );
 }
 
-// Phone only (hidden with CSS above 640 px): the links and modes that do not fit the header.
+// The modes, the demo guide, and on a phone the links that do not fit the bottom bar.
 export function MoreMenu() {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -60,7 +61,7 @@ export function MoreMenu() {
       </button>
       {open && (
         <div id="more-panel" className="bell-panel more-panel">
-          <nav aria-label="More">
+          <nav aria-label="More" className="sm:hidden">
             <Link
               href="/finance"
               // The panel renders only in the browser, after a click. usePathname here would need a Suspense boundary.
@@ -71,9 +72,21 @@ export function MoreMenu() {
               AI Finance
             </Link>
           </nav>
-          <div className="grid gap-2 border-t border-zinc-200 px-2 pt-3">
+          <div className="grid gap-2 px-2 pt-1 max-sm:border-t max-sm:border-zinc-200 max-sm:pt-3">
             <p className="text-xs text-zinc-500">Modes</p>
             <div className="flex flex-wrap gap-2"><ModeBadges /></div>
+          </div>
+          <div className="border-t border-zinc-200 pt-2">
+            <button
+              type="button"
+              className="nav-link w-full"
+              onClick={() => {
+                startGuide();
+                setOpen(false);
+              }}
+            >
+              Demo guide
+            </button>
           </div>
         </div>
       )}

@@ -8,8 +8,8 @@ import { useApp } from "./app";
 const slots = [
   { href: "/", label: "Market", match: (p: string) => p === "/" },
   { href: "/confirm", label: "Confirm", match: (p: string) => p.startsWith("/confirm") },
-  { href: "/add", label: "Add a debt", match: (p: string) => p.startsWith("/add") },
-  { href: "/rounds/latest", label: "Round", match: (p: string) => p.startsWith("/rounds") },
+  { href: "/add", label: "Add", match: (p: string) => p.startsWith("/add") },
+  { href: "/rounds/latest", label: "Clearing", match: (p: string) => p.startsWith("/rounds") },
   { href: "/statement", label: "Statement", match: (p: string) => p.startsWith("/statement") },
 ];
 

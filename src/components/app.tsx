@@ -7,7 +7,7 @@ import type { Debt, Trader, TraderId } from "@/lib/types";
 import { useApi, waitingFor } from "./api";
 import { Brand } from "./brand";
 import { Bell } from "./bell";
-import { ModeBadges, MoreMenu } from "./more-menu";
+import { MoreMenu } from "./more-menu";
 
 export interface AppConfig {
   paypalMode: "sandbox" | "simulated";
@@ -78,9 +78,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 const links = [
   { href: "/", label: "Market" },
-  { href: "/add", label: "Add a debt" },
+  { href: "/add", label: "Add" },
   { href: "/confirm", label: "Confirm" },
-  { href: "/rounds/latest", label: "Payments" },
+  { href: "/rounds/latest", label: "Clearing" },
   { href: "/statement", label: "Statement" },
   { href: "/finance", label: "AI Finance" },
 ];
@@ -121,38 +121,32 @@ export function Header() {
   return (
     <header className="site-header">
       <div className="header-content">
-        <div className="header-top">
-          <div className="flex shrink-0 items-center gap-3">
-            <Link href="/" aria-label="Alamino home"><Brand preload /></Link>
-            <span className="hidden border-l border-zinc-200 pl-4 text-xs text-zinc-500 lg:inline">A clearer way to settle together.</span>
-          </div>
-          <div className="header-actions">
-            <div className="header-badges"><ModeBadges /></div>
-            <div className="profile-control">
-              <label htmlFor="view-as" className="text-xs text-zinc-600 max-sm:sr-only">
-                View as
-              </label>
-              <select
-                id="view-as"
-                value={traderId}
-                onChange={(e) => setTraderId(e.target.value)}
-                className="profile-select"
-              >
-                {traders.length === 0 && <option value={traderId}>{traderId}</option>}
-                {traders.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} ({t.business})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <MoreMenu />
-            <Bell />
-          </div>
-        </div>
+        <Link href="/" aria-label="Alamino home" className="shrink-0"><Brand preload /></Link>
         <Suspense fallback={<NavLinks pathname="" />}>
           <Nav />
         </Suspense>
+        <div className="header-actions">
+          <div className="profile-control">
+            <label htmlFor="view-as" className="text-xs whitespace-nowrap text-zinc-600 max-xl:sr-only">
+              View as
+            </label>
+            <select
+              id="view-as"
+              value={traderId}
+              onChange={(e) => setTraderId(e.target.value)}
+              className="profile-select"
+            >
+              {traders.length === 0 && <option value={traderId}>{traderId}</option>}
+              {traders.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} ({t.business})
+                </option>
+              ))}
+            </select>
+          </div>
+          <MoreMenu />
+          <Bell />
+        </div>
       </div>
     </header>
   );
