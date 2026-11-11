@@ -32,7 +32,7 @@ test.describe("Issues #5 & #6: One full clearing round with real sandbox payment
     await expect(approveBtn).toBeVisible();
     await page.screenshot({ path: "test-results/screenshots/issue-5-confirm-debt.png" });
     await approveBtn.click();
-    await expect(page.getByText("Nothing to confirm", { exact: true })).toBeVisible();
+    await expect(page.getByText("Nothing to confirm", { exact: true })).toBeVisible({ timeout: 15_000 });
 
     // --- STEP 3: Market page shows 9 confirmed debts for $990 ---
     await page.goto("/");

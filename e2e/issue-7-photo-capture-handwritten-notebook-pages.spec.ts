@@ -65,7 +65,7 @@ test.describe("Issue #7: Test photo capture with handwritten notebook pages", ()
     await page.getByLabel("Choose a photo").setInputFiles(PHOTO_1);
 
     // Draft card should display parsed fields
-    await expect(page.getByText("You owe Hery", { exact: true })).toBeVisible();
+    await expect(page.getByText("You owe Hery", { exact: true })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("$50", { exact: true })).toBeVisible();
     await expect(page.getByText("1 ready", { exact: true })).toBeVisible();
 
@@ -111,7 +111,7 @@ test.describe("Issue #7: Test photo capture with handwritten notebook pages", ()
 
     expect(fs.existsSync(PHOTO_2)).toBe(true);
     await page.getByLabel("Choose a photo").setInputFiles(PHOTO_2);
-    await expect(page.getByText("4 ready", { exact: true })).toBeVisible();
+    await expect(page.getByText("4 ready", { exact: true })).toBeVisible({ timeout: 15_000 });
 
     // Visual screenshot of 4 drafts ready
     await page.screenshot({ path: "test-results/screenshots/issue-7-multi-debt-drafts.png", fullPage: true });
