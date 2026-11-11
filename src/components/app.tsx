@@ -5,9 +5,9 @@ import { usePathname } from "next/navigation";
 import { createContext, Suspense, useContext, useSyncExternalStore, type ReactNode } from "react";
 import type { Debt, Trader, TraderId } from "@/lib/types";
 import { useApi, waitingFor } from "./api";
-import { Badge } from "./ui";
 import { Brand } from "./brand";
 import { Bell } from "./bell";
+import { ModeBadges, MoreMenu } from "./more-menu";
 
 export interface AppConfig {
   paypalMode: "sandbox" | "simulated";
@@ -117,36 +117,36 @@ function Nav() {
 }
 
 export function Header() {
-  const { traders, traderId, config } = useApp();
+  const { traders, traderId } = useApp();
   return (
     <header className="site-header">
       <div className="header-content">
         <div className="header-top">
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             <Link href="/" aria-label="Alamino home"><Brand preload /></Link>
             <span className="hidden border-l border-zinc-200 pl-4 text-xs text-zinc-500 lg:inline">A clearer way to settle together.</span>
           </div>
-          <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
-            {config && <Badge tone="blue">{config.paypalMode === "simulated" ? "PayPal simulated" : "PayPal Sandbox"}</Badge>}
-            {config?.aiMode === "fallback" && <Badge>AI fallback</Badge>}
+          <div className="header-actions">
+            <div className="header-badges"><ModeBadges /></div>
             <div className="profile-control">
-            <label htmlFor="view-as" className="text-xs text-zinc-600">
-              View as
-            </label>
-            <select
-              id="view-as"
-              value={traderId}
-              onChange={(e) => setTraderId(e.target.value)}
-              className="profile-select"
-            >
-              {traders.length === 0 && <option value={traderId}>{traderId}</option>}
-              {traders.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.business})
-                </option>
-              ))}
-            </select>
+              <label htmlFor="view-as" className="text-xs text-zinc-600 max-sm:sr-only">
+                View as
+              </label>
+              <select
+                id="view-as"
+                value={traderId}
+                onChange={(e) => setTraderId(e.target.value)}
+                className="profile-select"
+              >
+                {traders.length === 0 && <option value={traderId}>{traderId}</option>}
+                {traders.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.business})
+                  </option>
+                ))}
+              </select>
             </div>
+            <MoreMenu />
             <Bell />
           </div>
         </div>

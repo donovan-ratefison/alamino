@@ -43,4 +43,14 @@ test.describe("Phone width", () => {
       expect.soft(fits, `${path} scrolls sideways`).toBe(true);
     }
   });
+
+  test("a task page has a one-row header and no footer", async ({ page }) => {
+    await page.goto("/add");
+    await expect(page.getByText("Photograph your notebook")).toBeVisible();
+    const header = await page.locator("header").boundingBox();
+    expect(header!.height).toBeLessThanOrEqual(64);
+    // The bottom bar is the navigation on a phone: the footer is hidden.
+    await expect(page.locator("footer")).toBeHidden();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
 });

@@ -72,13 +72,14 @@ export default function MarketPage() {
       <section className="bleed brand-band market-hero">
         <div className="band-content">
           <div>
-            <p className="eyebrow text-blue-100">Your market. More connected.</p>
+            <p className="eyebrow text-blue-100 max-sm:hidden">Your market. More connected.</p>
             <h1 className="display-title mt-6">Less to pay.<br />More to grow.</h1>
-            <p className="mt-6 max-w-md text-base leading-7 text-blue-50 sm:text-lg">Turn everyday debts into a simpler settlement. Capture with AI, clear the circles, and pay the rest with PayPal.</p>
-            <div className="mt-8 flex flex-wrap gap-3"><Link href="/add" className={btn.inverse}>Add a debt <span aria-hidden="true">↗</span></Link><Link href="/finance" className={btn.outlineOnBlue}>Explore AI Finance</Link></div>
-            <p className="mt-6 text-xs leading-6 text-blue-100">Both sides confirm. The engine calculates. You stay in control.</p>
+            <p className="mt-2 text-base leading-6 sm:hidden">Clear the circles. Pay only what remains.</p>
+            <p className="mt-6 max-w-md text-base leading-7 text-blue-50 max-sm:hidden sm:text-lg">Turn everyday debts into a simpler settlement. Capture with AI, clear the circles, and pay the rest with PayPal.</p>
+            <div className="mt-8 flex flex-wrap gap-3 max-sm:hidden"><Link href="/add" className={btn.inverse}>Add a debt <span aria-hidden="true">↗</span></Link><Link href="/finance" className={btn.outlineOnBlue}>Explore AI Finance</Link></div>
+            <p className="mt-6 text-xs leading-6 text-blue-100 max-sm:hidden">Both sides confirm. The engine calculates. You stay in control.</p>
           </div>
-          <div className="hero-snapshot">
+          <div className="hero-snapshot max-sm:hidden">
             <div className="hero-snapshot-title"><p className="text-sm font-medium">Your market, at a glance</p><span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-soft text-brand" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 10a8 8 0 0 1 14-5l2 2M20 3v4h-4M20 14A8 8 0 0 1 6 19l-2-2M4 21v-4h4" /></svg></span></div>
             <p className="snapshot-value">{debts.loading || debts.error ? "..." : formatUsd(total)}</p>
             <p className="mt-3 text-xs text-zinc-500">Total confirmed debts · USD</p>
@@ -89,7 +90,7 @@ export default function MarketPage() {
       </section>
 
       <section className="market-section space-y-4">
-        <div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><p className="eyebrow text-accent">The market rhythm</p><h2 className="section-title mt-3">Every day, then clearing day.</h2></div><p className="max-w-xs text-sm leading-6 text-zinc-500">Debts come in all week. One clearing cancels the circles and settles the rest.</p></div>
+        <div className="mb-7 flex flex-wrap items-end justify-between gap-4 max-sm:mb-4"><div><p className="eyebrow text-accent">The market rhythm</p><h2 className="section-title mt-3">Every day, then clearing day.</h2></div><p className="max-w-xs text-sm leading-6 text-zinc-500 max-sm:hidden">Debts come in all week. One clearing cancels the circles and settles the rest.</p></div>
         <Rhythm
           debts={debts.data}
           stats={preview.data?.stats}

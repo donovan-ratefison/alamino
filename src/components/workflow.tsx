@@ -7,30 +7,6 @@ import { formatUsd, waitingFor } from "./api";
 import { useApp } from "./app";
 import { ErrorNote } from "./ui";
 
-const steps = [
-  { lane: "Every day", label: "Add", detail: "A sentence or a photo.", href: "/add" },
-  { lane: "Every day", label: "Confirm", detail: "Both sides agree.", href: "/confirm" },
-  { lane: "Clearing day", label: "Clear", detail: "Circles cancel.", href: "/" },
-  { lane: "Clearing day", label: "Settle", detail: "Pay only what remains.", href: "/rounds/latest" },
-];
-
-// Short link strip for the inner pages. `current` is the index of the current page.
-export function Workflow({ current }: { current?: number }) {
-  return (
-    <ul className="workflow" aria-label="How Alamino works">
-      {steps.map((step, i) => (
-        <li key={step.label}>
-          <Link href={step.href} aria-current={current === i ? "page" : undefined}>
-            <span className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{step.lane}</span>
-            <span className="block text-sm font-medium text-brand">{step.label}</span>
-            <span className="block text-xs leading-5 text-zinc-500">{step.detail}</span>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 function Beat({ value, label, href, now }: { value: ReactNode; label: string; href?: string; now?: boolean }) {
   const content = (
     <>
@@ -75,7 +51,7 @@ export function Rhythm({
           <Beat value={show(waiting)} label="wait for your answer" href="/confirm" now={waiting > 0} />
           <Beat value={show(formatUsd(ready))} label="confirmed, ready to clear" href="#ledger" />
         </div>
-        <p className="text-sm text-zinc-500">Add and confirm repeat all week, in any order.</p>
+        <p className="text-sm text-zinc-500 max-sm:hidden">Add and confirm repeat all week, in any order.</p>
       </section>
       <section className="lane" aria-labelledby="lane-clearing">
         <p id="lane-clearing" className="eyebrow text-zinc-500">Clearing day</p>
@@ -91,7 +67,7 @@ export function Rhythm({
         )}
         <div className="flex flex-wrap items-center gap-3">
           {clearing}
-          <p className="text-sm text-zinc-500">Then each trader pays or is paid, and reads a statement.</p>
+          <p className="text-sm text-zinc-500 max-sm:hidden">Then each trader pays or is paid, and reads a statement.</p>
         </div>
       </section>
     </div>

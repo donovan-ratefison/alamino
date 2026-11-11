@@ -1,8 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Suspense } from "react";
 import { Brand } from "./brand";
 import { btn } from "./ui";
 
-export function Footer() {
+function FullFooter() {
   return <footer className="site-footer">
     <div className="band-content">
       <div className="footer-top">
@@ -16,4 +20,29 @@ export function Footer() {
       </div>
     </div>
   </footer>;
+}
+
+// Task pages: one line on a desktop, hidden with CSS on a phone (the bottom bar is the navigation).
+function LineFooter() {
+  return <footer className="footer-line">
+    <div className="band-content">
+      <span className="font-medium text-brand">Alamino</span>
+      <span>Hackathon prototype</span>
+      <span>Sandbox and demo modes are labelled in the app.</span>
+    </div>
+  </footer>;
+}
+
+function PageFooter() {
+  const pathname = usePathname();
+  return pathname === "/" || pathname.startsWith("/finance") ? <FullFooter /> : <LineFooter />;
+}
+
+// The full footer only on the market and AI Finance pages.
+export function Footer() {
+  return (
+    <Suspense fallback={<LineFooter />}>
+      <PageFooter />
+    </Suspense>
+  );
 }
