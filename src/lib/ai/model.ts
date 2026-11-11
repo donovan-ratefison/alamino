@@ -13,6 +13,8 @@ export function buildRequest(model: string, system: string, parts: Part[], schem
       { role: "user", content: parts },
     ],
     response_format: { type: "json_schema", json_schema: { name: schemaName, strict: true, schema } },
+    // Optional: "minimal" makes the model think less and answer faster. Unset: the provider default.
+    ...(process.env.AI_REASONING_EFFORT && { reasoning_effort: process.env.AI_REASONING_EFFORT }),
   };
 }
 
