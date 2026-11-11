@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 
-export type NavIconName = "market" | "add" | "confirm" | "payments" | "statement" | "help";
+export type NavIconName = "market" | "add" | "confirm" | "payments" | "statement" | "help" | "back" | "next" | "close";
 
 export function NavIcon({ name, ...props }: SVGProps<SVGSVGElement> & { name: NavIconName }) {
   return (
@@ -11,6 +11,9 @@ export function NavIcon({ name, ...props }: SVGProps<SVGSVGElement> & { name: Na
       {name === "payments" && <><path d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4" /></>}
       {name === "statement" && <><path d="M14 3H5v18h14V8zM14 3v5h5M8 12h8M8 16h5" /></>}
       {name === "help" && <><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 1 1 4.2 1.8c-1 .6-1.7 1.1-1.7 2.7" /><path d="M12 17h.01" /></>}
+      {name === "back" && <path d="m15 18-6-6 6-6" />}
+      {name === "next" && <path d="m9 18 6-6-6-6" />}
+      {name === "close" && <path d="M18 6 6 18M6 6l12 12" />}
     </svg>
   );
 }

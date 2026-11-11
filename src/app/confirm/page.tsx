@@ -5,8 +5,9 @@ import { useState } from "react";
 import type { Debt } from "@/lib/types";
 import { api, formatUsd, toCents, waitingFor } from "@/components/api";
 import { useApp } from "@/components/app";
-import { btn, Card, Empty, ErrorNote, field, Loading, PageHeader } from "@/components/ui";
+import { Badge, btn, Card, Empty, ErrorNote, field, Loading, PageHeader } from "@/components/ui";
 import { GuideTip } from "@/components/guide-tip";
+import { TraderChip } from "@/components/trader-chip";
 
 interface Resolution {
   suggestion: string;
@@ -26,14 +27,9 @@ function DebtItem({ debt, onChange }: { debt: Debt; onChange: () => void }) {
   const other = debt.debtorId === traderId ? debt.creditorId : debt.debtorId;
   const counterCents = counter === null ? null : toCents(counter);
   const otherOk = debt.debtorId === traderId ? debt.creditorOk : debt.debtorOk;
-  // The debt and its state, from the side of the current trader.
-  const amount = formatUsd(debt.amountCents);
-  const sentence =
-    debt.debtorId === traderId
-      ? `You owe ${name(debt.creditorId)} ${amount}`
-      : debt.creditorId === traderId
-        ? `${name(debt.debtorId)} owes you ${amount}`
-        : `${name(debt.debtorId)} owes ${name(debt.creditorId)} ${amount}`;
+  // The debt and its state, from the side of the current trader. The page lists only the debts of this trader.
+  const sentence = debt.debtorId === traderId ? `You owe ${name(other)}` : `${name(other)} owes you`;
+  const approved = mine && !disputed && otherOk;
   const message = disputed
     ? debt.counterBy === traderId
       ? `You said ${formatUsd(debt.counterAmountCents!)}. Waiting for ${name(other)}.`
@@ -41,7 +37,7 @@ function DebtItem({ debt, onChange }: { debt: Debt; onChange: () => void }) {
     : !mine
       ? `You approved. Waiting for ${name(other)}.`
       : otherOk
-        ? `${name(other)} approved. Waiting for you.`
+        ? `${name(other)} approved`
         : `Waiting for you and ${name(other)}.`;
 
   async function confirm(body: { ok: boolean; counterAmountCents?: number }) {
@@ -71,15 +67,25 @@ function DebtItem({ debt, onChange }: { debt: Debt; onChange: () => void }) {
 
   return (
     <Card>
-      <div className="space-y-3">
-        <div>
-          <p className="text-sm font-semibold text-zinc-900">{sentence}</p>
-          {debt.note && <p className="mt-0.5 text-sm text-zinc-600">{debt.note}</p>}
+      <div className="space-y-4">
+        <div className="flex items-start gap-3">
+          <TraderChip id={other} name={name(other)} size={36} />
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-medium text-zinc-900">{sentence}</p>
+            {debt.note && <p className="text-sm text-zinc-600">{debt.note}</p>}
+            <p className={`mt-1 flex items-center gap-1 text-xs font-medium ${disputed ? "text-red-800" : approved ? "text-emerald-700" : "text-zinc-600"}`}>
+              {approved && (
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="m3 8.5 3 3 7-7" />
+                </svg>
+              )}
+              {message}
+            </p>
+          </div>
+          <p className="shrink-0 text-2xl font-medium tabular-nums text-brand">{formatUsd(debt.amountCents)}</p>
         </div>
 
-        <p className={`text-sm font-medium ${disputed ? "text-red-800" : "text-zinc-700"}`}>{message}</p>
-
-        <div className="flex flex-wrap gap-2">
+        <div className="confirm-actions grid grid-cols-2 gap-2 empty:hidden">
           {mine && !disputed && (
             <button type="button" className={btn.primary} disabled={busy} onClick={() => confirm({ ok: true })}>
               Approve {formatUsd(debt.amountCents)}
@@ -97,7 +103,7 @@ function DebtItem({ debt, onChange }: { debt: Debt; onChange: () => void }) {
           )}
           {mine && counter === null && (
             <button type="button" className={btn.secondary} disabled={busy} onClick={() => setCounter("")}>
-              Different amount
+              Change amount
             </button>
           )}
           {disputed && (
@@ -175,11 +181,7 @@ export default function ConfirmPage() {
 
   return (
     <div className="mx-auto max-w-[640px] space-y-8">
-      <PageHeader title="Confirm debts">
-        Both sides must approve a debt before it enters a clearing round. You view the app as{" "}
-        <span className="font-medium text-zinc-900">{name(traderId)}</span>.
-      </PageHeader>
-      <GuideTip topic="confirm" />
+      <PageHeader title="Confirm debts">Both sides approve a debt before it enters clearing.</PageHeader>
       {debts.error ? (
         <ErrorNote error={debts.error} onRetry={debts.reload} />
       ) : debts.loading ? (
@@ -201,8 +203,8 @@ export default function ConfirmPage() {
             .filter((group) => group.empty || group.list.length > 0)
             .map((group) => (
               <section key={group.title} className="space-y-3">
-                <h2 className="text-sm font-semibold text-zinc-900">
-                  {group.title} ({group.list.length})
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-zinc-900">
+                  {group.title} <Badge tone={group.list.length > 0 ? "blue" : "neutral"}>{group.list.length}</Badge>
                 </h2>
                 {group.list.length === 0 ? (
                   <p className="text-sm text-zinc-600">{group.empty}</p>
@@ -213,6 +215,7 @@ export default function ConfirmPage() {
             ))}
         </>
       )}
+      <GuideTip topic="confirm" />
     </div>
   );
 }

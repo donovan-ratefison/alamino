@@ -35,7 +35,7 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
       edges: remaining,
       left: stats.remainingCents,
       cancelled: stats.clearedByCirclesCents,
-      caption: `No circle is left. ${formatUsd(stats.remainingCents)} of debt is left. ${formatUsd(stats.clearedByCirclesCents)} cancelled, no money moved.`,
+      caption: `No circle left. ${formatUsd(stats.clearedByCirclesCents)} cancelled, no money moved.`,
     };
     setView("after");
     if (reducedMotion()) {
@@ -126,7 +126,7 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
           setView(v);
           setFrame(null);
         }}
-        className={`rounded-full px-3.5 py-1.5 text-sm font-medium disabled:opacity-60 ${
+        className={`h-9 rounded-full px-4 text-sm font-medium disabled:opacity-60 ${
           pressed ? "bg-white text-brand shadow-sm" : "text-zinc-600 hover:text-brand"
         }`}
       >
@@ -136,7 +136,7 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
   };
 
   return (
-    <div className="min-w-0 space-y-4">
+    <div className="replay min-w-0 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div role="group" aria-label="Network view" className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 p-0.5">
           {toggle("before", "Before")}
@@ -149,11 +149,11 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
 
       <dl className="grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3">
-          <dt className="text-xs text-zinc-500">Debt left</dt>
+          <dt className="whitespace-nowrap text-xs text-zinc-500">Debt left</dt>
           <dd className="mt-1 text-2xl font-medium tabular-nums text-brand">{formatUsd(left)}</dd>
         </div>
         <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3">
-          <dt className="text-xs text-zinc-500">Cancelled, no money moved</dt>
+          <dt className="whitespace-nowrap text-xs text-zinc-500">Cancelled</dt>
           <dd className="mt-1 text-2xl font-medium tabular-nums text-brand">{formatUsd(cancelled)}</dd>
         </div>
       </dl>
@@ -168,7 +168,7 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
           label={running ? "Debts during the clearing replay" : before ? "Debts before the round" : "Debts after circles cancel"}
         />
       )}
-      <p aria-live="polite" className="min-h-5 text-sm text-zinc-700">
+      <p aria-live="polite" className="min-h-10 text-sm text-zinc-700">
         {frame?.caption ?? (!before && remaining.every((e) => e.amountCents === 0) ? "No debt is left." : "")}
       </p>
     </div>

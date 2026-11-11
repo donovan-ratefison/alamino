@@ -27,7 +27,7 @@ function TraderNode({ data }: NodeProps<TraderNodeData>) {
 }
 
 const nodeTypes = { trader: TraderNode };
-const RADIUS = 170;
+const RADIUS = 140;
 const COLOR = { on: "#0070e0", circle: "#13865b", base: "#8eafd4", dim: "#d4e4f5" };
 // Arrowheads in screen pixels, so they do not grow with the stroke width.
 const ARROW = 30;
@@ -148,7 +148,8 @@ export function Network({
         edges={flowEdges}
         nodeTypes={nodeTypes}
         fitView
-        fitViewOptions={{ padding: 0.15 }}
+        fitViewOptions={{ padding: 0.08 }}
+        proOptions={{ hideAttribution: true }}
         nodesDraggable={false}
         nodesConnectable={false}
         nodesFocusable={interactive}

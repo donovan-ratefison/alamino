@@ -7,7 +7,7 @@ import type { ClearingStats, Round } from "@/lib/types";
 import { api, useApi } from "@/components/api";
 import { useApp } from "@/components/app";
 import { CountUp } from "@/components/count-up";
-import { Ledger } from "@/components/ledger";
+import { Ledger, LedgerFilter } from "@/components/ledger";
 import { Network } from "@/components/network";
 import { btn, Card, ErrorNote, Loading } from "@/components/ui";
 import { Rhythm } from "@/components/workflow";
@@ -17,9 +17,9 @@ export default function MarketPage() {
   const router = useRouter();
   const { traders, debts } = useApp();
   const latest = useApi<Round>("/api/rounds/latest");
-  const [busy, setBusy] = useState<"run" | "reset" | null>(null);
+  const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<Error | null>(null);
-  const [resetError, setResetError] = useState<Error | null>(null);
+  const [mine, setMine] = useState(false);
 
   const confirmed = (debts.data ?? []).filter((d) => d.status === "confirmed");
   const total = confirmed.reduce((sum, d) => sum + d.remainingCents, 0);
@@ -29,29 +29,15 @@ export default function MarketPage() {
   const openRound = latest.data && latest.data.status !== "done" ? latest.data : null;
 
   async function runClearing() {
-    setBusy("run");
+    setRunning(true);
     setRunError(null);
     try {
       const round = await api<Round>("/api/rounds", {});
       router.push(`/rounds/${round.id}`);
     } catch (e) {
       setRunError(e as Error);
-      setBusy(null);
+      setRunning(false);
     }
-  }
-
-  async function reset() {
-    setBusy("reset");
-    setResetError(null);
-    setRunError(null);
-    try {
-      await api("/api/demo/reset", {});
-      debts.reload();
-      latest.reload();
-    } catch (e) {
-      setResetError(e as Error);
-    }
-    setBusy(null);
   }
 
   return (
@@ -68,12 +54,12 @@ export default function MarketPage() {
                 </Link>
               ) : (
                 <>
-                  <button type="button" className={btn.inverse} onClick={runClearing} disabled={busy !== null || debts.loading || stats === null}>
-                    {busy === "run" ? "Running clearing..." : "Run clearing"}
+                  <button type="button" className={btn.inverse} onClick={runClearing} disabled={running || debts.loading || stats === null}>
+                    {running ? "Running clearing..." : "Run clearing"}
                   </button>
                   {stats ? (
                     <p className="text-base font-medium tabular-nums">
-                      <CountUp cents={stats.clearedByCirclesCents} /> cancel, <CountUp cents={stats.cashMovedCents} /> to pay
+                      <CountUp cents={stats.grossCents} /> of debt settles with <CountUp cents={stats.cashMovedCents} />
                     </p>
                   ) : stats === null ? (
                     <p className="text-sm">No confirmed debt to clear yet.</p>
@@ -82,6 +68,7 @@ export default function MarketPage() {
               )}
             </div>
             {runError && <div className="mt-4"><ErrorNote error={runError} /></div>}
+            {preview.error && <div className="mt-4"><ErrorNote error={preview.error} onRetry={preview.reload} /></div>}
           </div>
           <div className="hero-network">
             {traders.length === 0 ? (
@@ -94,24 +81,14 @@ export default function MarketPage() {
       </section>
 
       <div className="market-section">
-        <Card title="Today">
-          <Rhythm debts={debts.data} stats={stats} statsError={preview.error} onRetry={preview.reload} />
-        </Card>
+        <Rhythm debts={debts.data} />
       </div>
 
       <div id="ledger" className="market-section space-y-6">
-        <GuideTip topic="market" />
-        <Card
-          title="Ledger"
-          actions={
-            <button type="button" className={btn.small} onClick={reset} disabled={busy !== null}>
-              {busy === "reset" ? "Resetting..." : "Reset demo"}
-            </button>
-          }
-        >
-          {resetError && <div className="mb-4"><ErrorNote error={resetError} /></div>}
-          {debts.error ? <ErrorNote error={debts.error} onRetry={debts.reload} /> : debts.loading ? <Loading /> : <Ledger debts={debts.data!} />}
+        <Card title="Ledger" actions={debts.data?.length ? <LedgerFilter mine={mine} onChange={setMine} /> : null}>
+          {debts.error ? <ErrorNote error={debts.error} onRetry={debts.reload} /> : debts.loading ? <Loading /> : <Ledger debts={debts.data!} mine={mine} />}
         </Card>
+        <GuideTip topic="market" />
       </div>
     </div>
   );

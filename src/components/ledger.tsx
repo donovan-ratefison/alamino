@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import type { Debt } from "@/lib/types";
 import { formatUsd } from "./api";
 import { useApp } from "./app";
@@ -29,9 +28,23 @@ function status(d: Debt, name: (id: string) => string): [string, Tone] {
   }
 }
 
-export function Ledger({ debts }: { debts: Debt[] }) {
+// The All / Mine switch. The market page puts it in the ledger card heading.
+export function LedgerFilter({ mine, onChange }: { mine: boolean; onChange: (mine: boolean) => void }) {
+  return (
+    <div className="ledger-filter" role="group" aria-label="Show debts">
+      <button type="button" aria-pressed={!mine} onClick={() => onChange(false)}>
+        All
+      </button>
+      <button type="button" aria-pressed={mine} onClick={() => onChange(true)}>
+        Mine
+      </button>
+    </div>
+  );
+}
+
+// Under 640 px the CSS shows each row as a 2 x 2 grid: debt and amount, note and status.
+export function Ledger({ debts, mine }: { debts: Debt[]; mine: boolean }) {
   const { traderId, name } = useApp();
-  const [mine, setMine] = useState(false);
   const rows = mine ? debts.filter((d) => d.debtorId === traderId || d.creditorId === traderId) : debts;
 
   if (debts.length === 0) {
@@ -44,57 +57,45 @@ export function Ledger({ debts }: { debts: Debt[] }) {
     );
   }
 
+  if (rows.length === 0) return <p className="py-6 text-center text-sm text-zinc-600">No debt with {name(traderId)}.</p>;
+
   return (
-    <div className="grid gap-4">
-      <div className="ledger-filter" role="group" aria-label="Show debts">
-        <button type="button" aria-pressed={!mine} onClick={() => setMine(false)}>
-          All
-        </button>
-        <button type="button" aria-pressed={mine} onClick={() => setMine(true)}>
-          Mine
-        </button>
-      </div>
-      {rows.length === 0 ? (
-        <p className="py-6 text-center text-sm text-zinc-600">No debt with {name(traderId)}.</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="ledger-table">
-            <thead>
-              <tr>
-                <th scope="col" className="text-left">Debt</th>
-                <th scope="col" className="text-right">Amount</th>
-                <th scope="col" className="text-left">Note</th>
-                <th scope="col" className="text-left">Status</th>
+    <div className="overflow-x-auto">
+      <table className="ledger-table">
+        <thead>
+          <tr>
+            <th scope="col" className="text-left">Debt</th>
+            <th scope="col" className="text-right">Amount</th>
+            <th scope="col" className="text-left">Note</th>
+            <th scope="col" className="text-left">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((d) => {
+            const [text, tone] = status(d, name);
+            return (
+              <tr key={d.id} data-status={d.status}>
+                <td>
+                  <span className="flex items-center gap-2.5">
+                    <TraderChip id={d.debtorId} name={name(d.debtorId)} />
+                    <span>
+                      {name(d.debtorId)} owes {name(d.creditorId)}
+                    </span>
+                  </span>
+                </td>
+                <td className="text-right tabular-nums">
+                  <span className="font-semibold">{formatUsd(d.amountCents)}</span>
+                  {d.remainingCents !== d.amountCents && <span className="block text-xs text-zinc-500">left: {formatUsd(d.remainingCents)}</span>}
+                </td>
+                <td className="text-zinc-600" title={d.note}>{d.note}</td>
+                <td>
+                  <Badge tone={tone}>{text}</Badge>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {rows.map((d) => {
-                const [text, tone] = status(d, name);
-                return (
-                  <tr key={d.id} data-status={d.status}>
-                    <td>
-                      <span className="flex items-center gap-2.5">
-                        <TraderChip id={d.debtorId} name={name(d.debtorId)} />
-                        <span>
-                          {name(d.debtorId)} owes {name(d.creditorId)}
-                        </span>
-                      </span>
-                    </td>
-                    <td className="text-right tabular-nums">
-                      <span className="font-semibold">{formatUsd(d.amountCents)}</span>
-                      {d.remainingCents !== d.amountCents && <span className="block text-xs text-zinc-500">left: {formatUsd(d.remainingCents)}</span>}
-                    </td>
-                    <td className="text-zinc-600">{d.note}</td>
-                    <td>
-                      <Badge tone={tone}>{text}</Badge>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

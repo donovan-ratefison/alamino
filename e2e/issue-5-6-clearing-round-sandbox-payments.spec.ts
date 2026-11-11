@@ -45,13 +45,13 @@ test.describe("Issues #5 & #6: One full clearing round with real sandbox payment
     await expect(page).toHaveURL(/\/rounds\/(?!latest)[^/?#]+$/);
 
     // Verify Issue #5 expectations:
-    // $990 gross debt, $570 cancelled in circles, $320 cash moved, 67.7% saved
-    for (const text of ["$990", "$570", "$320", "67.7%"]) {
+    // $990 gross debt, $570 cancelled in circles, $320 cash moved
+    for (const text of ["$990", "$570", "$320"]) {
       await expect(main).toContainText(text);
     }
 
     // Inspect circles cancelled
-    await page.getByText(/see what cancelled/i).click();
+    await page.getByText("Circles and payment plan", { exact: true }).click();
     await page.screenshot({ path: "test-results/screenshots/issue-5-round-cleared.png", fullPage: true });
 
     // --- STEP 5: Verify Settlement Plan (Issue #6, Point 2: balances) ---
@@ -109,7 +109,7 @@ test.describe("Issues #5 & #6: One full clearing round with real sandbox payment
     await page.screenshot({ path: "test-results/screenshots/issue-5-statement-hery.png" });
 
     await viewAs(page, "soa");
-    await expect(main).toContainText("You pay in $170");
+    await expect(main).toContainText(/You pay (in )?\$170/);
     await page.screenshot({ path: "test-results/screenshots/issue-5-statement-soa.png" });
   });
 });

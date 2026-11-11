@@ -38,7 +38,7 @@ test.describe("Settle a round with simulated PayPal", () => {
     await expect(main).not.toContainText(/waiting for \d+ payment/i);
     // The first card is the final state: counts from the settlements and a link to the statement.
     await expect(main).toContainText("3 paid in, 2 paid out");
-    await expect(main.getByRole("link", { name: "Read your statement" })).toHaveAttribute("href", "/statement");
+    await expect(main.getByRole("link", { name: "Read statement" })).toHaveAttribute("href", "/statement");
 
     const debts = await listDebts(request);
     const count = (status: string) => debts.filter((d) => d.status === status).length;

@@ -38,6 +38,15 @@ test.describe("Add a debt", () => {
       .toEqual([{ debtorId: "rivo", creditorId: "hery", amountCents: 5000, debtorOk: true, creditorOk: false }]);
   });
 
+  test("the Try button fills the sentence and does not read it", async ({ page }) => {
+    const captures: string[] = [];
+    page.on("request", (r) => { if (r.url().includes("/api/capture")) captures.push(r.url()); });
+    await page.getByRole("button", { name: 'Try: "I owe Hery 50 for rice"' }).click();
+    await expect(page.getByRole("textbox", { name: "Sentence" })).toHaveValue("I owe Hery 50 for rice");
+    await expect(page.getByRole("button", { name: "Read the sentence" })).toBeEnabled();
+    expect(captures).toEqual([]);
+  });
+
   test("a draft with an unknown name cannot be saved until the other trader is chosen", async ({ page, request }) => {
     await page.getByRole("textbox").fill("I owe Zaza 50");
     await page.getByRole("button", { name: /read/i }).click();
@@ -78,7 +87,7 @@ test.describe("Add a debt", () => {
     await expect(draft.getByText("Remembered", { exact: true })).toBeVisible();
     expect((await listTraders(request)).find((t) => t.id === "rivo")?.aliases).toContain("Zaza");
 
-    await page.getByRole("button", { name: "Read another page" }).click();
+    await page.getByRole("button", { name: "Read again" }).click();
     await page.getByRole("textbox").fill("I owe Zaza 20");
     await page.getByRole("button", { name: /read/i }).click();
     await expect(page.getByText("You owe Rivo", { exact: true })).toBeVisible();
@@ -90,7 +99,7 @@ test.describe("Add a debt", () => {
     await page.getByLabel("Choose a photo").setInputFiles({ name: "page.png", mimeType: "image/png", buffer: PNG });
 
     await expect(page.getByRole("img", { name: /notebook page/i })).toBeVisible();
-    await expect(page.getByText(/read without ai/i)).toBeVisible();
+    await expect(page.getByText("No AI: check each line", { exact: true })).toBeVisible();
     await expect(page.getByText(/needs an ai key/i)).toBeVisible();
     await expect(page.getByText("0 ready, 1 needs an answer", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /save/i })).toBeDisabled();

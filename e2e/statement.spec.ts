@@ -21,6 +21,10 @@ test.describe("Statement", () => {
     const receipt = main.getByRole("region", { name: "Receipt" });
     await expect(receipt).toContainText(/You pay\s*\$170(?!\d)/);
     await expect(receipt).toContainText("Cleared by Alamino");
+    // The receipt comes before the list of debts.
+    const debts = main.getByRole("region", { name: "Your debts" });
+    expect((await receipt.boundingBox())!.y).toBeLessThan((await debts.boundingBox())!.y);
+    await expect(main.getByRole("link", { name: "View round", exact: true })).toBeVisible();
 
     await viewAs(page, "hery");
     await expect(main.getByRole("heading", { level: 1 })).toHaveText(/receive[^.]*\$290(?!\d)/i);

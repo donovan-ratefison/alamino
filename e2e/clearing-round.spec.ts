@@ -25,21 +25,21 @@ test.describe("Clearing round", () => {
     const main = page.getByRole("main");
     // Nobody has paid yet: the title does not say "settled".
     await expect(main.getByRole("heading", { level: 1 })).toHaveText(/\$990 of debt to settle with \$320/);
-    for (const text of ["$990", "$570", "$320", "67.7%"]) await expect(main).toContainText(text);
+    for (const text of ["$990", "$570", "$320"]) await expect(main).toContainText(text);
 
     // One network with a Before / After toggle. The replay plays once by itself, then rests on After.
     const before = main.getByRole("button", { name: "Before", exact: true });
     const after = main.getByRole("button", { name: "After", exact: true });
     await expect(after).toHaveAttribute("aria-pressed", "true", { timeout: 20_000 });
     await expect(main.getByLabel("Debts after circles cancel")).toBeVisible();
-    await expect(main.getByText("Cancelled, no money moved", { exact: true }).locator("..")).toContainText("$570");
+    await expect(main.getByText("Cancelled", { exact: true }).locator("..")).toContainText("$570");
     await before.click();
     await expect(before).toHaveAttribute("aria-pressed", "true");
     await expect(after).toHaveAttribute("aria-pressed", "false");
     await expect(main.getByLabel("Debts before the round")).toBeVisible();
 
     // The circles and the settlement plan are behind one disclosure.
-    await page.getByText(/see what cancelled/i).click();
+    await page.getByText("Circles and payment plan", { exact: true }).click();
 
     // Three circles cancel. Each one is listed with its traders in order and its amount.
     expect(round.result.cancellations).toHaveLength(3);

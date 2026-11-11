@@ -9,6 +9,7 @@ import { Brand } from "./brand";
 import { Bell } from "./bell";
 import { MoreMenu } from "./more-menu";
 import { TourTrigger } from "./guided-tour";
+import { TraderChip } from "./trader-chip";
 
 export interface AppConfig {
   paypalMode: "sandbox" | "simulated";
@@ -119,7 +120,7 @@ function Nav() {
 }
 
 export function Header() {
-  const { traders, traderId } = useApp();
+  const { traders, traderId, name } = useApp();
   return (
     <header className="site-header">
       <div className="header-content">
@@ -132,20 +133,23 @@ export function Header() {
             <label htmlFor="view-as" className="text-xs whitespace-nowrap text-zinc-600 max-xl:sr-only">
               View as
             </label>
-            <select
-              id="view-as"
-              data-tour="profile"
-              value={traderId}
-              onChange={(e) => setTraderId(e.target.value)}
-              className="profile-select"
-            >
-              {traders.length === 0 && <option value={traderId}>{traderId}</option>}
-              {traders.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.business})
-                </option>
-              ))}
-            </select>
+            <span className="profile-field">
+              <span className="profile-chip"><TraderChip id={traderId} name={name(traderId)} size={22} /></span>
+              <select
+                id="view-as"
+                data-tour="profile"
+                value={traderId}
+                onChange={(e) => setTraderId(e.target.value)}
+                className="profile-select"
+              >
+                {traders.length === 0 && <option value={traderId}>{traderId}</option>}
+                {traders.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </span>
           </div>
           <TourTrigger />
           <MoreMenu />

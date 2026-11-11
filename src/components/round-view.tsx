@@ -78,7 +78,7 @@ function PayIn({ roundId, s, onPaid }: { roundId: string; s: Settlement; onPaid:
           Loading payment
         </p>
       ) : config.paypalMode === "simulated" ? (
-        <button type="button" className={btn.primary} disabled={busy} onClick={paySimulated}>
+        <button type="button" className={`${btn.primary} w-full sm:w-auto`} disabled={busy} onClick={paySimulated}>
           {busy ? "Paying..." : `Pay ${formatUsd(s.amountCents)} (simulated)`}
         </button>
       ) : !sandbox ? (
@@ -198,7 +198,7 @@ export function RoundView({ id }: { id: string }) {
         </div>
         {s.direction === "pay_in" && s.status !== "captured" && s.traderId !== traderId && (
           <button type="button" className={btn.small} onClick={() => setTraderId(s.traderId)}>
-            View as {name(s.traderId)} to pay
+            Switch to {name(s.traderId)} to pay
           </button>
         )}
       </li>
@@ -214,43 +214,37 @@ export function RoundView({ id }: { id: string }) {
         : "Nothing to pay";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title={`${formatUsd(stats.grossCents)} of debt ${r.status === "done" ? "settled" : "to settle"} with ${formatUsd(stats.cashMovedCents)}`}
       >
-        <div className="flex flex-wrap items-center gap-3">
-          <span>
-            {formatUsd(stats.clearedByCirclesCents)} cancelled with no money · {stats.savedPct.toFixed(1)}% less cash
-          </span>
-          <Badge tone={progress.tone}>{progress.text}</Badge>
-        </div>
+        <Badge tone={progress.tone}>{progress.text}</Badge>
       </PageHeader>
-      <GuideTip topic="payments" />
 
-      <Card>
-        <div className="grid gap-8 lg:grid-cols-2 lg:gap-10">
+      {/* Phone: the replay first, above the fold. Desktop: the pay panel left, the replay right. */}
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-10">
+        <ClearingReplay round={r} highlight={active === null ? undefined : cancellations[active]?.path} />
+
+        <Card className="min-w-0 lg:order-first">
           <div className="min-w-0 space-y-4">
             {r.status === "done" ? (
-              <div role="status" className="space-y-4">
+              <div role="status" className="space-y-3">
                 <p className="flex items-center gap-2 text-sm font-semibold text-emerald-800">
                   <svg aria-hidden="true" viewBox="0 0 20 20" className="size-5 fill-current">
                     <path d="M10 1.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Zm4.1 6.3-4.9 5.4a.9.9 0 0 1-1.3 0L5.9 11a.9.9 0 1 1 1.3-1.2l1.4 1.5 4.2-4.7a.9.9 0 1 1 1.3 1.2Z" />
                   </svg>
                   Done
                 </p>
-                <p className="text-3xl font-medium leading-tight tracking-tight text-brand">
-                  {formatUsd(stats.grossCents)} of debt settled with {formatUsd(stats.cashMovedCents)}
-                </p>
+                <p className="text-3xl font-medium leading-tight tracking-tight tabular-nums text-brand">{myResult}</p>
                 <p className="text-sm text-zinc-600">
                   {payIns.length} paid in, {payOuts.length} paid out
                 </p>
-                <p className="text-base font-medium text-zinc-900">{myResult}</p>
-                <div className="flex flex-wrap gap-2 pt-2">
+                <div className="grid grid-cols-2 gap-2 pt-2">
                   <Link href="/statement" className={btn.primary}>
-                    Read your statement
+                    Read statement
                   </Link>
                   <Link href="/" className={btn.secondary}>
-                    Go to the market
+                    Market
                   </Link>
                 </div>
               </div>
@@ -258,12 +252,13 @@ export function RoundView({ id }: { id: string }) {
               <>
                 {me?.direction === "pay_in" ? (
                   <>
-                    <p className="eyebrow text-zinc-500">You pay once</p>
-                    <CountUp cents={me.amountCents} className="block text-5xl font-medium leading-none tracking-tight tabular-nums text-brand" />
-                    <p className="text-sm text-zinc-600">
-                      {facts}
-                      {me.amountCents < owed && " Alamino cancelled the rest."}
-                    </p>
+                    <div className="flex items-baseline justify-between gap-3">
+                      <p className="eyebrow text-zinc-500">You pay once</p>
+                      <Link href="/statement" className="text-sm font-medium text-accent">
+                        Why {formatUsd(me.amountCents)}?
+                      </Link>
+                    </div>
+                    <CountUp cents={me.amountCents} className="block text-4xl font-medium leading-none tracking-tight tabular-nums text-brand" />
                     {me.status === "captured" ? (
                       <p role="status" className="flex flex-wrap items-center gap-2 text-sm text-zinc-700">
                         <Badge tone="green">Paid in</Badge> You paid {formatUsd(me.amountCents)} into the clearing account.
@@ -275,15 +270,11 @@ export function RoundView({ id }: { id: string }) {
                 ) : me?.direction === "pay_out" ? (
                   <>
                     <p className="eyebrow text-zinc-500">You receive</p>
-                    <CountUp cents={me.amountCents} className="block text-5xl font-medium leading-none tracking-tight tabular-nums text-brand" />
-                    <p className="text-sm text-zinc-600">
-                      {`You were owed ${formatUsd(owedToMe)}. You owed ${formatUsd(owed)}.`}
-                      {me.amountCents < owedToMe && " Alamino cancelled the rest."}
-                    </p>
+                    <CountUp cents={me.amountCents} className="block text-4xl font-medium leading-none tracking-tight tabular-nums text-brand" />
                     {me.status === "none" ? (
                       <p className="text-sm font-medium text-zinc-800">
                         {waiting.length > 0
-                          ? `Paid to you when ${names(waiting)} ${waiting.length === 1 ? "has" : "have"} paid in.`
+                          ? `After ${names(waiting)} ${waiting.length === 1 ? "pays" : "pay"} in.`
                           : "Every pay-in is paid. Your payout can start."}
                       </p>
                     ) : (
@@ -308,10 +299,23 @@ export function RoundView({ id }: { id: string }) {
                       {payIns.map((s) => {
                         const paid = s.status === "captured";
                         const text = `${name(s.traderId)}: ${paid ? "paid in" : "not paid in"}`;
+                        const chip = <TraderChip id={s.traderId} name={name(s.traderId)} label={text} />;
                         // Paid: full chip with a check mark. Not paid: faded chip. The text says it for screen readers.
+                        // Another trader not paid in: the chip switches the view to that trader, to pay.
                         return (
-                          <li key={s.traderId} title={text} className={`relative ${paid ? "" : "opacity-40"}`}>
-                            <TraderChip id={s.traderId} name={name(s.traderId)} label={text} />
+                          <li key={s.traderId} title={text} className="relative flex">
+                            {paid || s.traderId === traderId ? (
+                              <span className={`flex ${paid ? "" : "opacity-40"}`}>{chip}</span>
+                            ) : (
+                              <button
+                                type="button"
+                                aria-label={`Switch to ${name(s.traderId)} to pay`}
+                                className="flex rounded-full opacity-40 hover:opacity-100 focus-visible:opacity-100"
+                                onClick={() => setTraderId(s.traderId)}
+                              >
+                                {chip}
+                              </button>
+                            )}
                             {paid && (
                               <svg
                                 aria-hidden="true"
@@ -326,35 +330,31 @@ export function RoundView({ id }: { id: string }) {
                       })}
                     </ul>
                     <span>
-                      {paidIn.length} of {payIns.length} {payIns.length === 1 ? "trader" : "traders"} paid in
+                      {paidIn.length} of {payIns.length} paid in
                     </span>
                   </div>
                 )}
 
-                <div className="space-y-3 border-t border-zinc-200 pt-4">
-                  {r.status === "paying" ? (
-                    <p role="status" className="text-sm text-zinc-700">
-                      Payouts sent. Waiting for PayPal to confirm them...
-                    </p>
-                  ) : canSendPayouts ? (
-                    <button type="button" className={btn.primary} disabled={sending} onClick={sendPayouts}>
+                {r.status === "paying" ? (
+                  <p role="status" className="text-sm text-zinc-700">
+                    Payouts sent. Waiting for PayPal to confirm them...
+                  </p>
+                ) : (
+                  canSendPayouts && (
+                    <button type="button" className={`${btn.primary} w-full sm:w-auto`} disabled={sending} onClick={sendPayouts}>
                       {sending ? "Sending payouts..." : "Send payouts"}
                     </button>
-                  ) : (
-                    <p className="text-sm text-zinc-600">Payouts start when every pay-in is paid.</p>
-                  )}
-                </div>
+                  )
+                )}
               </>
             )}
             {actionError && <ErrorNote error={actionError} />}
           </div>
-
-          <ClearingReplay round={r} highlight={active === null ? undefined : cancellations[active]?.path} />
-        </div>
-      </Card>
+        </Card>
+      </div>
 
       <details className="border-t border-zinc-200 pt-4">
-        <summary className="cursor-pointer text-sm font-medium text-accent">See what cancelled</summary>
+        <summary className="cursor-pointer text-sm font-medium text-accent">Circles and payment plan</summary>
         <div className="mt-6 space-y-6">
           <Card title={`Circles cancelled (${cancellations.length})`}>
             {cancellations.length === 0 ? (
@@ -405,6 +405,7 @@ export function RoundView({ id }: { id: string }) {
           </Card>
         </div>
       </details>
+      <GuideTip topic="payments" />
     </div>
   );
 }

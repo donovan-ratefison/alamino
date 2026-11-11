@@ -14,7 +14,7 @@ export function Receipt({ s, trader, date }: { s: Statement; trader: string; dat
     s.action === "pay_in" ? ["You pay", net] : s.action === "receive" ? ["You receive", net] : ["Nothing to pay", ""];
 
   return (
-    <section aria-labelledby="receipt-title" className="mx-auto w-full max-w-[360px] rounded-xl border border-zinc-200 bg-white p-6 tabular-nums">
+    <section aria-labelledby="receipt-title" className="mx-auto w-full rounded-xl border border-zinc-200 bg-white p-5 tabular-nums sm:max-w-[360px]">
       <h2 id="receipt-title" className="eyebrow text-center text-zinc-500">
         Receipt
       </h2>
