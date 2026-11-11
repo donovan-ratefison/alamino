@@ -43,6 +43,7 @@ npm run lint
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Overall flow diagram](docs/clearing-house-system.md)
+- [User journeys, sequence diagrams](docs/user-journeys.md)
 
 ## Licence
 
