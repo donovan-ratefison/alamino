@@ -8,6 +8,7 @@ import { useApi, waitingFor } from "./api";
 import { Brand } from "./brand";
 import { Bell } from "./bell";
 import { ModeBadges, MoreMenu } from "./more-menu";
+import { TourTrigger } from "./guided-tour";
 
 export interface AppConfig {
   paypalMode: "sandbox" | "simulated";
@@ -77,24 +78,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
 }
 
 const links = [
-  { href: "/", label: "Market" },
-  { href: "/add", label: "Add a debt" },
-  { href: "/confirm", label: "Confirm" },
-  { href: "/rounds/latest", label: "Payments" },
-  { href: "/statement", label: "Statement" },
-  { href: "/finance", label: "AI Finance" },
+  { href: "/", label: "Market", tour: "market" },
+  { href: "/add", label: "Add a debt", tour: "add" },
+  { href: "/confirm", label: "Confirm", tour: "confirm" },
+  { href: "/rounds/latest", label: "Payments", tour: "payments" },
+  { href: "/statement", label: "Statement", tour: "statement" },
+  { href: "/finance", label: "AI Finance", tour: "finance" },
 ];
 
 function NavLinks({ pathname }: { pathname: string }) {
   const { pendingCount } = useApp();
   return (
     <nav aria-label="Main" className="main-nav">
-      {links.map(({ href, label }) => {
+      {links.map(({ href, label, tour }) => {
         const active = href === "/" ? pathname === "/" : pathname.startsWith(href.replace("/latest", ""));
         return (
           <Link
             key={href}
             href={href}
+            data-tour={tour}
             aria-current={active ? "page" : undefined}
             className="nav-link"
           >
@@ -134,6 +136,7 @@ export function Header() {
               </label>
               <select
                 id="view-as"
+                data-tour="profile"
                 value={traderId}
                 onChange={(e) => setTraderId(e.target.value)}
                 className="profile-select"
@@ -146,6 +149,7 @@ export function Header() {
                 ))}
               </select>
             </div>
+            <TourTrigger />
             <MoreMenu />
             <Bell />
           </div>

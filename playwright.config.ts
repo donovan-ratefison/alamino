@@ -1,4 +1,5 @@
 import { defineConfig } from "@playwright/test";
+import { ONBOARDING_STORAGE_KEY } from "./src/lib/onboarding";
 
 const PORT = 3210;
 
@@ -10,7 +11,13 @@ export default defineConfig({
   workers: 1, // one database: the tests run in series and reset the demo first
   retries: 0,
   reporter: [["list"]],
-  use: { baseURL: `http://localhost:${PORT}`, channel: "chrome", trace: "retain-on-failure" },
+  use: {
+    baseURL: `http://localhost:${PORT}`,
+    channel: "chrome",
+    trace: "retain-on-failure",
+    // Existing journeys model a returning visitor. Tour tests use a fresh browser.
+    storageState: { cookies: [], origins: [{ origin: `http://localhost:${PORT}`, localStorage: [{ name: ONBOARDING_STORAGE_KEY, value: "completed" }] }] },
+  },
   webServer: {
     command: `npm run build && npm run start -- -p ${PORT}`,
     url: `http://localhost:${PORT}/api/config`,

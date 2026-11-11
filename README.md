@@ -49,6 +49,7 @@ Playwright plays the user journeys in Chrome on a production build: add a debt, 
 
 ## Docs
 
+- [First-visit tour, illustrated guides and navigation](docs/ONBOARDING.md)
 - [AI Finance Dashboard: setup, Sandbox, AG Studio and validation](docs/FINANCE.md)
 
 - [Architecture](docs/ARCHITECTURE.md)

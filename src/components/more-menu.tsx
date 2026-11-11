@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "./app";
 import { Badge } from "./ui";
+import { TourTrigger } from "./guided-tour";
 
 // The PayPal and AI modes. In the header on a desktop, in the "More" menu on a phone.
 export function ModeBadges() {
@@ -48,6 +49,7 @@ export function MoreMenu() {
         type="button"
         className="bell-button"
         aria-label="More"
+        data-tour="help"
         aria-expanded={open}
         aria-controls={open ? "more-panel" : undefined}
         onClick={() => setOpen(!open)}
@@ -61,6 +63,7 @@ export function MoreMenu() {
       {open && (
         <div id="more-panel" className="bell-panel more-panel">
           <nav aria-label="More">
+            <TourTrigger menu onStart={() => setOpen(false)} />
             <Link
               href="/finance"
               // The panel renders only in the browser, after a click. usePathname here would need a Suspense boundary.

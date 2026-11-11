@@ -1,5 +1,7 @@
 "use client";
 
+import { GuideTip } from "./guide-tip";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PayPalButtons, PayPalScriptProvider, usePayPalScriptReducer, type PayPalButtonsComponentProps } from "@paypal/react-paypal-js";
@@ -110,12 +112,15 @@ export function RoundView({ id }: { id: string }) {
 
   if (round.error?.status === 404) {
     return (
-      <Empty title="No clearing round yet">
-        <Link href="/" className="font-medium text-accent underline">
-          Go to the market
-        </Link>{" "}
-        and run clearing.
-      </Empty>
+      <div className="space-y-6">
+        <GuideTip topic="payments" />
+        <Empty title="No clearing round yet">
+          <Link href="/" className="font-medium text-accent underline">
+            Go to the market
+          </Link>{" "}
+          and run clearing.
+        </Empty>
+      </div>
     );
   }
   if (round.error) return <ErrorNote error={round.error} onRetry={reload} />;
@@ -183,6 +188,7 @@ export function RoundView({ id }: { id: string }) {
       >
         <Badge tone={progress.tone}>{progress.text}</Badge>
       </PageHeader>
+      <GuideTip topic="payments" />
 
       <Card>
         <div className="max-w-xl space-y-4">

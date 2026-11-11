@@ -12,6 +12,7 @@ import { Network } from "@/components/network";
 import { Badge, btn, Card, Empty, ErrorNote, Loading } from "@/components/ui";
 import { Rhythm } from "@/components/workflow";
 import { financeGridTheme } from "@/components/finance/theme";
+import { GuideTip } from "@/components/guide-tip";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -110,6 +111,7 @@ export default function MarketPage() {
       </section>
 
       <section id="ledger" className="market-section space-y-6">
+        <GuideTip topic="market" />
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div><p className="eyebrow text-accent">The market ledger</p><h2 className="section-title mt-3">See the bigger picture.</h2></div>
           <button type="button" className={btn.small} onClick={reset} disabled={busy !== null}>

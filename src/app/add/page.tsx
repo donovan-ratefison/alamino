@@ -7,6 +7,7 @@ import { api, toCents } from "@/components/api";
 import { useApp } from "@/components/app";
 import { DraftRow, problem, toDraft, type Draft } from "@/components/capture-drafts";
 import { Badge, btn, Card, ErrorNote, field, label, PageHeader } from "@/components/ui";
+import { GuideTip } from "@/components/guide-tip";
 
 // A real AI call takes 5 to 10 seconds. The last step stays until the answer.
 const STEPS = ["Reading the handwriting", "Matching names to traders", "Checking the amounts"];
@@ -170,6 +171,7 @@ export default function AddPage() {
 
       {!reading && !engine && (
         <Card title="Your debt, in your words.">
+          <div className="mb-5"><GuideTip topic="add" /></div>
           {changed && (
             <p role="status" className="mb-4 text-sm text-zinc-600">
               Trader changed. Read the page again.

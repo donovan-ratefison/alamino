@@ -6,6 +6,7 @@ import type { Statement } from "@/lib/types";
 import { api, formatUsd, useApi } from "@/components/api";
 import { useApp } from "@/components/app";
 import { Card, Empty, ErrorNote, Loading, PageHeader } from "@/components/ui";
+import { GuideTip } from "@/components/guide-tip";
 
 function netText(s: Statement): string {
   if (s.action === "pay_in") return `You pay in ${formatUsd(Math.abs(s.netCents))}`;
@@ -40,6 +41,7 @@ export default function StatementPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-8">
       <PageHeader title={`Statement for ${name(traderId)}`}>What the latest clearing round did to your debts, and why.</PageHeader>
+      <GuideTip topic="statement" />
       {statement.error?.status === 404 ? (
         <Empty title="No clearing round yet">
           <Link href="/" className="font-medium text-accent underline">
