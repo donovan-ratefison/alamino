@@ -56,28 +56,29 @@ export function Network({ traders, edges, highlight, label }: { traders: Trader[
   }
 
   const lit = new Set(highlight?.map((id, i) => `${id}>${highlight[(i + 1) % highlight.length]}`));
-  const flowEdges: FlowEdge[] = [...pairs.entries()]
-    .filter(([, e]) => e.amountCents > 0 && center.has(e.debtorId) && center.has(e.creditorId))
-    .map(([key, e]) => {
-      const a = center.get(e.debtorId)!;
-      const b = center.get(e.creditorId)!;
-      const on = lit.has(key);
-      const color = on ? "#0070e0" : lit.size ? "#d4e4f5" : "#8eafd4";
-      return {
-        id: key,
-        source: e.debtorId,
-        target: e.creditorId,
-        sourceHandle: `s-${side(b.x - a.x, b.y - a.y)}`,
-        targetHandle: `t-${side(a.x - b.x, a.y - b.y)}`,
-        type: "straight",
-        label: formatUsd(e.amountCents),
-        style: { stroke: color, strokeWidth: on ? 3 : 1.5 },
-        labelStyle: { fontSize: 12, fontWeight: 500, fill: on ? "#0070e0" : "#003087" },
-        labelBgStyle: { fill: "#ffffff" },
-        markerEnd: { type: MarkerType.ArrowClosed, color, width: 16, height: 16 },
-        zIndex: on ? 1 : 0,
-      };
-    });
+  // Edges at zero stay in the graph but are transparent, so a replay can fade them out.
+  const shown = [...pairs.entries()].filter(([, e]) => center.has(e.debtorId) && center.has(e.creditorId));
+  const flowEdges: FlowEdge[] = shown.map(([key, e]) => {
+    const a = center.get(e.debtorId)!;
+    const b = center.get(e.creditorId)!;
+    const on = lit.has(key);
+    const color = on ? "#0070e0" : lit.size ? "#d4e4f5" : "#8eafd4";
+    const fade = { opacity: e.amountCents > 0 ? 1 : 0, transition: "opacity 0.6s, stroke 0.3s, fill 0.3s" };
+    return {
+      id: key,
+      source: e.debtorId,
+      target: e.creditorId,
+      sourceHandle: `s-${side(b.x - a.x, b.y - a.y)}`,
+      targetHandle: `t-${side(a.x - b.x, a.y - b.y)}`,
+      type: "straight",
+      label: formatUsd(e.amountCents),
+      style: { stroke: color, strokeWidth: on ? 3 : 1.5, ...fade },
+      labelStyle: { fontSize: 12, fontWeight: 500, fill: on ? "#0070e0" : "#003087", ...fade },
+      labelBgStyle: { fill: "#ffffff", ...fade },
+      markerEnd: { type: MarkerType.ArrowClosed, color, width: 16, height: 16 },
+      zIndex: on ? 1 : 0,
+    };
+  });
 
   const name = (id: TraderId) => traders.find((t) => t.id === id)?.name ?? id;
 
@@ -100,11 +101,13 @@ export function Network({ traders, edges, highlight, label }: { traders: Trader[
         preventScrolling={false}
       />
       <ul className="sr-only">
-        {flowEdges.map((e) => (
-          <li key={e.id}>
-            {name(e.source)} owes {name(e.target)} {String(e.label)}
-          </li>
-        ))}
+        {shown
+          .filter(([, e]) => e.amountCents > 0)
+          .map(([key, e]) => (
+            <li key={key}>
+              {name(e.debtorId)} owes {name(e.creditorId)} {formatUsd(e.amountCents)}
+            </li>
+          ))}
       </ul>
     </div>
   );

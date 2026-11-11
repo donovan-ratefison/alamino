@@ -25,6 +25,9 @@ test.describe("Clearing round", () => {
     const main = page.getByRole("main");
     for (const text of ["$990", "$570", "$320", "67.7%"]) await expect(main).toContainText(text);
 
+    // The circles and the settlement plan are behind one disclosure.
+    await page.getByText(/see what cancelled/i).click();
+
     // Three circles cancel. Each one is listed with its traders in order and its amount.
     expect(round.result.cancellations).toHaveLength(3);
     const traders = await listTraders(request);
