@@ -39,7 +39,7 @@ export function fallbackResolution(debt: Debt, traders: Trader[]): Resolution {
   };
 }
 
-const SCHEMA = {
+export const SCHEMA = {
   type: "object",
   additionalProperties: false,
   required: ["suggestion", "proposedAmountCents"],
@@ -62,6 +62,7 @@ export async function resolveMismatch(debt: Debt, traders: Trader[]): Promise<Re
             text: `${c.debtor} owes ${c.creditor}. Note: "${debt.note}".\n${c.a.who} says ${usd(c.a.cents)} (${c.a.cents} cents).\n${c.b.who} says ${usd(c.b.cents)} (${c.b.cents} cents).`,
           },
         ],
+        "mismatch_resolution",
         SCHEMA,
       );
       return validateResolution(raw, debt);

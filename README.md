@@ -24,6 +24,13 @@ Open http://localhost:3000. The app seeds five traders and their debts on first 
 
 Without PayPal keys, payments run in simulated mode. Without an AI key, capture and statements use a plain-code fallback. The UI labels both.
 
+## AI
+
+The app uses Meta Muse Spark (`muse-spark-1.3`) through the Meta Model API, in the OpenAI Chat Completions format.
+Each call asks for structured output with a strict JSON schema. Notebook photos go to the model as images.
+Any OpenAI-compatible provider works: change `AI_BASE_URL` and `AI_MODEL`.
+The AI never computes an amount.
+
 ## Checks
 
 ```

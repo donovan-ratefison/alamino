@@ -15,7 +15,7 @@ export interface CaptureInput {
 
 const CONFIDENCE: DebtDraft["confidence"][] = ["high", "medium", "low"];
 
-const SCHEMA = {
+export const SCHEMA = {
   type: "object",
   additionalProperties: false,
   required: ["drafts"],
@@ -153,9 +153,10 @@ export async function captureDebts(input: CaptureInput): Promise<{ drafts: DebtD
       const raw = await askJson(
         systemPrompt(traders, speakerId),
         [
-          ...(imageBase64 ? [{ type: "image" as const, source: { type: "base64" as const, media_type: mediaType, data: imageBase64 } }] : []),
+          ...(imageBase64 ? [{ type: "image_url" as const, image_url: { url: `data:${mediaType};base64,${imageBase64}` } }] : []),
           { type: "text", text: text ? `Read the debts in this text:\n<text>\n${text}\n</text>` : "Read the debts on this notebook page." },
         ],
+        "debt_drafts",
         SCHEMA,
       );
       return { drafts: orAsk(validateDrafts(raw, traders)), engine: "model" };
