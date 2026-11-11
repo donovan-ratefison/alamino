@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
-import type { Debt, DebtDraft } from "@/lib/types";
+import type { Debt, DebtDraft, TraderId } from "@/lib/types";
 import { api, toCents } from "@/components/api";
 import { useApp } from "@/components/app";
-import { DraftRow, problem, type Draft } from "@/components/capture-drafts";
+import { DraftRow, problem, toDraft, type Draft } from "@/components/capture-drafts";
 import { Badge, btn, Card, ErrorNote, field, label, PageHeader } from "@/components/ui";
 import { Workflow } from "@/components/workflow";
 
@@ -35,6 +35,8 @@ export default function AddPage() {
   const [engine, setEngine] = useState<"model" | "fallback" | null>(null);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [saving, setSaving] = useState(false);
+  const [owner, setOwner] = useState<TraderId | null>(null); // the trader who read the page
+  const [changed, setChanged] = useState(false); // drafts were cleared after a "View as" change
   const view = useRef<HTMLDivElement>(null);
 
   useEffect(() => (photo ? () => URL.revokeObjectURL(photo.url) : undefined), [photo]);
@@ -49,9 +51,15 @@ export default function AddPage() {
     if (reading || engine) view.current?.scrollIntoView({ block: "start" });
   }, [reading, engine]);
 
+  // The drafts belong to the trader who read the page. Another "View as" clears them.
+  if (engine && owner !== traderId) {
+    clear();
+    setChanged(true);
+  }
+
   const viewer = name(traderId);
   const update = (n: number, patch: Partial<Draft>) => setDrafts((all) => all.map((d) => (d.n === n ? { ...d, ...patch } : d)));
-  const isReady = (d: Draft) => !d.saved && problem(d, traderId, viewer) === null;
+  const isReady = (d: Draft) => !d.saved && problem(d) === null;
   const saved = drafts.filter((d) => d.saved).length;
   const ready = drafts.filter(isReady).length;
   const waiting = drafts.length - saved - ready;
@@ -61,24 +69,12 @@ export default function AddPage() {
     setReading(true);
     setStep(0);
     setError(null);
+    setChanged(false);
+    setOwner(traderId);
     try {
       const input = file ? await readImage(file) : { text: text.trim() };
       const res = await api<{ drafts: DebtDraft[]; engine: "model" | "fallback" }>("/api/capture", { ...input, createdBy: traderId });
-      setDrafts(
-        res.drafts.map((d, i) => ({
-          n: i + 1,
-          debtorId: d.debtorId ?? "",
-          creditorId: d.creditorId ?? "",
-          debtorText: d.debtorText,
-          creditorText: d.creditorText,
-          amount: d.amountCents === null ? "" : String(d.amountCents / 100),
-          note: d.note,
-          confidence: d.confidence,
-          question: d.question,
-          need: { debtorId: !d.debtorId, creditorId: !d.creditorId, amount: d.amountCents === null },
-          source: file ? "photo" : "text",
-        })),
-      );
+      setDrafts(res.drafts.map((d, i) => toDraft(d, i + 1, traderId, file ? "photo" : "text")));
       setEngine(res.engine);
     } catch (e) {
       setError(e as Error);
@@ -101,22 +97,47 @@ export default function AddPage() {
     read(null);
   }
 
-  function again() {
+  function clear() {
     setEngine(null);
     setDrafts([]);
     setPhoto(null);
+    setError(null);
+  }
+
+  function again() {
+    clear();
     setText("");
     setTyping(false);
-    setError(null);
+    setChanged(false);
+  }
+
+  // A line the AI missed. It opens in its full form, with "You owe" as the default direction.
+  function addLine() {
+    const n = Math.max(0, ...drafts.map((d) => d.n)) + 1;
+    const line: Draft = {
+      n,
+      otherId: "",
+      otherText: "",
+      direction: "you_owe",
+      amount: "",
+      note: "",
+      confidence: "high",
+      need: { otherId: true, direction: false, amount: true },
+      manual: true,
+      editing: true,
+      source: photo ? "photo" : "text",
+    };
+    setDrafts((all) => [...all, line]);
   }
 
   // Posts every ready draft, one after the other. A failure stays open with its error.
   async function saveAll() {
     setSaving(true);
     for (const d of drafts.filter(isReady)) {
+      const youOwe = d.direction === "you_owe";
       const patch = await api<Debt>("/api/debts", {
-        debtorId: d.debtorId,
-        creditorId: d.creditorId,
+        debtorId: youOwe ? traderId : d.otherId,
+        creditorId: youOwe ? d.otherId : traderId,
         amountCents: toCents(d.amount),
         note: d.note.trim(),
         source: d.source,
@@ -131,6 +152,12 @@ export default function AddPage() {
     refreshPending();
   }
 
+  const addButton = (
+    <button type="button" className={btn.secondary} disabled={saving} onClick={addLine}>
+      Add a line
+    </button>
+  );
+
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <PageHeader title="Add a debt">
@@ -139,6 +166,11 @@ export default function AddPage() {
 
       {!reading && !engine && (
         <Card title="Your debt, in your words.">
+          {changed && (
+            <p role="status" className="mb-4 text-sm text-zinc-600">
+              Trader changed. Read the page again.
+            </p>
+          )}
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_240px]">
             <div className="grid content-start gap-2">
               <label className="capture-shot capture-pick">
@@ -203,6 +235,9 @@ export default function AddPage() {
                   Read another page
                 </button>
               )}
+              <p className="basis-full text-sm text-zinc-600">
+                Notebook of <span className="font-medium text-zinc-900">{viewer}</span>. Every line is a debt between you and one other trader.
+              </p>
             </div>
           )}
           <div className="capture-view">
@@ -228,7 +263,10 @@ export default function AddPage() {
                   {STEPS[step]}
                 </p>
               ) : drafts.length === 0 ? (
-                <p className="text-sm text-zinc-600">No draft left. Read another page to start again.</p>
+                <div className="space-y-3">
+                  <p className="text-sm text-zinc-600">No debt to check. Add a line by hand, or read another page.</p>
+                  {addButton}
+                </div>
               ) : (
                 <>
                   <ol className="grid gap-2">
@@ -246,6 +284,7 @@ export default function AddPage() {
                       />
                     ))}
                   </ol>
+                  {!allSaved && addButton}
                   {allSaved ? (
                     <div role="status" className="capture-done">
                       <p className="text-sm text-zinc-900">All debts are saved. The other side of each debt must confirm it.</p>

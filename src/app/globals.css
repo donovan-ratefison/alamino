@@ -167,6 +167,12 @@ a.beat:hover { background: #e2efff; }
 .capture-mini { min-height: 40px; max-width: 100%; border: 1px solid #cbd8ea; border-radius: 10px; background: white; padding: 6px 10px; color: #052969; font-size: 13px; }
 .capture-mini:focus { border-color: #0070e0; }
 input.capture-mini { width: 96px; }
+.capture-dir { display: flex; flex-wrap: wrap; gap: 6px; }
+.capture-dir label { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 12px; border: 1px solid #cbd8ea; border-radius: 999px; background: white; color: #052969; font-size: 13px; cursor: pointer; }
+.capture-dir label:has(:checked) { border-color: #0070e0; background: #eff6ff; font-weight: 600; }
+.capture-dir label:has(:focus-visible) { outline: 3px solid #0070e0; outline-offset: 2px; }
+.capture-dir label:has(:disabled) { cursor: default; opacity: .6; }
+.capture-dir input { accent-color: #0070e0; }
 .capture-savebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 4px; }
 .capture-done { border: 1px solid #dce5f2; border-radius: 16px; background: #f6f9fe; padding: 16px; }
 @media (min-width: 640px) {
