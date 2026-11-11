@@ -1,69 +1,136 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { AgGridReact } from "ag-grid-react";
+import { AllCommunityModule, ModuleRegistry, type ColDef } from "ag-grid-community";
+import type { Debt, Round } from "@/lib/types";
+import { api, formatUsd, useApi } from "@/components/api";
+import { useApp } from "@/components/app";
+import { Network } from "@/components/network";
+import { Badge, btn, Card, Empty, ErrorNote, Loading, Stat } from "@/components/ui";
+
+ModuleRegistry.registerModules([AllCommunityModule]);
+
+const money = { valueFormatter: (p: { value: number }) => formatUsd(p.value), type: "rightAligned", minWidth: 110, flex: 1 };
+
+export default function MarketPage() {
+  const router = useRouter();
+  const { traders, name, refreshPending } = useApp();
+  const debts = useApi<Debt[]>("/api/debts");
+  const latest = useApi<Round>("/api/rounds/latest");
+  const [busy, setBusy] = useState<"run" | "reset" | null>(null);
+  const [actionError, setActionError] = useState<Error | null>(null);
+
+  const confirmed = (debts.data ?? []).filter((d) => d.status === "confirmed");
+  const total = confirmed.reduce((sum, d) => sum + d.remainingCents, 0);
+  const openRound = latest.data && latest.data.status !== "done" ? latest.data : null;
+
+  async function runClearing() {
+    setBusy("run");
+    setActionError(null);
+    try {
+      const round = await api<Round>("/api/rounds", {});
+      router.push(`/rounds/${round.id}`);
+    } catch (e) {
+      setActionError(e as Error);
+      setBusy(null);
+    }
+  }
+
+  async function reset() {
+    setBusy("reset");
+    setActionError(null);
+    try {
+      await api("/api/demo/reset", {});
+      debts.reload();
+      latest.reload();
+      refreshPending();
+    } catch (e) {
+      setActionError(e as Error);
+    }
+    setBusy(null);
+  }
+
+  const columns: ColDef<Debt>[] = [
+    { headerName: "Debtor", valueGetter: (p) => name(p.data?.debtorId), minWidth: 100, flex: 1 },
+    { headerName: "Creditor", valueGetter: (p) => name(p.data?.creditorId), minWidth: 100, flex: 1 },
+    { headerName: "Amount", field: "amountCents", ...money },
+    { headerName: "Remaining", field: "remainingCents", ...money },
+    { headerName: "Note", field: "note", minWidth: 180, flex: 2 },
+    { headerName: "Status", field: "status", minWidth: 110, flex: 1 },
+    { headerName: "Source", field: "source", minWidth: 90, flex: 1 },
+  ];
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="space-y-6">
+      <section className="space-y-4">
+        <div>
+          <h1 className="text-xl font-semibold text-zinc-900">Market debts</h1>
+          <p className="mt-1 max-w-3xl text-sm text-zinc-600">
+            Malagasy banks net their debts through BFM. Market traders can&apos;t. Alamino brings clearing to the market: debts that form
+            circles cancel with no money, and only the small remainder moves through PayPal.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <ol className="grid gap-2 text-sm text-zinc-700 sm:grid-cols-3">
+          <li className="rounded-md border border-zinc-200 bg-white px-3 py-2">1. Traders record what they owe each other.</li>
+          <li className="rounded-md border border-zinc-200 bg-white px-3 py-2">2. Debts that form a circle cancel. No money moves.</li>
+          <li className="rounded-md border border-zinc-200 bg-white px-3 py-2">3. Only the remainder is paid through PayPal.</li>
+        </ol>
+        <div className="flex flex-wrap items-center gap-2">
+          {latest.loading ? null : openRound ? (
+            <Link href={`/rounds/${openRound.id}`} className={btn.primary}>
+              Continue round
+            </Link>
+          ) : (
+            <button type="button" className={btn.primary} onClick={runClearing} disabled={busy !== null || debts.loading}>
+              {busy === "run" ? "Running clearing..." : "Run clearing"}
+            </button>
+          )}
+          <button type="button" className={btn.secondary} onClick={reset} disabled={busy !== null}>
+            {busy === "reset" ? "Resetting..." : "Reset demo"}
+          </button>
         </div>
-      </main>
+        {actionError && <ErrorNote error={actionError} />}
+      </section>
+
+      {debts.error ? (
+        <ErrorNote error={debts.error} onRetry={debts.reload} />
+      ) : debts.loading ? (
+        <Loading />
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Stat label="Total confirmed debt" value={formatUsd(total)} />
+            <Stat label="Confirmed debts" value={confirmed.length} hint={`${debts.data!.length} debts in the ledger`} />
+            <Stat label="Traders" value={traders.length} />
+          </div>
+
+          <Card title="Debt network" actions={<span className="text-xs text-zinc-500">Arrow: from debtor to creditor. Confirmed debts only.</span>}>
+            {traders.length === 0 ? (
+              <Loading />
+            ) : (
+              <Network traders={traders} edges={confirmed.map((d) => ({ ...d, amountCents: d.remainingCents }))} label="Debt network" />
+            )}
+            {confirmed.length === 0 && <p className="mt-3 text-sm text-zinc-600">No confirmed debt. Add a debt or reset the demo.</p>}
+          </Card>
+
+          <Card title="Ledger" actions={<Badge>{debts.data!.length} debts</Badge>}>
+            {debts.data!.length === 0 ? (
+              <Empty title="No debts yet">
+                <Link href="/add" className="font-medium text-accent underline">
+                  Add a debt
+                </Link>
+              </Empty>
+            ) : (
+              <div className="w-full">
+                <AgGridReact<Debt> rowData={debts.data} columnDefs={columns} domLayout="autoHeight" getRowId={(p) => p.data.id} />
+              </div>
+            )}
+          </Card>
+        </>
+      )}
     </div>
   );
 }
