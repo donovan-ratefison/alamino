@@ -18,6 +18,7 @@ const pages: [string, (page: Page) => Promise<void>][] = [
   ["/confirm", (page) => expect(page.getByRole("button", { name: /approve/i })).toBeVisible()],
   ["/rounds/latest", (page) => expect(page.getByRole("main")).toContainText("$990")],
   ["/statement", (page) => expect(page.getByRole("main")).toContainText(/\$170(?!\d)/)],
+  ["/finance", (page) => expect(page.getByRole("heading", { level: 1 })).toContainText("AI Finance")],
 ];
 
 test.describe("Phone width", () => {
@@ -52,5 +53,21 @@ test.describe("Phone width", () => {
     // The bottom bar is the navigation on a phone: the footer is hidden.
     await expect(page.locator("footer")).toBeHidden();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+
+  test("phone 'More' menu opens and provides access to AI Finance", async ({ page }) => {
+    await page.goto("/");
+    const moreButton = page.getByRole("button", { name: "More" });
+    await expect(moreButton).toBeVisible();
+    await moreButton.click();
+
+    const morePanel = page.locator("#more-panel");
+    await expect(morePanel).toBeVisible();
+    const financeLink = morePanel.getByRole("link", { name: "AI Finance" });
+    await expect(financeLink).toBeVisible();
+    await financeLink.click();
+
+    await expect(page).toHaveURL(/\/finance$/);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("AI Finance");
   });
 });
