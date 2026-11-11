@@ -78,7 +78,7 @@ export function applyExplanation(raw: unknown, s: Statement, round: Round): Stat
   };
 }
 
-const SCHEMA = {
+export const SCHEMA = {
   type: "object",
   additionalProperties: false,
   required: ["summary", "reasons"],
@@ -96,7 +96,13 @@ const SCHEMA = {
   },
 };
 
+// ponytail: in-memory, lost on restart. Round and trader ids are unique across resets, so no invalidation is needed.
+const cache = new Map<string, Statement>(); // only statements with model text
+
 export async function explainRound(round: Round, traderId: TraderId, debts: Debt[], traders: Trader[]): Promise<Statement> {
+  const key = `${round.id}:${traderId}`;
+  const cached = cache.get(key);
+  if (cached) return cached;
   const s = buildStatement(round, traderId, debts, traders);
   if (aiMode() !== "model") return s;
   const name = (id: TraderId) => traders.find((t) => t.id === id)?.name ?? id;
@@ -123,9 +129,12 @@ export async function explainRound(round: Round, traderId: TraderId, debts: Debt
         "reasons: one sentence for each debt, with the same debtId. Say why the debt changed or did not change.",
       ].join("\n"),
       [{ type: "text", text: JSON.stringify(facts, null, 2) }],
+      "round_statement",
       SCHEMA,
     );
-    return applyExplanation(raw, s, round);
+    const explained = applyExplanation(raw, s, round);
+    cache.set(key, explained);
+    return explained;
   } catch (e) {
     console.error("explainRound: model call failed, using the template text.", e);
     return s;

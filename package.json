@@ -8,10 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --test --experimental-strip-types src/lib/*.test.ts src/lib/**/*.test.ts",
-    "typecheck": "next typegen && tsc --noEmit"
+    "typecheck": "next typegen && tsc --noEmit",
+    "e2e": "playwright test"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^1.8.0",
     "@paypal/react-paypal-js": "^10.6.1",
     "@xyflow/react": "^12.12.1",
     "ag-grid-community": "^36.3.0",
@@ -24,6 +24,7 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/turbopack": "4.3.3",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^20",

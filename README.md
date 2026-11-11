@@ -24,6 +24,13 @@ Open http://localhost:3000. The app seeds five traders and their debts on first 
 
 Without PayPal keys, payments run in simulated mode. Without an AI key, capture and statements use a plain-code fallback. The UI labels both.
 
+## AI
+
+The app uses Meta Muse Spark (`muse-spark-1.3`) through the Meta Model API, in the OpenAI Chat Completions format.
+Each call asks for structured output with a strict JSON schema. Notebook photos go to the model as images.
+Any OpenAI-compatible provider works: change `AI_BASE_URL` and `AI_MODEL`.
+The AI never computes an amount.
+
 ## Checks
 
 ```
@@ -32,12 +39,21 @@ npm run typecheck
 npm run lint
 ```
 
+## End-to-end tests
+
+```
+npm run e2e
+```
+
+Playwright plays the user journeys in Chrome on a production build: add a debt, confirm, dispute, run clearing, settle, read the statement, phone width. It uses no keys (PayPal simulated, AI fallback) and its own database, so it moves no money and makes no AI call.
+
 ## Docs
 
 - [AI Finance Dashboard: setup, Sandbox, AG Studio and validation](docs/FINANCE.md)
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Overall flow diagram](docs/clearing-house-system.md)
+- [User journeys, sequence diagrams](docs/user-journeys.md)
 
 ## Licence
 

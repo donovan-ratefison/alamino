@@ -42,8 +42,10 @@ Configure these locally or in the hosting service; never commit secrets:
 | `PAYPAL_CLIENT_SECRET` | Sandbox REST app secret, server side only. |
 | `NEXT_PUBLIC_PAYPAL_CLIENT_ID` | Same Sandbox app identifier, for the existing Checkout button. |
 | `PAYPAL_BASE_URL` | Must be `https://api-m.sandbox.paypal.com` for Finance. |
-| `AI_API_KEY` | Anthropic key used by the existing backend SDK. |
-| `AI_MODEL` | Optional provider model override; must support the existing structured-output configuration. |
+| `AI_API_KEY` | Server-side key for the configured OpenAI-compatible provider (Meta Model API by default). |
+| `AI_BASE_URL` | Provider endpoint, default `https://api.meta.ai/v1`. |
+| `AI_MODEL` | Provider model, default `muse-spark-1.3`; must support strict structured output. |
+| `AI_DAILY_CALLS` | Maximum model calls per UTC day across the server process; default 300. |
 | `NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY` | Browser licence key for Studio; this is not an API credential. |
 | `DATABASE_PATH` | SQLite database location; use persistent storage for saved reports/history. |
 
@@ -100,7 +102,7 @@ the presets and does not reset debts or payments. Unsaved changes are not retain
 
 Open the native **AI** panel in Studio's edit mode. It uses `AgStudioAiModule`,
 `createAiHarness` and `clientToolRunner`, not a simulated Studio substitute.
-The backend interprets questions using Anthropic structured output when a key and
+The backend interprets questions using the configured provider's strict structured output when a key and
 admin session are present. It returns a restricted Studio tool request for queries
 and widget edits. Studio executes its own tools against the authorised loaded data.
 No payment tool is offered. Dashboard tools validate their argument schemas.
