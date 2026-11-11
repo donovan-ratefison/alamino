@@ -34,6 +34,7 @@ export interface Debt {
   debtorOk: boolean;
   creditorOk: boolean;
   counterAmountCents?: number; // amount claimed by the side that disagrees
+  counterBy?: TraderId; // who claimed counterAmountCents
   createdAt: string; // ISO
 }
 

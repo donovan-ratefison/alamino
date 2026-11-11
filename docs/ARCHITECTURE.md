@@ -120,13 +120,30 @@ All routes return JSON. Errors return `{ error: string }` with a 4xx or 5xx stat
 | `GET /api/rounds/:id` | | `Round` (`:id` may be `latest`) |
 | `GET /api/config` | | `{ paypalMode: "sandbox" or "simulated", aiMode: "model" or "fallback" }` |
 | `POST /api/demo/reset` | | `{ ok: true }` |
-| `POST /api/capture` | `{ text?, imageBase64?, createdBy }` | `{ drafts: DebtDraft[] }` (nothing saved) |
+| `POST /api/capture` | `{ text?, imageBase64?, mediaType?, createdBy }` | `{ drafts: DebtDraft[], engine: "model" or "fallback" }` (nothing saved) |
 | `POST /api/debts/:id/resolve` | | `{ suggestion: string, proposedAmountCents: number or null }` |
 | `GET /api/rounds/:id/statement/:traderId` | | `Statement` |
 | `POST /api/rounds/:id/payin/:traderId/order` | | `{ orderId }` |
 | `POST /api/rounds/:id/payin/:traderId/capture` | `{ orderId }` | `Settlement` |
 | `POST /api/rounds/:id/payout` | | `Round` (only when every pay-in is captured) |
 | `POST /api/rounds/:id/payout/refresh` | | `Round` (polls PayPal for payout status) |
+
+### Confirm rules (`POST /api/debts/:id/confirm`)
+
+Only for a debt that is `proposed` or `disputed` (else 409). `traderId` must be the debtor or the creditor (else 400).
+
+| Body | Effect |
+|---|---|
+| `{ traderId, ok: true }` | That side approves the current amount. Both sides approved: `confirmed`, counter fields cleared. |
+| `{ traderId, ok: false, counterAmountCents: N }` | `disputed`. Stores `counterAmountCents = N`, `counterBy = traderId`. That side's approval is removed. |
+| `{ traderId, ok: true, counterAmountCents: N }` | That side accepts amount N: `amountCents = remainingCents = N`, counter fields cleared. The other side counts as approved only if it is `counterBy` and N is its stored counter amount. Both approved: `confirmed`. Else `proposed`. |
+
+### Round rules
+
+- `POST /api/rounds` returns 409 when no debt is `confirmed`, or when a round exists that is not `done`.
+- Round ids and debt ids are unique across resets (PayPal `sender_batch_id` must not repeat).
+- Pay-in settlement: `none` → `pending` (order created) → `captured`. Pay-out settlement: `none` → `sent` → `confirmed` or `failed`.
+- Round: `cleared` → `collecting` (first pay-in captured) → `paying` (payouts sent) → `done`. A round with no pay-in is `done` at once.
 
 ## 8. PayPal flow
 
@@ -176,7 +193,7 @@ The AI is given the trader list so it can match "Rakoto at the rice stall" to a 
 
 Five traders: Hery (rice), Soa (restaurant), Rivo (butcher), Lalao (vegetables), Fidy (delivery).
 
-Nine seeded debts in USD: Soa→Hery 300, Hery→Fidy 120, Fidy→Soa 90, Lalao→Soa 150, Soa→Rivo 110, Rivo→Lalao 70, Fidy→Rivo 40, Lalao→Hery 60, Rivo→Hery 50.
+Nine debts in USD. The seed holds the first eight as `confirmed`. The ninth (Rivo→Hery 50) is added live in the demo: Soa→Hery 300, Hery→Fidy 120, Fidy→Soa 90, Lalao→Soa 150, Soa→Rivo 110, Rivo→Lalao 70, Fidy→Rivo 40, Lalao→Hery 60, Rivo→Hery 50.
 
 Result from the engine:
 
@@ -189,7 +206,7 @@ Result from the engine:
 
 Pay-ins: Soa $170, Lalao $140, Fidy $10. Pay-outs: Hery $290, Rivo $30.
 
-For the video, seed eight debts and add the ninth live by photo, so the AI capture is on screen.
+Demo path: view as Rivo, add "I owe Hery 50 for rice" on `/add`, view as Hery, approve on `/confirm`, run clearing.
 
 ## 12. Environment variables
 
