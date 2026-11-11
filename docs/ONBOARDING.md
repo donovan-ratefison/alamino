@@ -1,10 +1,12 @@
 # Guided tour and illustrated help
 
-The first visit to any Alamino route opens an eight-step Driver.js tour. It introduces the market, capture, confirmations, payments, statements, demo trader switch and replay button. Desktop navigation and the phone bottom bar share visible targets. The tour never changes debts, starts clearing, or initiates payments.
+The first visit opens an eight-step Driver.js overview, except on **Add a debt**, which opens its own six-step guide directly on the capture controls. The overview introduces the market, capture, confirmations, payments, statements, demo trader switch and replay button. Desktop navigation and the phone bottom bar share visible targets. Tours never change debts, start clearing, or initiate payments.
 
 Closing or finishing the tour saves `alamino.onboarding.v1` in this browser. Use **Take a guided tour** in the desktop header or **More** on a phone to replay it. To preview the first visit again, remove only this local-storage entry using browser developer tools, or open a private window. No account or payment data needs to be reset.
 
-Each of the five core screens also has an illustrated guide with a short tip and expandable instructions. All illustrations use the same woman guide in different poses. The phone bar keeps its central camera shortcut and now shows an SVG icon and a visible label for all five destinations, including **Payments**.
+**Add a debt** has no static illustration panel. Its **Guide** button replays a six-step tour of the trader selector, camera, photo picker, sentence field, read button, and review/save instructions. The sentence field is revealed on phones so it can be highlighted; existing text is preserved. This tour has its own browser preference, `alamino.onboarding.add.v1`, and closes when capture begins or the page is left. The illustration appears inside the relevant popover only.
+
+The other four core screens have illustrated tips with expandable instructions. All illustrations use the same woman guide in different poses. The phone bar keeps its central camera shortcut and shows an SVG icon and a visible label for all five destinations, including **Payments**.
 
 ## Image assets
 

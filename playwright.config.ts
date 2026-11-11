@@ -1,5 +1,5 @@
 import { defineConfig } from "@playwright/test";
-import { ONBOARDING_STORAGE_KEY } from "./src/lib/onboarding";
+import { CAPTURE_TOUR_STORAGE_KEY, ONBOARDING_STORAGE_KEY } from "./src/lib/onboarding";
 
 const PORT = 3210;
 
@@ -16,7 +16,7 @@ export default defineConfig({
     channel: "chrome",
     trace: "retain-on-failure",
     // Existing journeys model a returning visitor. Tour tests use a fresh browser.
-    storageState: { cookies: [], origins: [{ origin: `http://localhost:${PORT}`, localStorage: [{ name: ONBOARDING_STORAGE_KEY, value: "completed" }] }] },
+    storageState: { cookies: [], origins: [{ origin: `http://localhost:${PORT}`, localStorage: [{ name: ONBOARDING_STORAGE_KEY, value: "completed" }, { name: CAPTURE_TOUR_STORAGE_KEY, value: "completed" }] }] },
   },
   webServer: {
     command: `npm run build && npm run start -- -p ${PORT}`,

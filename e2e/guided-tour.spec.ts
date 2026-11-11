@@ -50,9 +50,9 @@ test("a skipped tour stays dismissed after reload and can be replayed from Help"
   await expect(page.getByRole("button", { name: "Take a guided tour" })).toBeFocused();
 });
 
-test("phone visitors get five labelled icons, the illustrated Add guide and replay in More", async ({ page }) => {
+test("phone visitors get five labelled icons, a local Add tour and replay in More", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 });
-  await page.goto("/add");
+  await page.goto("/");
   const popover = page.locator(".driver-popover");
   await expect(popover).toContainText("Welcome to Alamino");
   await popover.getByRole("button", { name: "Show me around", exact: true }).click();
@@ -74,11 +74,11 @@ test("phone visitors get five labelled icons, the illustrated Add guide and repl
     await expect(link).toBeVisible();
     await expect(link.locator("svg")).toHaveAttribute("aria-hidden", "true");
   }
+  await nav.getByRole("link", { name: "Add a debt" }).click();
   await expect(nav.getByRole("link", { name: "Add a debt" })).toHaveAttribute("aria-current", "page");
-  const guide = page.getByRole("complementary", { name: "Add a debt guide" });
-  await expect(guide.getByRole("img")).toBeVisible();
-  await guide.getByText("Show the steps", { exact: false }).click();
-  await expect(guide.locator("li")).toHaveCount(3);
+  await expect(popover).toContainText("Choose your trader");
+  await popover.getByRole("button", { name: "Skip tour" }).click();
+  await expect(page.getByRole("complementary", { name: "Add a debt guide" })).toHaveCount(0);
   await expect(page.getByText("Photograph your notebook", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole("button", { name: "More", exact: true }).click();

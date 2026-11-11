@@ -1,11 +1,29 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Driver, DriveStep } from "driver.js";
 import { NavIcon } from "./nav-icon";
 import { GUIDE_TIPS, guideImage, ONBOARDING_STORAGE_KEY, type GuideTopic } from "@/lib/onboarding";
 
-const TourContext = createContext<(() => Promise<void>) | null>(null);
+interface TourOptions {
+  steps?: DriveStep[];
+  storageKey?: string;
+  beforeStart?: () => void;
+  canStart?: () => boolean;
+  returnFocus?: () => HTMLElement | null;
+  onlyIfUnseen?: boolean;
+}
+
+const TourContext = createContext<{
+  startTour: (options?: TourOptions) => Promise<void>;
+  stopTour: (storageKey: string) => void;
+} | null>(null);
+
+export function useGuidedTour() {
+  const context = useContext(TourContext);
+  if (!context) throw new Error("useGuidedTour must be used inside GuidedTourProvider");
+  return context;
+}
 
 // Resolve the visible navigation at each step: desktop links and the phone bar
 // share targets, but only one is displayed at a time.
@@ -34,22 +52,32 @@ function steps(): DriveStep[] {
 
 export function GuidedTourProvider({ children }: { children: ReactNode }) {
   const active = useRef<Driver | null>(null);
+  const activeKey = useRef<string | null>(null);
   const mounted = useRef(false);
   const loading = useRef(false);
-  const seenInSession = useRef(false);
+  const seenInSession = useRef(new Set<string>());
   const [error, setError] = useState("");
 
-  const startTour = useCallback(async () => {
-    if (loading.current || active.current?.isActive()) return;
+  const startTour = useCallback(async (options: TourOptions = {}) => {
+    if (loading.current || active.current?.isActive() || options.canStart?.() === false) return;
+    const storageKey = options.storageKey ?? ONBOARDING_STORAGE_KEY;
+    if (options.onlyIfUnseen) {
+      if (seenInSession.current.has(storageKey)) return;
+      try { if (localStorage.getItem(storageKey) !== null) return; } catch { /* Storage is optional. */ }
+    }
     loading.current = true;
+    activeKey.current = storageKey;
     setError("");
     try {
+      options.beforeStart?.();
       // Load the tour code on first visit or when Help is opened.
       const { driver } = await import("driver.js");
-      if (!mounted.current) return;
-      const returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      // Let a page reveal responsive controls before measuring the tour targets.
+      if (options.beforeStart) await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      if (!mounted.current || activeKey.current !== storageKey || options.canStart?.() === false) return;
+      const returnFocus = options.returnFocus?.() ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
       const tour = driver({
-        steps: steps(),
+        steps: options.steps ?? steps(),
         animate: !window.matchMedia("(prefers-reduced-motion: reduce)").matches,
         duration: 200,
         smoothScroll: false,
@@ -69,9 +97,10 @@ export function GuidedTourProvider({ children }: { children: ReactNode }) {
         allowKeyboardControl: true,
         onDestroyed: (_element, _step, { reason }) => {
           active.current = null;
+          activeKey.current = null;
           if (reason !== "api" && reason !== "replaced") {
-            seenInSession.current = true;
-            try { localStorage.setItem(ONBOARDING_STORAGE_KEY, reason === "done" ? "completed" : "dismissed"); } catch { /* Private browsing can disable storage. */ }
+            seenInSession.current.add(storageKey);
+            try { localStorage.setItem(storageKey, reason === "done" ? "completed" : "dismissed"); } catch { /* Private browsing can disable storage. */ }
           }
           if (mounted.current) {
             const focus = returnFocus?.isConnected && returnFocus !== document.body ? returnFocus : target("help")();
@@ -82,28 +111,39 @@ export function GuidedTourProvider({ children }: { children: ReactNode }) {
       active.current = tour;
       tour.drive();
     } catch {
-      if (mounted.current) setError("The guide could not load. Please try the help button again.");
+      if (mounted.current && options.canStart?.() !== false) setError("The guide could not load. Please try the help button again.");
     } finally { loading.current = false; }
   }, []);
 
+  const stopTour = useCallback((storageKey: string) => {
+    if (activeKey.current !== storageKey) return;
+    active.current?.destroy();
+    activeKey.current = null;
+  }, []);
+  const controls = useMemo(() => ({ startTour, stopTour }), [startTour, stopTour]);
+
   useEffect(() => {
     mounted.current = true;
-    let seen = seenInSession.current;
+    let seen = seenInSession.current.has(ONBOARDING_STORAGE_KEY);
     try { seen ||= localStorage.getItem(ONBOARDING_STORAGE_KEY) !== null; } catch { /* The guide also works without storage. */ }
-    const timer = !seen ? window.setTimeout(() => void startTour(), 600) : undefined;
+    const timer = !seen ? window.setTimeout(() => {
+      // Pages with their own introduction handle the first visit locally.
+      if (!document.querySelector("[data-page-tour]") && !seenInSession.current.has(ONBOARDING_STORAGE_KEY)) void startTour();
+    }, 600) : undefined;
     return () => {
       mounted.current = false;
       window.clearTimeout(timer);
       active.current?.destroy();
       active.current = null;
+      activeKey.current = null;
     };
   }, [startTour]);
 
-  return <TourContext.Provider value={startTour}>{children}{error && <p role="alert" className="tour-load-error">{error}</p>}</TourContext.Provider>;
+  return <TourContext.Provider value={controls}>{children}{error && <p role="alert" className="tour-load-error">{error}</p>}</TourContext.Provider>;
 }
 
 export function TourTrigger({ menu = false, onStart }: { menu?: boolean; onStart?: () => void }) {
-  const startTour = useContext(TourContext);
+  const { startTour } = useGuidedTour();
   return <button type="button" className={menu ? "nav-link w-full" : "bell-button tour-help-button"} data-tour={menu ? undefined : "help"} aria-label="Take a guided tour" title="Take a guided tour"
-    onClick={() => { onStart?.(); void startTour?.(); }}><NavIcon name="help" />{menu && <span>Take a guided tour</span>}</button>;
+    onClick={() => { onStart?.(); void startTour(); }}><NavIcon name="help" />{menu && <span>Take a guided tour</span>}</button>;
 }

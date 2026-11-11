@@ -1,4 +1,5 @@
 export const ONBOARDING_STORAGE_KEY = "alamino.onboarding.v1";
+export const CAPTURE_TOUR_STORAGE_KEY = "alamino.onboarding.add.v1";
 
 export const GUIDE_TIPS = {
   market: {

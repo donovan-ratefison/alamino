@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import type { Debt, DebtDraft, TraderId } from "@/lib/types";
 import { api, toCents } from "@/components/api";
 import { useApp } from "@/components/app";
 import { DraftRow, problem, toDraft, type Draft } from "@/components/capture-drafts";
 import { Badge, btn, Card, ErrorNote, field, label, PageHeader } from "@/components/ui";
-import { GuideTip } from "@/components/guide-tip";
+import { CaptureGuide } from "@/components/capture-guide";
 
 // A real AI call takes 5 to 10 seconds. The last step stays until the answer.
 const STEPS = ["Reading the handwriting", "Matching names to traders", "Checking the amounts"];
@@ -38,6 +38,7 @@ export default function AddPage() {
   const [owner, setOwner] = useState<TraderId | null>(null); // the trader who read the page
   const [changed, setChanged] = useState(false); // drafts were cleared after a "View as" change
   const view = useRef<HTMLDivElement>(null);
+  const prepareCaptureGuide = useCallback(() => setTyping(true), []);
 
   useEffect(() => (photo ? () => URL.revokeObjectURL(photo.url) : undefined), [photo]);
 
@@ -161,7 +162,7 @@ export default function AddPage() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8">
+    <div className="mx-auto max-w-6xl space-y-8" data-page-tour="capture">
       <PageHeader title="Add a debt">
         {/* A phone shows the trader in "View as" and above the drafts: no need to say it here. */}
         <span className="max-sm:hidden">
@@ -170,8 +171,7 @@ export default function AddPage() {
       </PageHeader>
 
       {!reading && !engine && (
-        <Card title="Your debt, in your words.">
-          <div className="mb-5"><GuideTip topic="add" /></div>
+        <Card title="Your debt, in your words." actions={<CaptureGuide onPrepare={prepareCaptureGuide} />}>
           {changed && (
             <p role="status" className="mb-4 text-sm text-zinc-600">
               Trader changed. Read the page again.
@@ -179,7 +179,7 @@ export default function AddPage() {
           )}
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_240px]">
             <div className="grid content-start gap-2">
-              <label className="capture-shot capture-pick">
+              <label className="capture-shot capture-pick" data-capture-tour="camera">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
                   <circle cx="12" cy="13" r="3.5" />
@@ -188,7 +188,7 @@ export default function AddPage() {
                 <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={pick} />
               </label>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-1">
-                <label className={`${btn.secondary} capture-pick capture-alt`}>
+                <label className={`${btn.secondary} capture-pick capture-alt`} data-capture-tour="photo">
                   Choose a photo
                   <input type="file" accept="image/*" className="sr-only" onChange={pick} />
                 </label>
@@ -215,7 +215,7 @@ export default function AddPage() {
                 placeholder="I owe Hery 50 for rice"
                 className={`${field} h-auto py-2`}
               />
-              <button type="submit" className={btn.primary} disabled={!text.trim()}>
+              <button type="submit" className={btn.primary} data-capture-tour="read" disabled={!text.trim()}>
                 Read the sentence
               </button>
             </form>
