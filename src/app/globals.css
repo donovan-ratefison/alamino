@@ -52,7 +52,7 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 .nav-link:hover { color: #003087; background: #eff6ff; }
 .nav-link[aria-current="page"] { color: #003087; background: #e8f2ff; }
 .profile-control { display: flex; align-items: center; gap: 10px; border-left: 1px solid #dce5f2; padding-left: 16px; }
-.profile-select { min-height: 40px; background: #f6f9fe; border: 1px solid #dce5f2; border-radius: 9999px; padding: 8px 14px 8px 36px; color: #003087; font-size: 13px; font-weight: 500; }
+.profile-select { min-height: 44px; background: #f6f9fe; border: 1px solid #dce5f2; border-radius: 9999px; padding: 8px 14px 8px 36px; color: #003087; font-size: 13px; font-weight: 500; }
 .ui-button { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; gap: 10px; border-radius: 9999px; padding: 12px 25px; font-size: 14px; font-weight: 600; line-height: 1.4; letter-spacing: .01em; text-align: center; transition: background .2s, color .2s, border-color .2s; }
 .ui-button:disabled { pointer-events: none; opacity: .45; }
 .ui-button-primary { color: white; background: #0070e0; border: 1px solid #0070e0; }
@@ -273,12 +273,12 @@ input.capture-mini { width: 96px; }
   .page-heading h1 { font-size: 28px; line-height: 1.15; letter-spacing: -.03em; }
   .page-heading-copy { margin-top: 8px; font-size: 14px; line-height: 1.6; }
   .market-hero, .finance-hero { margin-top: -24px; }
-  .market-hero .band-content { gap: 24px; padding-block: 24px; }
+  .market-hero .band-content { gap: 16px; padding-block: 20px; }
   .market-hero .display-title { margin-top: 0; font-size: 32px; letter-spacing: -.04em; }
-  .hero-network .network-shell { height: 300px; }
+  .hero-network .network-shell { height: 260px; }
   .finance-hero .band-content { padding-block: 48px; }
   .section-title { font-size: 24px; }
-  .market-section { padding-top: 32px; }
+  .market-section { padding-top: 20px; }
   .beats { gap: 4px; }
   .beat { padding: 8px 6px; border-radius: 10px; }
   .beat-value { font-size: 20px; }
@@ -297,6 +297,7 @@ input.capture-mini { width: 96px; }
 }
 
 /* Lot 1 */
+.replay-actions .ui-button { padding-inline: 12px; white-space: nowrap; }
 @media (max-width: 640px) {
   .replay .network-shell { height: 260px; }
 }
@@ -313,6 +314,8 @@ input.capture-mini { width: 96px; }
   .ledger-table td, .ledger-table td:first-child, .ledger-table td:last-child { padding: 0; border-bottom: 0; }
   .ledger-table td:nth-child(3) { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
   .ledger-table td:nth-child(4) { justify-self: end; }
+  .footer-bottom { padding-block: 20px; gap: 12px; }
+  .footer-bottom nav { display: none; }
   .capture-savebar { position: sticky; bottom: calc(72px + env(safe-area-inset-bottom, 0px)); z-index: 10; padding-block: 12px; border-top: 1px solid #dce5f2; background: white; }
 }
 

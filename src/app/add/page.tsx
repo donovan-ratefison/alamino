@@ -25,7 +25,7 @@ async function readImage(file: File): Promise<{ imageBase64: string; mediaType: 
 }
 
 export default function AddPage() {
-  const { traderId, name, refreshPending } = useApp();
+  const { traderId, refreshPending } = useApp();
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false); // phone: the sentence field is open
   const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
@@ -58,7 +58,6 @@ export default function AddPage() {
     setChanged(true);
   }
 
-  const viewer = name(traderId);
   // The demo sentence. Hery cannot owe Hery, so Hery gets another trader.
   const sample = `I owe ${traderId === "hery" ? "Rivo" : "Hery"} 50 for rice`;
   const empty = !reading && !engine;
@@ -165,14 +164,9 @@ export default function AddPage() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8" data-page-tour="capture">
+    <div className="mx-auto max-w-6xl space-y-6" data-page-tour="capture">
       <div className="flex items-start justify-between gap-4">
-        <PageHeader title="Add a debt">
-          {/* A phone shows the trader in "View as": no need to say it here. */}
-          <span className="max-sm:hidden">
-            You add debts as <span className="font-medium text-zinc-900">{viewer}</span>. Nothing is saved before you check it.
-          </span>
-        </PageHeader>
+        <PageHeader title="Add a debt" />
         {empty && <CaptureGuide onPrepare={prepareCaptureGuide} />}
       </div>
 
@@ -210,14 +204,15 @@ export default function AddPage() {
               </div>
               <button
                 type="button"
-                className="min-h-10 text-left text-sm font-medium text-accent hover:underline"
+                className={btn.small}
                 onClick={() => {
                   setText(sample);
                   setTyping(true);
                 }}
               >
-                Try: &quot;{sample}&quot;
+                Try &quot;{sample}&quot;
               </button>
+              <p className="text-center text-sm text-zinc-500">The AI reads it. You check every line before it is saved.</p>
             </div>
             <form id="capture-form" onSubmit={submit} className={`space-y-3 sm:order-first ${typing ? "" : "max-sm:hidden"}`}>
               <label htmlFor="capture-text" className={label}>

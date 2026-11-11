@@ -33,10 +33,14 @@ test.describe("Clearing round", () => {
     await expect(after).toHaveAttribute("aria-pressed", "true", { timeout: 20_000 });
     await expect(main.getByLabel("Debts after circles cancel")).toBeVisible();
     await expect(main.getByText("Cancelled", { exact: true }).locator("..")).toContainText("$570");
+    await expect(main.getByRole("button", { name: "Replay clearing" })).toBeEnabled();
+    // The caption under the network is never empty.
+    await expect(main).toContainText("No circle left. $570 cancelled, no money moved.");
     await before.click();
     await expect(before).toHaveAttribute("aria-pressed", "true");
     await expect(after).toHaveAttribute("aria-pressed", "false");
     await expect(main.getByLabel("Debts before the round")).toBeVisible();
+    await expect(main).toContainText("Green debts form circles.");
 
     // The circles and the settlement plan are behind one disclosure.
     await page.getByText("Circles and payment plan", { exact: true }).click();

@@ -169,7 +169,7 @@ function DebtItem({ debt, onChange }: { debt: Debt; onChange: () => void }) {
 
 export default function ConfirmPage() {
   // The shared list: an answer from the bell updates this page too.
-  const { traderId, name, refreshPending, debts } = useApp();
+  const { traderId, refreshPending, debts } = useApp();
 
   const open = (debts.data ?? []).filter(
     (d) => (d.status === "proposed" || d.status === "disputed") && (d.debtorId === traderId || d.creditorId === traderId),
@@ -188,10 +188,15 @@ export default function ConfirmPage() {
         <Loading />
       ) : open.length === 0 ? (
         <Empty title="Nothing to confirm">
-          No debt waits for {name(traderId)}.{" "}
-          <Link href="/add" className="font-medium text-accent underline">
-            Add a debt
-          </Link>
+          <p>Every debt is approved.</p>
+          <div className="mt-5 grid gap-2 sm:flex sm:justify-center">
+            <Link href="/" className={btn.primary}>
+              Run clearing on the market
+            </Link>
+            <Link href="/add" className={btn.secondary}>
+              Add a debt
+            </Link>
+          </div>
         </Empty>
       ) : (
         <>

@@ -46,8 +46,8 @@ export default function MarketPage() {
         <div className="band-content">
           <div className="min-w-0">
             <h1 id="market-title" className="display-title">Less to pay.<br />More to grow.</h1>
-            <p className="mt-4 max-w-md text-base leading-7 sm:text-lg">Debts that form a circle cancel. You pay only what remains.</p>
-            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 max-sm:mt-5">
+            <p className="mt-3 max-w-md text-[15px] leading-6 sm:mt-4 sm:text-lg sm:leading-7">Debts that form a circle cancel. You pay only what remains.</p>
+            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 max-sm:mt-4">
               {latest.loading ? null : openRound ? (
                 <Link href={`/rounds/${openRound.id}`} className={btn.inverse}>
                   Continue round

@@ -152,9 +152,15 @@ export function DraftRow({ d, index, busy, onChange, onDiscard, applyCount, onAp
   const ask =
     step === "other" ? (
       <>
-        <p className="capture-ask">
-          {ownName ? "This line has your own name. Who is the other trader?" : d.otherText.trim() ? `Who is "${d.otherText.trim()}"?` : "Who is the other trader?"}
-        </p>
+        {/* The question and the way out share one row, so the trader pills fit one row on a phone. */}
+        <div className="flex basis-full items-center justify-between gap-3">
+          <p className="capture-ask">
+            {ownName ? "This line has your own name. Who is the other trader?" : d.otherText.trim() ? `Who is "${d.otherText.trim()}"?` : "Who is the other trader?"}
+          </p>
+          <button type="button" className="-my-2 shrink-0 py-2 text-sm font-medium text-accent hover:underline disabled:opacity-50" disabled={busy} onClick={onDiscard}>
+            {ownName ? "Skip this line" : d.otherText.trim() ? "Not in this market" : "Discard"}
+          </button>
+        </div>
         <div role="group" aria-label="Other trader" className="capture-choices">
           {ranked.map((t) => (
             <button
@@ -167,9 +173,6 @@ export function DraftRow({ d, index, busy, onChange, onDiscard, applyCount, onAp
               {t.name}
             </button>
           ))}
-          <button type="button" className={btn.small} disabled={busy} onClick={onDiscard}>
-            {ownName ? "Skip this line" : d.otherText.trim() ? "Not in this market" : "Discard"}
-          </button>
         </div>
       </>
     ) : step === "direction" ? (

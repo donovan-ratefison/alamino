@@ -12,7 +12,7 @@ test.describe("Settle a round with simulated PayPal", () => {
     await page.goto("/rounds/latest");
     const sendPayouts = page.getByRole("button", { name: /payout/i });
     const main = page.getByRole("main");
-    await expect(main).toContainText(/waiting for 3 payments/i);
+    await expect(main).toContainText("0 of 3 paid in");
     await expect(main).not.toContainText(/done/i);
 
     for (const [traderId, amount] of [
@@ -28,14 +28,15 @@ test.describe("Settle a round with simulated PayPal", () => {
         .toBe("captured");
     }
 
-    await expect(main).toContainText(/all paid in\. payouts can start/i);
+    await expect(main).toContainText("3 of 3 paid in");
+    await expect(sendPayouts).toBeVisible();
     await sendPayouts.click();
 
     await expect.poll(async () => (await latestRound(request)).status, { timeout: 30_000 }).toBe("done");
     const round = await latestRound(request);
     for (const s of round.settlements) expect(["captured", "confirmed"]).toContain(s.status);
     await expect(main).toContainText(/done/i);
-    await expect(main).not.toContainText(/waiting for \d+ payment/i);
+    await expect(main).not.toContainText(/\d of 3 paid in/);
     // The first card is the final state: counts from the settlements and a link to the statement.
     await expect(main).toContainText("3 paid in, 2 paid out");
     await expect(main.getByRole("link", { name: "Read statement" })).toHaveAttribute("href", "/statement");

@@ -41,7 +41,7 @@ test.describe("Add a debt", () => {
   test("the Try button fills the sentence and does not read it", async ({ page }) => {
     const captures: string[] = [];
     page.on("request", (r) => { if (r.url().includes("/api/capture")) captures.push(r.url()); });
-    await page.getByRole("button", { name: 'Try: "I owe Hery 50 for rice"' }).click();
+    await page.getByRole("button", { name: 'Try "I owe Hery 50 for rice"' }).click();
     await expect(page.getByRole("textbox", { name: "Sentence" })).toHaveValue("I owe Hery 50 for rice");
     await expect(page.getByRole("button", { name: "Read the sentence" })).toBeEnabled();
     expect(captures).toEqual([]);

@@ -65,7 +65,7 @@ export default function StatementPage() {
           <div className="page-heading space-y-3">
             <div className="flex items-baseline justify-between gap-4">
               <p className="text-sm font-medium text-zinc-600">Statement for {name(traderId)}</p>
-              <Link href={`/rounds/${s.roundId}`} className="shrink-0 text-sm font-medium text-accent underline">
+              <Link href={`/rounds/${s.roundId}`} className="shrink-0 text-sm font-medium text-accent hover:underline">
                 View round
               </Link>
             </div>
@@ -88,7 +88,7 @@ export default function StatementPage() {
             </div>
           </div>
 
-          <Receipt s={s} trader={name(traderId)} date={round && dateFormat.format(new Date(round.createdAt))} />
+          <Receipt s={s} date={round && dateFormat.format(new Date(round.createdAt))} />
 
           <section aria-labelledby="debts-title" className="space-y-3">
             <h2 id="debts-title" className="text-sm font-semibold text-zinc-900">
