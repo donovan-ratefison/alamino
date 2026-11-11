@@ -5,8 +5,7 @@ import { useState } from "react";
 import type { Debt } from "@/lib/types";
 import { api, formatUsd, toCents, waitingFor } from "@/components/api";
 import { useApp } from "@/components/app";
-import { Badge, btn, Card, Empty, ErrorNote, field, Loading, PageHeader } from "@/components/ui";
-import { Workflow } from "@/components/workflow";
+import { btn, Card, Empty, ErrorNote, field, Loading, PageHeader } from "@/components/ui";
 
 interface Resolution {
   suggestion: string;
@@ -25,6 +24,17 @@ function DebtItem({ debt, onChange }: { debt: Debt; onChange: () => void }) {
   const disputed = debt.status === "disputed" && debt.counterAmountCents !== undefined;
   const other = debt.debtorId === traderId ? debt.creditorId : debt.debtorId;
   const counterCents = counter === null ? null : toCents(counter);
+  const otherOk = debt.debtorId === traderId ? debt.creditorOk : debt.debtorOk;
+  // One sentence from the side of the current trader.
+  const message = disputed
+    ? debt.counterBy === traderId
+      ? `You said ${formatUsd(debt.counterAmountCents!)}. Waiting for ${name(other)}.`
+      : `${name(debt.counterBy)} says ${formatUsd(debt.counterAmountCents!)}. You said ${formatUsd(debt.amountCents)}.`
+    : !mine
+      ? `You approved. Waiting for ${name(other)}.`
+      : otherOk
+        ? `${name(other)} approved. Waiting for you.`
+        : `Waiting for you and ${name(other)}.`;
 
   async function confirm(body: { ok: boolean; counterAmountCents?: number }) {
     setBusy(true);
@@ -54,34 +64,14 @@ function DebtItem({ debt, onChange }: { debt: Debt; onChange: () => void }) {
   return (
     <Card>
       <div className="space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <p className="text-sm font-semibold text-zinc-900">
-              {name(debt.debtorId)} owes {name(debt.creditorId)} {formatUsd(debt.amountCents)}
-            </p>
-            {debt.note && <p className="mt-0.5 text-sm text-zinc-600">{debt.note}</p>}
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            <Badge tone={debt.status === "disputed" ? "red" : "amber"}>{debt.status === "disputed" ? "Disputed" : "Proposed"}</Badge>
-            <Badge tone={debt.debtorOk ? "green" : "neutral"}>Debtor {debt.debtorOk ? "approved" : "not approved"}</Badge>
-            <Badge tone={debt.creditorOk ? "green" : "neutral"}>Creditor {debt.creditorOk ? "approved" : "not approved"}</Badge>
-          </div>
+        <div>
+          <p className="text-sm font-semibold text-zinc-900">
+            {name(debt.debtorId)} owes {name(debt.creditorId)} {formatUsd(debt.amountCents)}
+          </p>
+          {debt.note && <p className="mt-0.5 text-sm text-zinc-600">{debt.note}</p>}
         </div>
 
-        {disputed && (
-          <dl className="grid grid-cols-2 gap-2 rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm">
-            <div>
-              <dt className="text-zinc-600">Recorded amount</dt>
-              <dd className="font-semibold tabular-nums">{formatUsd(debt.amountCents)}</dd>
-            </div>
-            <div>
-              <dt className="text-zinc-600">{name(debt.counterBy)} says</dt>
-              <dd className="font-semibold tabular-nums">{formatUsd(debt.counterAmountCents!)}</dd>
-            </div>
-          </dl>
-        )}
-
-        {!mine && <p className="text-sm text-zinc-600">Waiting for {name(other)}.</p>}
+        <p className={`text-sm font-medium ${disputed ? "text-red-800" : "text-zinc-700"}`}>{message}</p>
 
         <div className="flex flex-wrap gap-2">
           {mine && !disputed && (
@@ -183,7 +173,6 @@ export default function ConfirmPage() {
         Both sides must approve a debt before it enters a clearing round. You view the app as{" "}
         <span className="font-medium text-zinc-900">{name(traderId)}</span>.
       </PageHeader>
-      <Workflow current={1} />
       {debts.error ? (
         <ErrorNote error={debts.error} onRetry={debts.reload} />
       ) : debts.loading ? (

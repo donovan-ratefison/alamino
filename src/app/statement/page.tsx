@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import type { Statement } from "@/lib/types";
-import { formatUsd, useApi } from "@/components/api";
+import { api, formatUsd, useApi } from "@/components/api";
 import { useApp } from "@/components/app";
 import { Card, Empty, ErrorNote, Loading, PageHeader } from "@/components/ui";
 
@@ -13,9 +14,28 @@ function netText(s: Statement): string {
 }
 
 export default function StatementPage() {
-  const { traderId, name } = useApp();
-  const statement = useApi<Statement>(`/api/rounds/latest/statement/${traderId}`);
-  const s = statement.data;
+  const { traderId, name, config } = useApp();
+  // The plain-code statement comes at once. The model text follows in the background.
+  const statement = useApi<Statement>(`/api/rounds/latest/statement/${traderId}?text=plain`);
+  const plain = statement.data;
+  const withModel = !!plain && config?.aiMode === "model";
+  const [ai, setAi] = useState<{ for: Statement; s: Statement | null } | null>(null);
+
+  useEffect(() => {
+    if (!plain || !withModel) return;
+    let live = true;
+    // On an error, keep the plain text.
+    api<Statement>(`/api/rounds/${plain.roundId}/statement/${plain.traderId}`).then(
+      (s) => live && setAi({ for: plain, s }),
+      () => live && setAi({ for: plain, s: null }),
+    );
+    return () => {
+      live = false;
+    };
+  }, [plain, withModel]);
+
+  const answered = !!plain && ai?.for === plain;
+  const s = (answered && ai.s) || plain;
 
   return (
     <div className="mx-auto max-w-4xl space-y-8">
@@ -36,6 +56,11 @@ export default function StatementPage() {
           <Card>
             <p className="text-lg font-semibold text-zinc-900">{netText(s)}</p>
             <p className="mt-2 text-sm leading-6 text-zinc-700">{s.summary}</p>
+            {withModel && !answered && (
+              <p role="status" className="mt-2 text-xs text-zinc-500">
+                Writing the explanation...
+              </p>
+            )}
             <Link href={`/rounds/${s.roundId}`} className="mt-3 inline-block text-sm font-medium text-accent underline">
               View the round
             </Link>

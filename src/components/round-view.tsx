@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
+import { PayPalButtons, PayPalScriptProvider, usePayPalScriptReducer, type PayPalButtonsComponentProps } from "@paypal/react-paypal-js";
 import type { Edge, PaymentStatus, Round, Settlement, TraderId } from "@/lib/types";
 import { api, formatUsd, useApi } from "./api";
 import { useApp } from "./app";
 import { ClearingReplay } from "./clearing-replay";
 import { Badge, btn, Card, Empty, ErrorNote, Loading, PageHeader, Stat } from "./ui";
-import { Workflow } from "./workflow";
 
 const listFormat = new Intl.ListFormat("en", { type: "conjunction" });
 const sum = (edges: Edge[]) => edges.reduce((n, e) => n + e.amountCents, 0);
@@ -23,6 +22,23 @@ const statusBadge: Record<PaymentStatus, { text: string; tone: "neutral" | "ambe
   confirmed: { text: "Paid out", tone: "green" },
   failed: { text: "Failed", tone: "red" },
 };
+
+// The sandbox buttons, with a readable placeholder until PayPal has drawn them.
+function SandboxButtons(props: PayPalButtonsComponentProps) {
+  const [{ isRejected }] = usePayPalScriptReducer();
+  const [ready, setReady] = useState(false);
+  if (isRejected) return <p role="alert" className="text-sm text-red-700">PayPal did not load. Reload the page to try again.</p>;
+  return (
+    <div className="relative min-h-12">
+      <PayPalButtons {...props} onInit={() => setReady(true)} />
+      {!ready && (
+        <p role="status" className="absolute inset-0 grid place-items-center rounded-full border border-blue-200 bg-blue-50 text-sm font-medium text-brand">
+          Loading PayPal
+        </p>
+      )}
+    </div>
+  );
+}
 
 function PayIn({ roundId, s, onPaid }: { roundId: string; s: Settlement; onPaid: () => void }) {
   const { config } = useApp();
@@ -55,7 +71,7 @@ function PayIn({ roundId, s, onPaid }: { roundId: string; s: Settlement; onPaid:
         </button>
       ) : paypalOptions.clientId ? (
         <div className="space-y-2"><p className="text-xs text-zinc-600">Sandbox payments require <Link href="/finance" className="text-accent underline">finance admin sign-in</Link>.</p><PayPalScriptProvider options={paypalOptions}>
-          <PayPalButtons
+          <SandboxButtons
             style={{ layout: "horizontal", height: 48, tagline: false, shape: "pill", color: "blue" }}
             createOrder={createOrder}
             onApprove={(data) => capture(data.orderID).catch((e) => setError(e as Error))}
@@ -122,6 +138,14 @@ export function RoundView({ id }: { id: string }) {
   const owedToMe = sum(r.debtsBefore.filter((e) => e.creditorId === traderId));
   const facts = `You owed ${formatUsd(owed)}. You were owed ${formatUsd(owedToMe)}.`;
   const waiting = payIns.filter((s) => s.status !== "captured").map((s) => s.traderId);
+  const progress =
+    waiting.length > 0
+      ? { text: `Waiting for ${waiting.length} ${waiting.length === 1 ? "payment" : "payments"}`, tone: "amber" as const }
+      : payOuts.every((s) => s.status === "confirmed")
+        ? { text: "Done", tone: "green" as const }
+        : payOuts.some((s) => s.status !== "none")
+          ? { text: "Paying out", tone: "blue" as const }
+          : { text: "All paid in. Payouts can start.", tone: "blue" as const };
 
   async function sendPayouts() {
     setSending(true);
@@ -154,10 +178,10 @@ export function RoundView({ id }: { id: string }) {
 
   return (
     <div className="space-y-8">
-      <PageHeader title={`${formatUsd(stats.grossCents)} of debt settled with ${formatUsd(stats.cashMovedCents)}`}>
-        <span className="inline-flex flex-wrap items-center gap-2">
-          Round {r.id} <Badge>Status: {r.status}</Badge>
-        </span>
+      <PageHeader
+        title={`${formatUsd(stats.grossCents)} of debt ${r.status === "done" ? "settled" : "to settle"} with ${formatUsd(stats.cashMovedCents)}`}
+      >
+        <Badge tone={progress.tone}>{progress.text}</Badge>
       </PageHeader>
 
       <Card>
@@ -263,7 +287,7 @@ export function RoundView({ id }: { id: string }) {
         </div>
       </Card>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 max-sm:[&_.ui-stat]:p-4! max-sm:[&_.ui-stat-value]:text-2xl! max-sm:[&_.ui-stat>div+div]:mt-2!">
         <Stat value={formatUsd(stats.grossCents)} label="of debt" />
         <Stat value={formatUsd(stats.clearedByCirclesCents)} label="cancelled by circles, no money moved" />
         <Stat value={formatUsd(stats.cashMovedCents)} label={r.status === "done" ? "settled through PayPal" : "planned through PayPal"} />
@@ -324,8 +348,6 @@ export function RoundView({ id }: { id: string }) {
           </Card>
         </div>
       </details>
-
-      <Workflow current={3} />
     </div>
   );
 }

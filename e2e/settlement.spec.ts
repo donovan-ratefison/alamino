@@ -11,6 +11,9 @@ test.describe("Settle a round with simulated PayPal", () => {
     test.setTimeout(90_000);
     await page.goto("/rounds/latest");
     const sendPayouts = page.getByRole("button", { name: /payout/i });
+    const main = page.getByRole("main");
+    await expect(main).toContainText(/waiting for 3 payments/i);
+    await expect(main).not.toContainText(/done/i);
 
     for (const [traderId, amount] of [
       ["soa", "\\$170"],
@@ -25,12 +28,14 @@ test.describe("Settle a round with simulated PayPal", () => {
         .toBe("captured");
     }
 
+    await expect(main).toContainText(/all paid in\. payouts can start/i);
     await sendPayouts.click();
 
     await expect.poll(async () => (await latestRound(request)).status, { timeout: 30_000 }).toBe("done");
     const round = await latestRound(request);
     for (const s of round.settlements) expect(["captured", "confirmed"]).toContain(s.status);
-    await expect(page.getByRole("main")).toContainText(/done/i);
+    await expect(main).toContainText(/done/i);
+    await expect(main).not.toContainText(/waiting for \d+ payment/i);
 
     const debts = await listDebts(request);
     const count = (status: string) => debts.filter((d) => d.status === status).length;

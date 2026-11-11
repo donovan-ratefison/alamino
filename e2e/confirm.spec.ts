@@ -21,6 +21,7 @@ test.describe("Confirm a debt", () => {
     await expect(confirmLink).toHaveAccessibleName(/1/);
 
     const waitingForYou = page.locator("section").filter({ has: page.getByRole("heading", { name: /waiting for you/i }) });
+    await expect(waitingForYou.getByText("Rivo approved. Waiting for you.")).toBeVisible();
     await waitingForYou.getByRole("button", { name: /approve/i }).click();
 
     await expect.poll(async () => (await debtById(request, debt.id))?.status).toBe("confirmed");

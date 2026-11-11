@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { askJson, buildRequest, parseCompletion } from "./model.ts";
 import { captureDebts, SCHEMA as CAPTURE_SCHEMA } from "./capture.ts";
 import { SCHEMA as RESOLVE_SCHEMA } from "./resolve.ts";
-import { explainRound, SCHEMA as EXPLAIN_SCHEMA } from "./explain.ts";
+import { buildStatement, explainRound, SCHEMA as EXPLAIN_SCHEMA } from "./explain.ts";
 import type { Round, Trader } from "../types.ts";
 
 // No network: a stub replaces fetch and records each request body.
@@ -106,4 +106,37 @@ test("a statement with model text is cached: no second model call", async () => 
   await explainRound(round, "soa", [], []);
   await explainRound(round, "soa", [], []);
   assert.equal(requests.length, before + 3);
+});
+
+test("the plain statement (?text=plain) makes no model call and has the same numbers as the full one", async () => {
+  const round: Round = {
+    id: "plain-r1",
+    status: "cleared",
+    createdAt: "2026-11-11T00:00:00Z",
+    debtsBefore: [],
+    debtChanges: [{ debtId: "d1", beforeCents: 5000, afterCents: 2000 }],
+    result: {
+      cancellations: [{ path: ["hery", "rivo"], amountCents: 3000 }],
+      remaining: [],
+      positions: [{ traderId: "hery", netCents: -2000 }],
+      payIns: [],
+      payOuts: [],
+      stats: { grossCents: 0, clearedByCirclesCents: 0, remainingCents: 0, cashMovedCents: 0, savedPct: 0 },
+    },
+    settlements: [],
+  };
+  const debts = [
+    { id: "d1", debtorId: "hery", creditorId: "rivo", amountCents: 5000, remainingCents: 2000, note: "", source: "seed" as const, status: "confirmed" as const, debtorOk: true, creditorOk: true, createdAt: "" },
+  ];
+  const before = requests.length;
+  const plain = buildStatement(round, "hery", debts, []);
+  assert.equal(requests.length, before);
+  assert.match(plain.summary, /You pay \$20\.00/);
+
+  reply = { summary: "You pay $20.", reasons: [{ debtId: "d1", reason: "A circle cancelled $30." }] };
+  const full = await explainRound(round, "hery", debts, []);
+  assert.equal(requests.length, before + 1);
+  assert.equal(full.summary, "You pay $20.");
+  const numbers = (s: typeof plain) => [s.roundId, s.netCents, s.action, s.lines.map((l) => [l.debtId, l.direction, l.beforeCents, l.afterCents])];
+  assert.deepEqual(numbers(full), numbers(plain));
 });

@@ -23,6 +23,8 @@ test.describe("Clearing round", () => {
     expect(page.url()).toMatch(new RegExp(`/rounds/${round.id}$`));
 
     const main = page.getByRole("main");
+    // Nobody has paid yet: the title does not say "settled".
+    await expect(main.getByRole("heading", { level: 1 })).toHaveText(/\$990 of debt to settle with \$320/);
     for (const text of ["$990", "$570", "$320", "67.7%"]) await expect(main).toContainText(text);
 
     // The circles and the settlement plan are behind one disclosure.
