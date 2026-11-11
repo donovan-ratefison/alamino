@@ -39,6 +39,14 @@ npm run typecheck
 npm run lint
 ```
 
+## End-to-end tests
+
+```
+npm run e2e
+```
+
+Playwright plays the user journeys in Chrome on a production build: add a debt, confirm, dispute, run clearing, settle, read the statement, phone width. It uses no keys (PayPal simulated, AI fallback) and its own database, so it moves no money and makes no AI call.
+
 ## Docs
 
 - [Architecture](docs/ARCHITECTURE.md)

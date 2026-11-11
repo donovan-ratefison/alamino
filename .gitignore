@@ -43,3 +43,7 @@ next-env.d.ts
 # project
 /data/
 !.env.example
+
+# playwright
+/test-results/
+/playwright-report/
