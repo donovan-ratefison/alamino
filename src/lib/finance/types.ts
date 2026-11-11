@@ -1,4 +1,4 @@
-export type FinanceSource = "demo" | "sandbox";
+export type FinanceSource = "ledger" | "demo" | "sandbox";
 export type TransactionStatus = "completed" | "pending" | "failed" | "reversed" | "unknown";
 export type TransactionKind = "payment" | "payout" | "refund" | "other";
 

@@ -3,6 +3,21 @@
 Open `/finance` from **AI Finance** in the navigation. Existing capture, confirmation,
 clearing and statement screens remain available.
 
+The page shows the four KPI cards first. A line under the title shows the data
+source, the period and the currency. **Settings** (closed by default) holds the data
+source, the admin sign-in, the date range, the currency, **Apply period** and
+**Refresh data**. Data sources:
+
+- **Alamino ledger** (default, public): the settlements of the clearing rounds in
+  this app. Each settlement is one record. A pay-in is money that the clearing
+  account received from a trader; a pay-out is money paid out to a trader. The
+  amount is in USD, the customer is the trader, the date is the round date.
+  Status: `captured` or `confirmed` is completed, `pending` or `sent` is pending,
+  `failed` is failed, `none` is not shown. Without a round in the period, the page
+  shows an empty state with a link to the market page.
+- **Demonstration fixtures** (public): generated `DEMO-*` records.
+- **PayPal Sandbox account** (admin session): see below.
+
 ## Run locally
 
 Requires Node >=22.13. Install using `npm ci`. On Windows, better-sqlite3 13.0.3
@@ -20,7 +35,13 @@ AG Charts Enterprise 14.3.x are aligned. Studio is loaded only on `/finance`.
 The transaction explorer uses Community features, including CSV export.
 
 AG Studio is a separate commercial product. Its evaluation watermark remains when
-`NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY` is absent. Obtain a valid trial, hackathon or
+`NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY` is absent. Without a key, Studio 3.1.0 shows a
+grey AG Studio logo with the text "For Trial Use Only" at the bottom right of the
+dashboard area. It fades after 3 seconds and goes away after 5 seconds, each time
+Studio starts (new data source or currency). It does not show on `localhost` or
+`127.0.0.1`, but it shows on any other host name or IP address. The browser
+console also shows a "License Key Not Found" block. Charts inside Studio show no
+separate AG Charts watermark. The page does not print a licence notice itself. Obtain a valid trial, hackathon or
 commercial Studio licence before deployment. A Studio licence covers its built-in
 widgets, not standalone Enterprise grid/chart use. No standalone Enterprise chart
 or grid feature is required by the transaction explorer.
@@ -49,8 +70,8 @@ Configure these locally or in the hosting service; never commit secrets:
 | `NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY` | Browser licence key for Studio; this is not an API credential. |
 | `DATABASE_PATH` | SQLite database location; use persistent storage for saved reports/history. |
 
-Restart after changing environment variables. Sign in using **Admin sign-in** on
-`/finance`, then select **PayPal Sandbox account**. Enable the reporting scope
+Restart after changing environment variables. Open **Settings** on `/finance`,
+sign in using **Admin sign-in**, then select **PayPal Sandbox account**. Enable the reporting scope
 `https://uri.paypal.com/services/reporting/search/read` on the Sandbox app where
 available, as well as Payouts for the existing settlement flow. Create the five
 personal Sandbox accounts described in the project architecture. Their addresses
@@ -65,7 +86,8 @@ Sandbox-account administrative dashboard, not multi-tenant production access con
 
 ## Data semantics
 
-- The public demo uses explicitly labelled `DEMO-*` fixtures. They never enter the
+- The Alamino ledger reads the local rounds only. It never calls PayPal.
+- The demonstration source uses explicitly labelled `DEMO-*` fixtures. They never enter the
   Sandbox cache. No PayPal failure silently switches to generated transactions.
 - Sandbox uses `/v1/reporting/transactions`, paginated and divided into windows of
   at most 30 days. A reporting result may lag by up to three hours.
@@ -93,14 +115,16 @@ Sandbox-account administrative dashboard, not multi-tenant production access con
 
 ## Studio customisation and assistant
 
-Five preset pages: Financial Overview, Revenue Analytics, Payment Monitoring,
-Debt Tracker, Transaction Analytics. Edit mode supports native Studio widgets,
-charts, layout editing, filters and cross-filtering. Use **Save layout** explicitly.
-Demo layouts are stored in this browser; authenticated Sandbox layouts are stored
+Five preset pages. **Financial Overview** and **Payment Monitoring** are tabs;
+Revenue Analytics, Debt Tracker and Transaction Analytics are in **More views**.
+The **Layout** menu holds **Customise dashboard** (Studio edit mode), **Save layout**
+and **Reset layout**. Edit mode supports native Studio widgets, charts, layout
+editing, filters and cross-filtering. Use **Save layout** explicitly.
+Ledger and demo layouts are stored in this browser; authenticated Sandbox layouts are stored
 in SQLite and scoped to the configured Sandbox client ID. **Reset layout** restores
 the presets and does not reset debts or payments. Unsaved changes are not retained.
 
-Open the native **AI** panel in Studio's edit mode. It uses `AgStudioAiModule`,
+**Finance assistant** opens the native **AI** panel in Studio's edit mode. It uses `AgStudioAiModule`,
 `createAiHarness` and `clientToolRunner`, not a simulated Studio substitute.
 The backend interprets questions using the configured provider's strict structured output when a key and
 admin session are present. It returns a restricted Studio tool request for queries

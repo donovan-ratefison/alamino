@@ -7,11 +7,12 @@ import { currencyDigits, dateRange, parseMoney, totals } from "./metrics.ts";
 import { demoTransactions } from "./demo.ts";
 import { financialAnswer } from "./assistant.ts";
 import { normalizeReporting, reportingTransactions } from "./paypal.ts";
+import type { PaymentStatus, Round } from "../types.ts";
 import { authenticated, configured, readBody, requireAdmin, sameOrigin, sessionCookie } from "./auth.ts";
 
 process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "alamino-finance-")), "test.db");
 const { readDashboard, writeDashboard } = await import("./store.ts");
-const { financeSnapshot } = await import("./service.ts");
+const { financeSnapshot, roundTransactions } = await import("./service.ts");
 const now = new Date("2026-11-11T12:00:00Z");
 
 test("money preserves signed minor units and currency precision", () => {
@@ -104,4 +105,23 @@ test("same-origin check accepts the host the browser used behind a proxy or on a
   assert.throws(() => sameOrigin(viaProxy("not a url", { host: "alamino.example" })));
   assert.throws(() => sameOrigin(new Request(internal, { method: "POST", headers: { host: "alamino.example" } })));
   assert.match(sessionCookie(viaProxy("https://alamino.example", { host: "alamino.example", "x-forwarded-proto": "https" })), /; Secure/);
+});
+
+test("ledger maps each round settlement to one record and the KPIs follow the money rules", () => {
+  const settle = (traderId: string, direction: "pay_in" | "pay_out", amountCents: number, status: PaymentStatus) => ({ traderId, direction, amountCents, status });
+  const round = { id: "round-1", status: "paying", createdAt: now.toISOString(), debtsBefore: [], debtChanges: [], result: {} as Round["result"],
+    settlements: [settle("hery", "pay_in", 12000, "captured"), settle("soa", "pay_in", 8000, "captured"), settle("rivo", "pay_in", 5000, "captured"),
+      settle("lalao", "pay_out", 15000, "sent"), settle("fidy", "pay_out", 10000, "sent"), settle("x", "pay_out", 100, "none")] } as Round;
+  const rows = roundTransactions(round, new Map([["hery", "Hery"], ["lalao", "Lalao"]]));
+  assert.equal(rows.length, 5);
+  const received = rows.filter((r) => r.kind === "payment");
+  assert.ok(received.length === 3 && received.every((r) => r.status === "completed" && r.amountMinor > 0));
+  const paidOut = rows.filter((r) => r.kind === "payout");
+  assert.ok(paidOut.length === 2 && paidOut.every((r) => r.status === "pending" && r.amountMinor < 0));
+  assert.equal(rows[0].customer, "Hery"); assert.equal(rows[0].date, round.createdAt); assert.equal(rows[0].source, "ledger"); assert.equal(rows[0].currency, "USD");
+  assert.deepEqual(totals(rows, "USD"), { received: 25000, paidOut: 0, refunded: 0, net: 25000, pending: 2, failed: 0, count: 5 });
+});
+test("ledger source is empty when no clearing round exists", async () => {
+  const result = await financeSnapshot("ledger", "2026-11-01T00:00:00Z", now.toISOString());
+  assert.equal(result.source, "ledger"); assert.deepEqual(result.transactions, []);
 });

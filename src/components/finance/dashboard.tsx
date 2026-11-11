@@ -1,19 +1,31 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
 import type { FinanceAccess, FinanceSnapshot, FinanceSource } from "@/lib/finance/types";
-import { currencyDigits, money, totals } from "@/lib/finance/metrics";
+import { money, totals } from "@/lib/finance/metrics";
 import { useApi } from "@/components/api";
-import { btn, Card, ErrorNote, field, Loading, Stat } from "@/components/ui";
+import { btn, Empty, ErrorNote, field, Loading, PageHeader } from "@/components/ui";
 
 const Studio = dynamic(() => import("@/components/finance/studio"), { ssr: false, loading: () => <Loading text="Loading AG Studio…" /> });
 const Transactions = dynamic(() => import("@/components/finance/transactions"), { ssr: false, loading: () => <Loading text="Loading transaction explorer…" /> });
 const day = (date: Date) => date.toISOString().slice(0, 10);
+const SOURCES: Record<FinanceSource, string> = { ledger: "Alamino ledger", demo: "Demonstration fixtures", sandbox: "PayPal Sandbox account" };
+const fieldLabel = "min-w-0 flex-1 basis-36 text-xs font-medium text-slate-600";
+
+// Own tile instead of ui Stat: Stat is too large for a 2 x 2 grid on a phone.
+function Kpi({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return <div className="min-w-0 rounded-[20px] border border-[#dce5f2] bg-white p-4 sm:p-6">
+    <p className="text-2xl font-medium tracking-tight text-[#003087] tabular-nums [overflow-wrap:anywhere] sm:text-4xl">{value}</p>
+    <p className="mt-2 text-sm font-medium text-zinc-800">{label}</p>
+    <p className="mt-1 text-xs leading-5 text-zinc-500">{hint}</p>
+  </div>;
+}
 
 export default function FinancePage() {
   const access = useApi<FinanceAccess>("/api/finance/session");
-  const [source, setSource] = useState<FinanceSource>("demo");
+  const [source, setSource] = useState<FinanceSource>("ledger");
   const [currency, setCurrency] = useState("USD");
   const [period, setPeriod] = useState(() => ({ start: day(new Date(Date.now() - 30 * 86400000)), end: day(new Date()) }));
   const [applied, setApplied] = useState(period);
@@ -23,6 +35,7 @@ export default function FinancePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [showLogin, setShowLogin] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const range = useMemo(() => {
     const now = new Date(clock);
     const endOfDay = new Date(`${applied.end}T23:59:59.999Z`);
@@ -36,6 +49,10 @@ export default function FinancePage() {
   const rows = snapshot.data?.transactions.filter((t) => t.currency === activeCurrency) ?? [];
   const summary = totals(rows, activeCurrency);
   const format = (n: number) => money(n, activeCurrency);
+  const days = Math.round((Date.parse(applied.end) - Date.parse(applied.start)) / 86400000);
+  const periodText = applied.end === day(new Date(clock)) && days === 30 ? "last 30 days" : `${applied.start} to ${applied.end}`;
+  const synced = snapshot.data?.syncedAt ? ` · retrieved ${new Date(snapshot.data.syncedAt).toISOString().slice(11, 16)} UTC` : "";
+  const sandboxReady = !!access.data?.authenticated && !!access.data?.paypalConfigured;
 
   async function login(e: FormEvent) {
     e.preventDefault(); setBusy(true); setError(null);
@@ -51,7 +68,8 @@ export default function FinancePage() {
     try {
       const result = await fetch("/api/finance/session", { method: "DELETE" });
       if (!result.ok) throw new Error((await result.json()).error);
-      setSource("demo"); access.reload();
+      if (source === "sandbox") setSource("ledger");
+      access.reload();
     } catch (e) { setError(e as Error); }
     finally { setBusy(false); }
   }
@@ -64,37 +82,62 @@ export default function FinancePage() {
     setApplied({ ...period }); setClock(Date.now()); setRefresh(0);
   }
 
-  return <div className="finance-page space-y-7">
-    <section className="finance-hero bleed brand-band">
-      <div className="band-content">
-        <div className="flex flex-wrap items-start justify-between gap-5"><p className="eyebrow text-blue-100">Alamino / AI Finance Dashboard</p><span className="rounded-full border border-white/40 px-3 py-1.5 text-[10px] font-semibold tracking-wide">{source === "demo" ? "DEMO DATA · NOT REAL PAYMENTS" : "PAYPAL SANDBOX · TEST MONEY"}</span></div>
-        <h1 className="display-title mt-6">Your money.<br />A clearer picture.</h1>
-        <p className="mt-6 max-w-xl text-base leading-7 text-blue-50">Understand what comes in, what goes out, and what&apos;s still to settle. Your financial workspace, shaped around your market.</p>
-        <div className="mt-8 flex flex-wrap gap-3"><a href="#financial-workspace" className={btn.inverse}>Explore your dashboard <span aria-hidden="true">↗</span></a><a href="#transaction-explorer" className={btn.outlineOnBlue}>View transactions</a></div>
-        <div className="mt-7 flex flex-wrap items-center gap-4 text-xs text-blue-100"><span>AG Studio dashboards</span><span aria-hidden="true">·</span><span>AG Grid explorer</span><span aria-hidden="true">·</span><span>{access.data?.authenticated && access.data.aiConfigured ? "AI model configured · verified on request" : "Financial assistant · fallback mode"}</span></div>
+  return <div className="space-y-6">
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0 flex-1">
+        <PageHeader title="AI Finance">
+          <p>Money in and out of the Alamino clearing account.</p>
+          <p className="mt-1 text-xs font-medium text-[#003087]">{SOURCES[source]} · {periodText} · {activeCurrency}{synced}</p>
+        </PageHeader>
       </div>
-    </section>
+      <button type="button" className={`${btn.secondary} shrink-0`} aria-expanded={settingsOpen} aria-controls="finance-settings" onClick={() => setSettingsOpen(!settingsOpen)}>Settings</button>
+    </div>
 
-    <Card title="Data connection" actions={access.data?.authenticated ? <button className={btn.small} onClick={logout} disabled={busy}>Sign out</button> : <button className={btn.small} onClick={() => setShowLogin(!showLogin)}>{showLogin ? "Close sign-in" : "Admin sign-in"}</button>}>
-      <div className="flex flex-wrap items-center gap-3"><label htmlFor="finance-source" className="text-sm font-medium">Data source</label><select id="finance-source" value={source} onChange={(e) => { setSource(e.target.value as FinanceSource); setRefresh(0); }} className={`${field} max-w-xs`}><option value="demo">Demonstration fixtures</option><option value="sandbox" disabled={!access.data?.authenticated || !access.data?.paypalConfigured}>PayPal Sandbox account</option></select>
-        <p className="text-xs text-slate-500">{access.data?.authenticated ? access.data.paypalConfigured ? "Admin session active. Sandbox credentials are configured." : "Admin session active. Add PayPal Sandbox credentials to connect." : "Demo is public. Sign in to access the Sandbox account and live AI."}</p></div>
-      {access.error && <div className="mt-3"><ErrorNote error={access.error} onRetry={access.reload} /></div>}
-      {showLogin && <form onSubmit={login} className="mt-4 flex flex-wrap items-end gap-3 border-t border-slate-100 pt-4"><label className="text-xs text-slate-500">Finance admin password<input type="password" autoComplete="current-password" className={`${field} mt-1`} value={password} onChange={(e) => setPassword(e.target.value)} required maxLength={256} /></label><button className={btn.primary} disabled={busy || !password}>{busy ? "Signing in…" : "Sign in"}</button>{access.data && !access.data.passwordConfigured && <p className="max-w-md text-xs text-amber-800">Set FINANCE_ADMIN_PASSWORD (at least 16 characters) on the server. Never use PayPal credentials as this password.</p>}</form>}
-    </Card>
+    {settingsOpen && <section id="finance-settings" aria-label="Finance settings" className="space-y-4 rounded-[20px] border border-[#dce5f2] bg-[#f6f9fe] p-4 sm:p-6">
+      <div className="flex flex-wrap items-end gap-3">
+        <label className={fieldLabel}>Data source<select value={source} onChange={(e) => { setSource(e.target.value as FinanceSource); setRefresh(0); }} className={`${field} mt-1`}>
+          <option value="ledger">{SOURCES.ledger}</option>
+          <option value="demo">{SOURCES.demo}</option>
+          <option value="sandbox" disabled={!sandboxReady}>{SOURCES.sandbox}{sandboxReady ? "" : access.data?.authenticated ? " (credentials not configured)" : " (admin sign-in required)"}</option>
+        </select></label>
+        {access.data?.authenticated
+          ? <button type="button" className={btn.small} onClick={logout} disabled={busy}>Sign out</button>
+          : <button type="button" className={btn.small} aria-expanded={showLogin} aria-controls="finance-login" onClick={() => setShowLogin(!showLogin)}>Admin sign-in</button>}
+      </div>
+      {showLogin && !access.data?.authenticated && <form id="finance-login" onSubmit={login} className="flex flex-wrap items-end gap-3">
+        <label className={fieldLabel}>Finance admin password<input type="password" autoComplete="current-password" className={`${field} mt-1`} value={password} onChange={(e) => setPassword(e.target.value)} required maxLength={256} /></label>
+        <button className={btn.primary} disabled={busy || !password}>{busy ? "Signing in…" : "Sign in"}</button>
+        {access.data && !access.data.passwordConfigured && <p className="w-full text-xs text-amber-800">Set FINANCE_ADMIN_PASSWORD (at least 16 characters) on the server. Do not use PayPal credentials as this password.</p>}
+      </form>}
+      <form onSubmit={apply} className="flex flex-wrap items-end gap-3">
+        <label className={fieldLabel}>From (UTC)<input type="date" className={`${field} mt-1`} value={period.start} max={period.end} onChange={(e) => setPeriod({ ...period, start: e.target.value })} required /></label>
+        <label className={fieldLabel}>To (UTC)<input type="date" className={`${field} mt-1`} value={period.end} max={day(new Date(clock))} min={period.start} onChange={(e) => setPeriod({ ...period, end: e.target.value })} required /></label>
+        <label className={fieldLabel}>Currency<select className={`${field} mt-1`} value={activeCurrency} onChange={(e) => setCurrency(e.target.value)}>{(currencies.length ? currencies : ["USD"]).map((c) => <option key={c}>{c}</option>)}</select></label>
+        <button className={btn.primary}>Apply period</button>
+        <button type="button" className={btn.secondary} onClick={() => { setClock(Date.now()); setRefresh(1); }} disabled={snapshot.loading}>{snapshot.loading ? "Loading…" : "Refresh data"}</button>
+      </form>
+      {snapshot.data && <p className="text-xs leading-5 text-slate-500">{snapshot.data.warnings[0]} Amounts in different currencies are never added together.</p>}
+      {access.error && <ErrorNote error={access.error} onRetry={access.reload} />}
+    </section>}
 
-    <form onSubmit={apply} className="finance-filter">
-      <label className="text-xs font-medium text-slate-600">From (UTC)<input type="date" className={`${field} mt-1`} value={period.start} max={period.end} onChange={(e) => setPeriod({ ...period, start: e.target.value })} required /></label>
-      <label className="text-xs font-medium text-slate-600">To (UTC)<input type="date" className={`${field} mt-1`} value={period.end} max={day(new Date(clock))} min={period.start} onChange={(e) => setPeriod({ ...period, end: e.target.value })} required /></label>
-      <label className="text-xs font-medium text-slate-600">Currency<select className={`${field} mt-1`} value={activeCurrency} onChange={(e) => setCurrency(e.target.value)}>{(currencies.length ? currencies : ["USD"]).map((c) => <option key={c}>{c}</option>)}</select></label>
-      <button className={btn.primary}>Apply period</button><button type="button" className={btn.secondary} onClick={() => { setClock(Date.now()); setRefresh(1); }} disabled={snapshot.loading}>{snapshot.loading ? "Loading…" : "Refresh data"}</button>
-    </form>
     {error && <ErrorNote error={error} />}
-    {snapshot.error ? <ErrorNote error={snapshot.error} onRetry={snapshot.reload} /> : !snapshot.data ? <Loading text="Loading financial data…" /> : <>
-      <div className="rounded-xl border border-blue-100 bg-blue-50 px-5 py-4 text-xs leading-6 text-brand" role="status"><ul className="list-inside list-disc">{snapshot.data.warnings.map((w) => <li key={w}>{w}</li>)}</ul>{snapshot.data.syncedAt && <p className="mt-2 font-medium">Last retrieval: {new Date(snapshot.data.syncedAt).toISOString().replace("T", " ").slice(0, 19)} UTC</p>}</div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Stat label="Completed receipts" value={format(summary.received)} hint="Clearing funds · not Alamino revenue" /><Stat label="Completed outgoing payments" value={format(summary.paidOut)} hint="Outgoing payments, excluding refunds" /><Stat label="Completed outgoing refunds" value={format(summary.refunded)} hint="Provider refund records only" /><Stat label="Pending / failed records" value={`${summary.pending} / ${summary.failed}`} hint={`${summary.count} records · ${activeCurrency}`} /></div>
-      <p className="text-xs leading-5 text-slate-500">Amounts are never added across currencies. Revenue Analytics measures clearing receipts; no Alamino commission income is recorded. Charts use major currency units ({currencyDigits(activeCurrency)} decimal places). Debt Tracker shows the local USD demo ledger independently of the transaction date filter. Studio and table filters apply within their own workspace.</p>
-      <Studio key={`${source}:${activeCurrency}`} snapshot={snapshot.data} currency={activeCurrency} authenticated={!!access.data?.authenticated} />
-      <Transactions rows={rows} />
-    </>}
+    {snapshot.error ? <ErrorNote error={snapshot.error} onRetry={snapshot.reload} />
+      : source === "sandbox" && !access.data?.authenticated ? <Empty title="Sign in to see the PayPal Sandbox account.">Open Settings and use Admin sign-in.</Empty>
+      : !snapshot.data ? <Loading text="Loading financial data…" />
+      : source === "ledger" && !snapshot.data.transactions.length ? <Empty title="No payment yet.">
+        <p>Payments show here when traders pay in a clearing round. Run clearing on the market page, then pay in.</p>
+        <Link href="/" className={`${btn.primary} mt-5`}>Go to the market page</Link>
+      </Empty>
+      : <>
+        {snapshot.data.warnings.length > 1 && <ul role="status" className="space-y-1 text-xs leading-5 text-amber-800">{snapshot.data.warnings.slice(1).map((w) => <li key={w}>{w}</li>)}</ul>}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Kpi label="Received" value={format(summary.received)} hint="Completed pay-ins. Not Alamino revenue." />
+          <Kpi label="Paid out" value={format(summary.paidOut)} hint="Completed payments out, no refunds." />
+          <Kpi label="Refunded" value={format(summary.refunded)} hint="Completed provider refunds." />
+          <Kpi label="Pending / failed" value={`${summary.pending} / ${summary.failed}`} hint={`${summary.count} records in ${activeCurrency}`} />
+        </div>
+        <Studio key={`${source}:${activeCurrency}`} snapshot={snapshot.data} currency={activeCurrency} authenticated={!!access.data?.authenticated} />
+        <Transactions rows={rows} />
+      </>}
   </div>;
 }
