@@ -23,43 +23,55 @@ const traders = [
 ];
 const input = (text: string, speakerId = "rivo") => ({ text, traders, speakerId });
 
-test("fallback capture reads a third-party sentence", () => {
-  const [d] = fallbackCapture(input("Soa owes Hery 300 for rice"));
-  assert.equal(d.debtorId, "soa");
-  assert.equal(d.creditorId, "hery");
-  assert.equal(d.amountCents, 30000);
-  assert.equal(d.note, "rice");
-  assert.equal(d.question, undefined);
-});
+const sides = (d: { counterpartyId: unknown; direction: unknown; debtorId: unknown; creditorId: unknown; amountCents: unknown }) => [
+  d.counterpartyId,
+  d.direction,
+  d.debtorId,
+  d.creditorId,
+  d.amountCents,
+];
 
-test("fallback capture maps I and me to the speaker", () => {
+test("fallback capture: I owe and owes me", () => {
   const [a] = fallbackCapture(input("I owe Hery 50 for rice"));
-  assert.deepEqual([a.debtorId, a.creditorId, a.amountCents], ["rivo", "hery", 5000]);
+  assert.deepEqual(sides(a), ["hery", "you_owe", "rivo", "hery", 5000]);
+  assert.deepEqual([a.debtorText, a.creditorText, a.note, a.question], ["Rivo", "Hery", "rice", undefined]);
   const [b] = fallbackCapture(input("Hery owes me 120", "soa"));
-  assert.deepEqual([b.debtorId, b.creditorId, b.amountCents, b.note], ["hery", "soa", 12000, ""]);
+  assert.deepEqual(sides(b), ["hery", "owed_to_you", "hery", "soa", 12000]);
+  assert.deepEqual([b.debtorText, b.creditorText, b.question], ["Hery", "Soa", undefined]);
 });
 
-test("fallback capture matches aliases, cents and several sentences", () => {
-  const drafts = fallbackCapture(input("the restaurant owes rakoto $12.50 for oil. Lalao owes Fidy 1,200"));
-  assert.deepEqual(
-    drafts.map((d) => [d.debtorId, d.creditorId, d.amountCents]),
-    [
-      ["soa", "hery", 1250],
-      ["lalao", "fidy", 120000],
-    ],
-  );
+test("fallback capture refuses a debt between two other traders", () => {
+  const [d] = fallbackCapture(input("Soa owes Hery 300"));
+  assert.deepEqual(sides(d), [null, null, null, null, 30000]);
+  assert.equal(d.question, "This debt is between Soa and Hery. Add only your own debts.");
+  assert.equal(d.confidence, "low");
+});
+
+test("fallback capture reads the speaker's own name as I", () => {
+  const [d] = fallbackCapture(input("Rivo owes Hery 50"));
+  assert.deepEqual(sides(d), ["hery", "you_owe", "rivo", "hery", 5000]);
 });
 
 test("fallback capture asks about an unknown trader", () => {
-  const [d] = fallbackCapture(input("Bema owes Hery 40"));
-  assert.equal(d.debtorId, null);
+  const [d] = fallbackCapture(input("I owe Zaza 50"));
+  assert.deepEqual(sides(d), [null, "you_owe", null, null, 5000]);
+  assert.equal(d.counterpartyText, "Zaza");
   assert.equal(d.confidence, "low");
-  assert.match(d.question ?? "", /Bema/);
+  assert.match(d.question ?? "", /who is "zaza"/i);
+});
+
+test("fallback capture matches aliases, cents and several sentences", () => {
+  const drafts = fallbackCapture(input("the restaurant owes rakoto $12.50 for oil. Fidy owes me 1,200", "soa"));
+  assert.deepEqual(drafts.map(sides), [
+    ["hery", "you_owe", "soa", "hery", 1250],
+    ["fidy", "owed_to_you", "fidy", "soa", 120000],
+  ]);
 });
 
 test("captureDebts without a key uses the fallback and labels it", async () => {
   const photo = await captureDebts({ imageBase64: "AAAA", traders, speakerId: "rivo" });
   assert.equal(photo.engine, "fallback");
+  assert.deepEqual(sides(photo.drafts[0]), [null, null, null, null, null]);
   assert.match(photo.drafts[0].question ?? "", /AI key/);
   const none = await captureDebts(input("hello"));
   assert.equal(none.drafts.length, 1);
@@ -67,35 +79,84 @@ test("captureDebts without a key uses the fallback and labels it", async () => {
 });
 
 const modelDraft = (patch: Record<string, unknown> = {}) => ({
-  drafts: [
+  counterpartyId: "hery",
+  counterpartyText: "Hery",
+  direction: "you_owe",
+  amountCents: 30000,
+  note: "rice",
+  confidence: "high",
+  question: null,
+  ...patch,
+});
+const validate = (patch: Record<string, unknown> = {}, speakerId = "soa") =>
+  validateDrafts({ drafts: [modelDraft(patch)] }, traders, speakerId)[0];
+
+test("validation derives debtor and creditor from the direction", () => {
+  const owe = validate();
+  assert.deepEqual(sides(owe), ["hery", "you_owe", "soa", "hery", 30000]);
+  assert.deepEqual([owe.debtorText, owe.creditorText, owe.confidence], ["Soa", "Hery", "high"]);
+  assert.equal("question" in owe, false);
+  const owed = validate({ direction: "owed_to_you" });
+  assert.deepEqual(sides(owed), ["hery", "owed_to_you", "hery", "soa", 30000]);
+  assert.deepEqual([owed.debtorText, owed.creditorText], ["Hery", "Soa"]);
+});
+
+test("validation never keeps the speaker or an unknown id as the counterparty", () => {
+  const self = validate({ counterpartyId: "soa", counterpartyText: "Soa" });
+  assert.deepEqual(sides(self), [null, "you_owe", null, null, 30000]);
+  assert.equal(self.question, "Who is the other trader?");
+  const unknown = validate({ counterpartyId: "bema", counterpartyText: "Bema" });
+  assert.deepEqual(sides(unknown), [null, "you_owe", null, null, 30000]);
+  assert.match(unknown.question ?? "", /Bema/);
+});
+
+test("validation asks when the direction or the amount is missing", () => {
+  const way = validate({ direction: "sideways" });
+  assert.deepEqual(sides(way), ["hery", null, null, null, 30000]);
+  assert.deepEqual([way.debtorText, way.creditorText], ["", "Hery"]);
+  assert.match(way.question ?? "", /owe/);
+  assert.equal(way.confidence, "low");
+  for (const amountCents of [null, 300.5, -100, "300"]) {
+    const d = validate({ amountCents });
+    assert.equal(d.amountCents, null);
+    assert.ok(d.question);
+  }
+});
+
+test("validation keeps the model question, drops an empty one, and rejects a bad structure", () => {
+  assert.equal(validate({ question: "Which week?" }).question, "Which week?");
+  assert.equal(validate({ question: " " }).question, undefined);
+  assert.equal(validate({ confidence: "sure" }).confidence, "low");
+  assert.throws(() => validateDrafts({ drafts: "x" }, traders, "soa"), /no drafts/);
+  assert.throws(() => validateDrafts({ drafts: [modelDraft({ note: 1 })] }, traders, "soa"), /not text/);
+});
+
+test("Soa's notebook page: every draft has Soa on one side", () => {
+  // Ananan'i Hery vary za - 300 / Soa - 50 / Fidy moto - 18
+  const [hery, self, fidy] = validateDrafts(
     {
-      debtorId: "soa",
-      creditorId: "hery",
-      debtorText: "Soa",
-      creditorText: "Hery",
-      amountCents: 30000,
-      note: "rice",
-      confidence: "high",
-      question: null,
-      ...patch,
+      drafts: [
+        modelDraft({ counterpartyText: "Hery vary" }),
+        modelDraft({
+          counterpartyId: null,
+          counterpartyText: "Soa",
+          amountCents: 5000,
+          note: "",
+          confidence: "low",
+          question: "Who is the other trader for the 50 line?",
+        }),
+        modelDraft({ counterpartyId: "fidy", counterpartyText: "Fidy moto", amountCents: 1800, note: "motorbike", confidence: "medium" }),
+      ],
     },
-  ],
-});
-
-test("validation accepts good model output", () => {
-  const [d] = validateDrafts(modelDraft(), traders);
-  assert.deepEqual([d.debtorId, d.creditorId, d.amountCents, d.question], ["soa", "hery", 30000, undefined]);
-  const [n] = validateDrafts(modelDraft({ amountCents: null }), traders);
-  assert.ok(n.question);
-});
-
-test("validation rejects an unknown trader id, a bad amount and a bad confidence", () => {
-  assert.throws(() => validateDrafts(modelDraft({ debtorId: "bema" }), traders), /unknown trader/);
-  assert.throws(() => validateDrafts(modelDraft({ amountCents: 300.5 }), traders), /positive integer/);
-  assert.throws(() => validateDrafts(modelDraft({ amountCents: -100 }), traders), /positive integer/);
-  assert.throws(() => validateDrafts(modelDraft({ amountCents: "300" }), traders), /positive integer/);
-  assert.throws(() => validateDrafts(modelDraft({ confidence: "sure" }), traders), /confidence/);
-  assert.throws(() => validateDrafts({ drafts: "x" }, traders), /no drafts/);
+    traders,
+    "soa",
+  );
+  assert.deepEqual(sides(hery), ["hery", "you_owe", "soa", "hery", 30000]);
+  assert.equal(hery.question, undefined);
+  assert.deepEqual(sides(self), [null, "you_owe", null, null, 5000]);
+  assert.equal(self.question, "Who is the other trader for the 50 line?");
+  assert.deepEqual(sides(fidy), ["fidy", "you_owe", "soa", "fidy", 1800]);
+  assert.deepEqual([fidy.confidence, fidy.question], ["medium", undefined]);
 });
 
 const debt = (id: string, debtorId: string, creditorId: string, amountCents: number): Debt => ({

@@ -173,7 +173,7 @@ Three functions in `src/lib/ai/`, each returning JSON that is validated before u
 
 | Function | Input | Output | Guard |
 |---|---|---|---|
-| `captureDebts` | text or image, trader list with aliases, who is speaking | `DebtDraft[]` | Unknown trader or amount returns `null` plus a `question`. Nothing is saved without a user click. |
+| `captureDebts` | text or image, trader list with aliases, who is speaking | `DebtDraft[]` | The person who captures is always one side of each draft: the model returns only the other trader and the direction, and plain code builds debtor and creditor. Unknown trader, direction or amount returns `null` plus a `question`. Nothing is saved without a user click. `POST /api/debts` refuses a debt whose creator is not one of its two sides. |
 | `resolveMismatch` | the debt, both claimed amounts, both notes | a suggestion and a proposed amount | The proposal is only a suggestion. Both sides must still approve. |
 | `explainRound` | one trader's debts before and after, cancellations, net position | `Statement` | Amounts come from the engine. The AI writes only `summary` and `reason`. |
 

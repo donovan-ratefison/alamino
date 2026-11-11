@@ -44,6 +44,12 @@ export interface DebtDraft {
   creditorId: TraderId | null;
   debtorText: string; // the name as written or spoken
   creditorText: string;
+  // The person who captures is always one side of the debt. These two fields say
+  // who the other side is and which way the debt goes. debtorId and creditorId are
+  // derived from them (both null while one of the two is unknown).
+  counterpartyId: TraderId | null; // never the person who captures
+  counterpartyText: string; // the other side's name as written or spoken
+  direction: "you_owe" | "owed_to_you" | null; // from the side of the person who captures
   amountCents: number | null;
   note: string;
   confidence: "high" | "medium" | "low";
