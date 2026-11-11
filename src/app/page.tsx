@@ -9,7 +9,9 @@ import type { Debt, Round } from "@/lib/types";
 import { api, formatUsd, useApi } from "@/components/api";
 import { useApp } from "@/components/app";
 import { Network } from "@/components/network";
-import { Badge, btn, Card, Empty, ErrorNote, Loading, Stat } from "@/components/ui";
+import { Badge, btn, Card, Empty, ErrorNote, Loading } from "@/components/ui";
+import { Workflow } from "@/components/workflow";
+import { financeGridTheme } from "@/components/finance/theme";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -64,21 +66,35 @@ export default function MarketPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <section className="space-y-4">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-900">Market debts</h1>
-          <p className="mt-1 max-w-3xl text-sm text-zinc-600">
-            Malagasy banks net their debts through BFM. Market traders can&apos;t. Alamino brings clearing to the market: debts that form
-            circles cancel with no money, and only the small remainder moves through PayPal.
-          </p>
+    <div>
+      <section className="bleed brand-band market-hero">
+        <div className="band-content">
+          <div>
+            <p className="eyebrow text-blue-100">Your market. More connected.</p>
+            <h1 className="display-title mt-6">Less to pay.<br />More to grow.</h1>
+            <p className="mt-6 max-w-md text-base leading-7 text-blue-50 sm:text-lg">Turn everyday debts into a simpler settlement. Capture with AI, clear the circles, and pay the rest with PayPal.</p>
+            <div className="mt-8 flex flex-wrap gap-3"><Link href="/add" className={btn.inverse}>Add a debt <span aria-hidden="true">↗</span></Link><Link href="/finance" className={btn.outlineOnBlue}>Explore AI Finance</Link></div>
+            <p className="mt-6 text-xs leading-6 text-blue-100">Both sides confirm. The engine calculates. You stay in control.</p>
+          </div>
+          <div className="hero-snapshot">
+            <div className="hero-snapshot-title"><p className="text-sm font-medium">Your market, at a glance</p><span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-soft text-brand" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 10a8 8 0 0 1 14-5l2 2M20 3v4h-4M20 14A8 8 0 0 1 6 19l-2-2M4 21v-4h4" /></svg></span></div>
+            <p className="snapshot-value">{debts.loading || debts.error ? "—" : formatUsd(total)}</p>
+            <p className="mt-3 text-xs text-zinc-500">Total confirmed debts · USD</p>
+            <div className="snapshot-grid"><div><p className="text-3xl font-medium tracking-tight">{debts.loading || debts.error ? "—" : confirmed.length}</p><p className="mt-2 text-xs text-zinc-500">Confirmed debts</p></div><div><p className="text-3xl font-medium tracking-tight">{traders.length || "—"}</p><p className="mt-2 text-xs text-zinc-500">Connected traders</p></div></div>
+            <div className="mt-7 flex items-center gap-3"><div className="flex -space-x-2">{traders.slice(0, 5).map((t, i) => <span key={t.id} title={t.name} className={`flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-xs font-semibold ${i % 2 === 0 ? "bg-brand text-white" : "bg-blue-100 text-brand"}`}>{t.name[0]}</span>)}</div><span className="text-xs leading-5 text-zinc-500">One market.<br />A shared way forward.</span></div>
+          </div>
         </div>
-        <ol className="grid gap-2 text-sm text-zinc-700 sm:grid-cols-3">
-          <li className="rounded-md border border-zinc-200 bg-white px-3 py-2">1. Traders record what they owe each other.</li>
-          <li className="rounded-md border border-zinc-200 bg-white px-3 py-2">2. Debts that form a circle cancel. No money moves.</li>
-          <li className="rounded-md border border-zinc-200 bg-white px-3 py-2">3. Only the remainder is paid through PayPal.</li>
-        </ol>
-        <div className="flex flex-wrap items-center gap-2">
+      </section>
+
+      <section className="market-section">
+        <div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><p className="eyebrow text-accent">Simple by design</p><h2 className="section-title mt-3">A clearer way to settle.</h2></div><p className="max-w-xs text-sm leading-6 text-zinc-500">From a notebook entry to a payment.<br />Four steps, with everyone in the loop.</p></div>
+        <Workflow />
+      </section>
+
+      <section className="market-section space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-5">
+          <div><p className="eyebrow text-accent">The market ledger</p><h2 className="section-title mt-3">See the bigger picture.</h2></div>
+          <div className="flex flex-wrap items-center gap-3">
           {latest.loading ? null : openRound ? (
             <Link href={`/rounds/${openRound.id}`} className={btn.primary}>
               Continue round
@@ -88,12 +104,12 @@ export default function MarketPage() {
               {busy === "run" ? "Running clearing..." : "Run clearing"}
             </button>
           )}
-          <button type="button" className={btn.secondary} onClick={reset} disabled={busy !== null}>
+          <button type="button" className={btn.small} onClick={reset} disabled={busy !== null}>
             {busy === "reset" ? "Resetting..." : "Reset demo"}
           </button>
+          </div>
         </div>
         {actionError && <ErrorNote error={actionError} />}
-      </section>
 
       {debts.error ? (
         <ErrorNote error={debts.error} onRetry={debts.reload} />
@@ -101,13 +117,8 @@ export default function MarketPage() {
         <Loading />
       ) : (
         <>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Stat label="Total confirmed debt" value={formatUsd(total)} />
-            <Stat label="Confirmed debts" value={confirmed.length} hint={`${debts.data!.length} debts in the ledger`} />
-            <Stat label="Traders" value={traders.length} />
-          </div>
-
-          <Card title="Debt network" actions={<span className="text-xs text-zinc-500">Arrow: from debtor to creditor. Confirmed debts only.</span>}>
+          <Card title="Every connection counts." actions={<Badge tone="blue">{confirmed.length} confirmed debts</Badge>}>
+            <p className="mb-5 text-sm leading-6 text-zinc-500">Follow the arrows from the person who owes to the person owed. Debts that form a circle can cancel without money moving.</p>
             {traders.length === 0 ? (
               <Loading />
             ) : (
@@ -125,12 +136,13 @@ export default function MarketPage() {
               </Empty>
             ) : (
               <div className="w-full">
-                <AgGridReact<Debt> rowData={debts.data} columnDefs={columns} domLayout="autoHeight" getRowId={(p) => p.data.id} />
+                <AgGridReact<Debt> theme={financeGridTheme} rowData={debts.data} columnDefs={columns} domLayout="autoHeight" getRowId={(p) => p.data.id} />
               </div>
             )}
           </Card>
         </>
       )}
+      </section>
     </div>
   );
 }

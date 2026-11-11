@@ -8,6 +8,7 @@ import { api, formatUsd, useApi } from "./api";
 import { useApp } from "./app";
 import { Network } from "./network";
 import { Badge, btn, Card, Empty, ErrorNote, Loading, PageHeader, Stat } from "./ui";
+import { Workflow } from "./workflow";
 
 const paypalOptions = { clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "", currency: "USD" };
 
@@ -50,14 +51,14 @@ function PayIn({ roundId, s, onPaid }: { roundId: string; s: Settlement; onPaid:
           {busy ? "Paying..." : `Pay ${formatUsd(s.amountCents)} (simulated)`}
         </button>
       ) : paypalOptions.clientId ? (
-        <PayPalScriptProvider options={paypalOptions}>
+        <div className="space-y-2"><p className="text-xs text-zinc-600">Sandbox payments require <Link href="/finance" className="text-accent underline">finance admin sign-in</Link>.</p><PayPalScriptProvider options={paypalOptions}>
           <PayPalButtons
-            style={{ layout: "horizontal", height: 36, tagline: false }}
+            style={{ layout: "horizontal", height: 48, tagline: false, shape: "pill", color: "blue" }}
             createOrder={createOrder}
             onApprove={(data) => capture(data.orderID).catch((e) => setError(e as Error))}
             onError={(e) => setError(new Error(String(e?.message ?? "PayPal error")))}
           />
-        </PayPalScriptProvider>
+        </PayPalScriptProvider></div>
       ) : (
         <p className="text-sm text-red-700">The PayPal button needs NEXT_PUBLIC_PAYPAL_CLIENT_ID.</p>
       )}
@@ -143,17 +144,18 @@ export function RoundView({ id }: { id: string }) {
   };
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="Clearing round">
+    <div className="space-y-8">
+      <PageHeader title={r.status === "done" ? "All settled. A clearer day." : "Your debts, simplified."}>
         <span className="inline-flex flex-wrap items-center gap-2">
           Round {r.id} <Badge>Status: {r.status}</Badge>
         </span>
       </PageHeader>
+      <Workflow current={3} />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat value={formatUsd(stats.grossCents)} label="of debt" />
         <Stat value={formatUsd(stats.clearedByCirclesCents)} label="cancelled by circles, no money moved" />
-        <Stat value={formatUsd(stats.cashMovedCents)} label="paid through PayPal" />
+        <Stat value={formatUsd(stats.cashMovedCents)} label={r.status === "done" ? "settled through PayPal" : "planned through PayPal"} />
         <Stat value={`${stats.savedPct.toFixed(1)}%`} label="cash saved" />
       </div>
 

@@ -6,6 +6,7 @@ import type { Debt, DebtDraft, DebtSource } from "@/lib/types";
 import { api, formatUsd, toCents } from "@/components/api";
 import { useApp } from "@/components/app";
 import { Badge, btn, Card, ErrorNote, field, label, PageHeader } from "@/components/ui";
+import { Workflow } from "@/components/workflow";
 
 interface Draft {
   debtorId: string;
@@ -94,13 +95,14 @@ export default function AddPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-8">
       <PageHeader title="Add a debt">
         Type a sentence or take a photo of a notebook page. The AI makes a draft. Nothing is saved until you click Save. You add debts as{" "}
         <span className="font-medium text-zinc-900">{name(traderId)}</span>.
       </PageHeader>
+      <Workflow current={0} />
 
-      <Card>
+      <Card title="Your debt, in your words.">
         <form onSubmit={read} className="space-y-4">
           <div className="space-y-1.5">
             <label htmlFor="capture-text" className={label}>
@@ -125,7 +127,7 @@ export default function AddPage() {
               accept="image/*"
               capture="environment"
               onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
-              className="block w-full text-sm text-zinc-700 file:mr-3 file:h-9 file:rounded-md file:border file:border-zinc-300 file:bg-white file:px-3 file:text-sm file:font-medium"
+              className="block w-full text-sm text-zinc-700 file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-full file:border file:border-zinc-200 file:bg-brand-soft file:px-5 file:text-sm file:font-medium file:text-brand"
             />
           </div>
           <button type="submit" className={btn.primary} disabled={reading || (!text.trim() && !photo)}>

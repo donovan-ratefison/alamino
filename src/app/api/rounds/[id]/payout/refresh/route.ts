@@ -1,10 +1,12 @@
+import { financeError, requireAdmin, sameOrigin } from "@/lib/finance/auth";
 import { getRound, updateSettlement } from "@/lib/db";
 import { finishRound } from "@/lib/rounds";
 import { paypalMode } from "@/lib/paypal/client";
 import { getPayoutBatch, payoutUpdates } from "@/lib/paypal/payments";
 
 // Reads the payout batch from PayPal and updates each pay-out. Finishes the round when all are confirmed.
-export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  try { if (paypalMode() === "sandbox") { sameOrigin(req); requireAdmin(req); } } catch (e) { return financeError(e); }
   const { id } = await ctx.params;
   const round = getRound(id);
   if (!round) return Response.json({ error: "Unknown round." }, { status: 404 });

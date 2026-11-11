@@ -15,6 +15,7 @@ async function accessToken(): Promise<string> {
     method: "POST",
     headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
     body: "grant_type=client_credentials",
+    signal: AbortSignal.timeout(15000),
   });
   const body = await res.text();
   if (!res.ok) {
@@ -32,6 +33,7 @@ type PaypalInit = Omit<RequestInit, "headers"> & { headers?: Record<string, stri
 export async function paypalFetch<T>(path: string, init: PaypalInit = {}): Promise<T> {
   const res = await fetch(`${baseUrl()}${path}`, {
     ...init,
+    signal: init.signal ?? AbortSignal.timeout(20000),
     headers: { Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json", ...init.headers },
   });
   const body = await res.text();

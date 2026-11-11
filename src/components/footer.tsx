@@ -1,0 +1,19 @@
+import Link from "next/link";
+import { Brand } from "./brand";
+import { btn } from "./ui";
+
+export function Footer() {
+  return <footer className="site-footer">
+    <div className="band-content">
+      <div className="footer-top">
+        <div><p className="eyebrow text-blue-200">Your market. Moving forward.</p><p className="mt-5 text-3xl font-medium leading-tight tracking-tight sm:text-5xl">Better together.<br />Clearer with Alamino.</p></div>
+        <Link href="/add" className={btn.inverse}>Record a debt <span aria-hidden="true">↗</span></Link>
+      </div>
+      <div className="footer-bottom">
+        <div className="space-y-3"><Link href="/" className="footer-logo"><Brand /></Link><p>AI assisted capture. Transparent clearing. PayPal settlement.</p></div>
+        <nav aria-label="Footer" className="flex flex-wrap items-start gap-x-6 gap-y-3"><Link href="/">Market</Link><Link href="/finance">AI Finance</Link><Link href="/statement">Statement</Link></nav>
+        <p>Hackathon prototype<br /><span className="mt-2 inline-block">Sandbox and demo modes are labelled in the app.</span></p>
+      </div>
+    </div>
+  </footer>;
+}

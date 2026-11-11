@@ -18,7 +18,7 @@ export default function StatementPage() {
   const s = statement.data;
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-8">
       <PageHeader title={`Statement for ${name(traderId)}`}>What the latest clearing round did to your debts, and why.</PageHeader>
       {statement.error?.status === 404 ? (
         <Empty title="No clearing round yet">

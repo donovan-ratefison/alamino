@@ -6,6 +6,7 @@ import { createContext, Suspense, useContext, useSyncExternalStore, type ReactNo
 import type { Debt, Trader, TraderId } from "@/lib/types";
 import { useApi, waitingFor } from "./api";
 import { Badge } from "./ui";
+import { Brand } from "./brand";
 
 export interface AppConfig {
   paypalMode: "sandbox" | "simulated";
@@ -74,16 +75,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
 const links = [
   { href: "/", label: "Market" },
-  { href: "/add", label: "Add" },
+  { href: "/add", label: "Add a debt" },
   { href: "/confirm", label: "Confirm" },
-  { href: "/rounds/latest", label: "Round" },
+  { href: "/rounds/latest", label: "Payments" },
   { href: "/statement", label: "Statement" },
+  { href: "/finance", label: "AI Finance" },
 ];
 
 function NavLinks({ pathname }: { pathname: string }) {
   const { pendingCount } = useApp();
   return (
-    <nav aria-label="Main" className="-mb-px flex gap-1 overflow-x-auto">
+    <nav aria-label="Main" className="main-nav">
       {links.map(({ href, label }) => {
         const active = href === "/" ? pathname === "/" : pathname.startsWith(href.replace("/latest", ""));
         return (
@@ -91,13 +93,11 @@ function NavLinks({ pathname }: { pathname: string }) {
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-sm ${
-              active ? "border-accent font-medium text-zinc-900" : "border-transparent text-zinc-600 hover:text-zinc-900"
-            }`}
+            className="nav-link"
           >
             {label}
             {href === "/confirm" && pendingCount > 0 && (
-              <span className="rounded-full bg-accent px-1.5 text-xs font-medium leading-5 text-white">
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold text-white">
                 {pendingCount}
                 <span className="sr-only"> waiting for you</span>
               </span>
@@ -116,26 +116,25 @@ function Nav() {
 export function Header() {
   const { traders, traderId, config } = useApp();
   return (
-    <header className="border-b border-zinc-200 bg-white">
-      <div className="mx-auto max-w-6xl px-4">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-3 pb-2">
-          <div className="flex items-baseline gap-3">
-            <Link href="/" className="text-base font-semibold text-zinc-900">
-              Alamino
-            </Link>
-            <span className="hidden text-sm text-zinc-500 sm:inline">Debt clearing for the market</span>
+    <header className="site-header">
+      <div className="header-content">
+        <div className="header-top">
+          <div className="flex items-center gap-3">
+            <Link href="/" aria-label="Alamino home"><Brand preload /></Link>
+            <span className="hidden border-l border-zinc-200 pl-4 text-xs text-zinc-500 lg:inline">A clearer way to settle together.</span>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {config?.paypalMode === "simulated" && <Badge>PayPal simulated</Badge>}
+          <div className="flex flex-wrap items-center gap-3">
+            {config && <Badge tone="blue">{config.paypalMode === "simulated" ? "PayPal simulated" : "PayPal Sandbox"}</Badge>}
             {config?.aiMode === "fallback" && <Badge>AI fallback</Badge>}
-            <label htmlFor="view-as" className="text-sm text-zinc-600">
+            <div className="profile-control">
+            <label htmlFor="view-as" className="text-xs text-zinc-600">
               View as
             </label>
             <select
               id="view-as"
               value={traderId}
               onChange={(e) => setTraderId(e.target.value)}
-              className="h-8 rounded-md border border-zinc-300 bg-white px-2 text-sm"
+              className="profile-select"
             >
               {traders.length === 0 && <option value={traderId}>{traderId}</option>}
               {traders.map((t) => (
@@ -144,6 +143,7 @@ export function Header() {
                 </option>
               ))}
             </select>
+            </div>
           </div>
         </div>
         <Suspense fallback={<NavLinks pathname="" />}>

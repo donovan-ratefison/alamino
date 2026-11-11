@@ -6,6 +6,7 @@ import type { Debt } from "@/lib/types";
 import { api, formatUsd, toCents, useApi, waitingFor } from "@/components/api";
 import { useApp } from "@/components/app";
 import { Badge, btn, Card, Empty, ErrorNote, field, Loading, PageHeader } from "@/components/ui";
+import { Workflow } from "@/components/workflow";
 
 interface Resolution {
   suggestion: string;
@@ -180,11 +181,12 @@ export default function ConfirmPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-8">
       <PageHeader title="Confirm debts">
         Both sides must approve a debt before it enters a clearing round. You view the app as{" "}
         <span className="font-medium text-zinc-900">{name(traderId)}</span>.
       </PageHeader>
+      <Workflow current={1} />
       {debts.error ? (
         <ErrorNote error={debts.error} onRetry={debts.reload} />
       ) : debts.loading ? (

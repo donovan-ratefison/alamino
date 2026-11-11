@@ -1,29 +1,27 @@
 import type { ReactNode } from "react";
 
-const base =
-  "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors disabled:pointer-events-none disabled:opacity-50";
-
 export const btn = {
-  primary: `${base} h-9 px-4 bg-accent text-white hover:bg-accent/90`,
-  secondary: `${base} h-9 px-4 border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-100`,
-  small: `${base} h-8 px-3 border border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-100`,
+  primary: "ui-button ui-button-primary",
+  secondary: "ui-button ui-button-secondary",
+  small: "ui-button ui-button-small",
+  inverse: "ui-button ui-button-inverse",
+  outlineOnBlue: "ui-button ui-button-outline",
 };
 
-export const field =
-  "h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 placeholder:text-zinc-400";
+export const field = "ui-field";
 
 export const label = "text-sm font-medium text-zinc-700";
 
 export function Card({ title, actions, children, className = "" }: { title?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-lg border border-zinc-200 bg-white ${className}`}>
+    <section className={`ui-card ${className}`}>
       {(title || actions) && (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 px-4 py-3">
-          {title && <h2 className="text-sm font-semibold text-zinc-900">{title}</h2>}
+        <div className="ui-card-heading">
+          {title && <h2>{title}</h2>}
           {actions}
         </div>
       )}
-      <div className="p-4">{children}</div>
+      <div className="ui-card-content">{children}</div>
     </section>
   );
 }
@@ -37,24 +35,24 @@ const tones = {
 };
 
 export function Badge({ tone = "neutral", children }: { tone?: keyof typeof tones; children: ReactNode }) {
-  return <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-medium ${tones[tone]}`}>{children}</span>;
+  return <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-medium leading-4 ${tones[tone]}`}>{children}</span>;
 }
 
 export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4">
-      <div className="text-2xl font-semibold tabular-nums text-zinc-900">{value}</div>
-      <div className="mt-1 text-sm text-zinc-600">{label}</div>
-      {hint && <div className="mt-1 text-xs text-zinc-500">{hint}</div>}
+    <div className="ui-stat">
+      <div className="ui-stat-value">{value}</div>
+      <div className="mt-4 text-sm font-medium text-zinc-800">{label}</div>
+      {hint && <div className="mt-2 text-xs leading-5 text-zinc-500">{hint}</div>}
     </div>
   );
 }
 
 export function PageHeader({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="mb-6">
-      <h1 className="text-xl font-semibold text-zinc-900">{title}</h1>
-      {children && <div className="mt-1 text-sm text-zinc-600">{children}</div>}
+    <div className="page-heading">
+      <h1>{title}</h1>
+      {children && <div className="page-heading-copy">{children}</div>}
     </div>
   );
 }
@@ -82,7 +80,7 @@ export function ErrorNote({ error, onRetry }: { error: { message: string }; onRe
 
 export function Empty({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="rounded-lg border border-dashed border-zinc-300 px-4 py-10 text-center">
+    <div className="ui-empty">
       <p className="text-sm font-medium text-zinc-900">{title}</p>
       {children && <div className="mt-2 text-sm text-zinc-600">{children}</div>}
     </div>

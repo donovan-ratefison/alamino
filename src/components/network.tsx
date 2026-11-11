@@ -12,7 +12,7 @@ const hidden = { opacity: 0, pointerEvents: "none" as const };
 
 function TraderNode({ data }: NodeProps<TraderNodeData>) {
   return (
-    <div className="flex h-10 w-24 items-center justify-center rounded-md border border-zinc-300 bg-white text-sm font-semibold text-zinc-900 shadow-sm">
+    <div className="network-node">
       {data.label}
       {SIDES.map((p) => (
         <Fragment key={p}>
@@ -62,7 +62,7 @@ export function Network({ traders, edges, highlight, label }: { traders: Trader[
       const a = center.get(e.debtorId)!;
       const b = center.get(e.creditorId)!;
       const on = lit.has(key);
-      const color = on ? "var(--color-accent)" : lit.size ? "#d4d4d8" : "#71717a";
+      const color = on ? "#0070e0" : lit.size ? "#d4e4f5" : "#8eafd4";
       return {
         id: key,
         source: e.debtorId,
@@ -72,7 +72,7 @@ export function Network({ traders, edges, highlight, label }: { traders: Trader[
         type: "straight",
         label: formatUsd(e.amountCents),
         style: { stroke: color, strokeWidth: on ? 3 : 1.5 },
-        labelStyle: { fontSize: 12, fontWeight: 600, fill: on ? "var(--color-accent)" : "#27272a" },
+        labelStyle: { fontSize: 12, fontWeight: 500, fill: on ? "#0070e0" : "#003087" },
         labelBgStyle: { fill: "#ffffff" },
         markerEnd: { type: MarkerType.ArrowClosed, color, width: 16, height: 16 },
         zIndex: on ? 1 : 0,
@@ -82,7 +82,7 @@ export function Network({ traders, edges, highlight, label }: { traders: Trader[
   const name = (id: TraderId) => traders.find((t) => t.id === id)?.name ?? id;
 
   return (
-    <div className="h-80 w-full rounded-md border border-zinc-200 bg-zinc-50">
+    <div className="network-shell">
       <ReactFlow
         aria-label={label}
         nodes={nodes}

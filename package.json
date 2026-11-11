@@ -16,6 +16,8 @@
     "@xyflow/react": "^12.12.1",
     "ag-grid-community": "^36.3.0",
     "ag-grid-react": "^36.3.0",
+    "ag-studio": "3.1.0",
+    "ag-studio-react": "3.1.0",
     "better-sqlite3": "^13.0.3",
     "next": "16.4.6",
     "react": "19.3.0",

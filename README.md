@@ -34,6 +34,8 @@ npm run lint
 
 ## Docs
 
+- [AI Finance Dashboard: setup, Sandbox, AG Studio and validation](docs/FINANCE.md)
+
 - [Architecture](docs/ARCHITECTURE.md)
 - [Overall flow diagram](docs/clearing-house-system.md)
 
