@@ -22,13 +22,16 @@ interface Draft {
 
 const confidenceTone = { high: "green", medium: "amber", low: "red" } as const;
 
-function readImage(file: File): Promise<{ imageBase64: string; mediaType: string }> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve({ imageBase64: String(reader.result).split(",")[1] ?? "", mediaType: file.type || "image/jpeg" });
-    reader.onerror = () => reject(reader.error ?? new Error("Cannot read the photo"));
-    reader.readAsDataURL(file);
-  });
+// Phone photos are 3 to 10 MB. The capture route accepts 5 MB of base64.
+// Downscale to 1600 px on the long side: enough to read handwriting.
+async function readImage(file: File): Promise<{ imageBase64: string; mediaType: string }> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  return { imageBase64: canvas.toDataURL("image/jpeg", 0.85).split(",")[1] ?? "", mediaType: "image/jpeg" };
 }
 
 export default function AddPage() {
