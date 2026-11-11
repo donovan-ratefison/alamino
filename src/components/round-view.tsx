@@ -144,7 +144,7 @@ export function RoundView({ id }: { id: string }) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Clearing round">
+      <PageHeader title={`${formatUsd(stats.grossCents)} of debt settled with ${formatUsd(stats.cashMovedCents)}`}>
         <span className="inline-flex flex-wrap items-center gap-2">
           Round {r.id} <Badge>Status: {r.status}</Badge>
         </span>
