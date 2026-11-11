@@ -6,7 +6,15 @@ test.use({ viewport: { width: 375, height: 800 } });
 // For each page: the path and a check that the main content has loaded.
 const pages: [string, (page: Page) => Promise<void>][] = [
   ["/", (page) => expect(page.getByRole("gridcell").first()).toBeVisible()],
-  ["/add", (page) => expect(page.getByRole("textbox")).toBeVisible()],
+  [
+    "/add",
+    async (page) => {
+      // On a phone the sentence field opens on demand: the camera comes first.
+      await expect(page.getByText("Photograph your notebook")).toBeVisible();
+      await page.getByRole("button", { name: "Type a sentence" }).click();
+      await expect(page.getByRole("textbox")).toBeVisible();
+    },
+  ],
   ["/confirm", (page) => expect(page.getByRole("button", { name: /approve/i })).toBeVisible()],
   ["/rounds/latest", (page) => expect(page.getByRole("main")).toContainText("$990")],
   ["/statement", (page) => expect(page.getByRole("main")).toContainText(/\$170(?!\d)/)],

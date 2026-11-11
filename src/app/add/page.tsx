@@ -1,27 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
-import type { Debt, DebtDraft, DebtSource } from "@/lib/types";
-import { api, formatUsd, toCents } from "@/components/api";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import type { Debt, DebtDraft } from "@/lib/types";
+import { api, toCents } from "@/components/api";
 import { useApp } from "@/components/app";
+import { DraftRow, problem, type Draft } from "@/components/capture-drafts";
 import { Badge, btn, Card, ErrorNote, field, label, PageHeader } from "@/components/ui";
 import { Workflow } from "@/components/workflow";
 
-interface Draft {
-  debtorId: string;
-  creditorId: string;
-  amount: string; // dollars, as typed
-  note: string;
-  confidence: DebtDraft["confidence"];
-  question?: string;
-  source: DebtSource;
-  saving?: boolean;
-  saved?: Debt;
-  error?: Error;
-}
-
-const confidenceTone = { high: "green", medium: "amber", low: "red" } as const;
+// A real AI call takes 5 to 10 seconds. The last step stays until the answer.
+const STEPS = ["Reading the handwriting", "Matching names to traders", "Checking the amounts"];
 
 // Phone photos are 3 to 10 MB. The capture route accepts 5 MB of base64.
 // Downscale to 1600 px on the long side: enough to read handwriting.
@@ -38,204 +27,259 @@ async function readImage(file: File): Promise<{ imageBase64: string; mediaType: 
 export default function AddPage() {
   const { traders, traderId, name, refreshPending } = useApp();
   const [text, setText] = useState("");
-  const [photo, setPhoto] = useState<File | null>(null);
+  const [typing, setTyping] = useState(false); // phone: the sentence field is open
+  const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
   const [reading, setReading] = useState(false);
+  const [step, setStep] = useState(0);
   const [error, setError] = useState<Error | null>(null);
   const [engine, setEngine] = useState<"model" | "fallback" | null>(null);
   const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [saving, setSaving] = useState(false);
+  const view = useRef<HTMLDivElement>(null);
 
-  const update = (i: number, patch: Partial<Draft>) => setDrafts((all) => all.map((d, j) => (j === i ? { ...d, ...patch } : d)));
+  useEffect(() => (photo ? () => URL.revokeObjectURL(photo.url) : undefined), [photo]);
 
-  async function read(e: FormEvent) {
-    e.preventDefault();
+  useEffect(() => {
+    if (!reading) return;
+    const id = setInterval(() => setStep((s) => Math.min(s + 1, STEPS.length - 1)), 2500);
+    return () => clearInterval(id);
+  }, [reading]);
+
+  useEffect(() => {
+    if (reading || engine) view.current?.scrollIntoView({ block: "start" });
+  }, [reading, engine]);
+
+  const viewer = name(traderId);
+  const update = (n: number, patch: Partial<Draft>) => setDrafts((all) => all.map((d) => (d.n === n ? { ...d, ...patch } : d)));
+  const isReady = (d: Draft) => !d.saved && problem(d, traderId, viewer) === null;
+  const saved = drafts.filter((d) => d.saved).length;
+  const ready = drafts.filter(isReady).length;
+  const waiting = drafts.length - saved - ready;
+  const allSaved = drafts.length > 0 && saved === drafts.length;
+
+  async function read(file: File | null) {
     setReading(true);
+    setStep(0);
     setError(null);
     try {
-      const image = photo ? await readImage(photo) : {};
-      const res = await api<{ drafts: DebtDraft[]; engine: "model" | "fallback" }>("/api/capture", {
-        ...(text.trim() ? { text: text.trim() } : {}),
-        ...image,
-        createdBy: traderId,
-      });
-      setEngine(res.engine);
+      const input = file ? await readImage(file) : { text: text.trim() };
+      const res = await api<{ drafts: DebtDraft[]; engine: "model" | "fallback" }>("/api/capture", { ...input, createdBy: traderId });
       setDrafts(
-        res.drafts.map((d) => ({
+        res.drafts.map((d, i) => ({
+          n: i + 1,
           debtorId: d.debtorId ?? "",
           creditorId: d.creditorId ?? "",
+          debtorText: d.debtorText,
+          creditorText: d.creditorText,
           amount: d.amountCents === null ? "" : String(d.amountCents / 100),
           note: d.note,
           confidence: d.confidence,
           question: d.question,
-          source: photo ? "photo" : "text",
+          need: { debtorId: !d.debtorId, creditorId: !d.creditorId, amount: d.amountCents === null },
+          source: file ? "photo" : "text",
         })),
       );
+      setEngine(res.engine);
     } catch (e) {
       setError(e as Error);
     }
     setReading(false);
   }
 
-  async function save(i: number) {
-    const d = drafts[i];
-    update(i, { saving: true, error: undefined });
-    try {
-      const saved = await api<Debt>("/api/debts", {
+  // Choosing a photo starts the reading at once.
+  function pick(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // the same file can be chosen again
+    if (!file) return;
+    setPhoto({ file, url: URL.createObjectURL(file) });
+    read(file);
+  }
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    setPhoto(null);
+    read(null);
+  }
+
+  function again() {
+    setEngine(null);
+    setDrafts([]);
+    setPhoto(null);
+    setText("");
+    setTyping(false);
+    setError(null);
+  }
+
+  // Posts every ready draft, one after the other. A failure stays open with its error.
+  async function saveAll() {
+    setSaving(true);
+    for (const d of drafts.filter(isReady)) {
+      const patch = await api<Debt>("/api/debts", {
         debtorId: d.debtorId,
         creditorId: d.creditorId,
         amountCents: toCents(d.amount),
         note: d.note.trim(),
         source: d.source,
         createdBy: traderId,
-      });
-      update(i, { saving: false, saved });
-      refreshPending();
-    } catch (e) {
-      update(i, { saving: false, error: e as Error });
+      }).then(
+        (debt): Partial<Draft> => ({ saved: debt, editing: false, error: undefined }),
+        (error: Error): Partial<Draft> => ({ error, editing: true }),
+      );
+      update(d.n, patch);
     }
+    setSaving(false);
+    refreshPending();
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
+    <div className="mx-auto max-w-6xl space-y-8">
       <PageHeader title="Add a debt">
-        Type a sentence or take a photo of a notebook page. The AI makes a draft. Nothing is saved until you click Save. You add debts as{" "}
-        <span className="font-medium text-zinc-900">{name(traderId)}</span>.
+        You add debts as <span className="font-medium text-zinc-900">{viewer}</span>. Nothing is saved before you check it.
       </PageHeader>
-      <Workflow current={0} />
 
-      <Card title="Your debt, in your words.">
-        <form onSubmit={read} className="space-y-4">
-          <div className="space-y-1.5">
-            <label htmlFor="capture-text" className={label}>
-              Text
-            </label>
-            <textarea
-              id="capture-text"
-              rows={3}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="I owe Hery 50 for rice"
-              className={`${field} h-auto py-2`}
-            />
+      {!reading && !engine && (
+        <Card title="Your debt, in your words.">
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_240px]">
+            <div className="grid content-start gap-2">
+              <label className="capture-shot capture-pick">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+                  <circle cx="12" cy="13" r="3.5" />
+                </svg>
+                Photograph your notebook
+                <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={pick} />
+              </label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-1">
+                <label className={`${btn.secondary} capture-pick capture-alt`}>
+                  Choose a photo
+                  <input type="file" accept="image/*" className="sr-only" onChange={pick} />
+                </label>
+                <button
+                  type="button"
+                  className={`${btn.secondary} capture-alt capture-type`}
+                  aria-expanded={typing}
+                  aria-controls="capture-form"
+                  onClick={() => setTyping((t) => !t)}
+                >
+                  Type a sentence
+                </button>
+              </div>
+            </div>
+            <form id="capture-form" onSubmit={submit} className={`space-y-3 sm:order-first ${typing ? "" : "max-sm:hidden"}`}>
+              <label htmlFor="capture-text" className={label}>
+                Sentence
+              </label>
+              <textarea
+                id="capture-text"
+                rows={3}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="I owe Hery 50 for rice"
+                className={`${field} h-auto py-2`}
+              />
+              <button type="submit" className={btn.primary} disabled={!text.trim()}>
+                Read the sentence
+              </button>
+            </form>
           </div>
-          <div className="space-y-1.5">
-            <label htmlFor="capture-photo" className={label}>
-              Photo (optional)
-            </label>
-            <input
-              id="capture-photo"
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
-              className="block w-full text-sm text-zinc-700 file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-full file:border file:border-zinc-200 file:bg-brand-soft file:px-5 file:text-sm file:font-medium file:text-brand"
-            />
-          </div>
-          <button type="submit" className={btn.primary} disabled={reading || (!text.trim() && !photo)}>
-            {reading ? "Reading..." : "Read with AI"}
-          </button>
-          {error && <ErrorNote error={error} />}
-        </form>
-      </Card>
+          {error && (
+            <div className="mt-4">
+              <ErrorNote error={error} />
+            </div>
+          )}
+        </Card>
+      )}
 
-      {engine && drafts.length === 0 && <p className="text-sm text-zinc-600">The AI found no debt. Write the sentence again with a name and an amount.</p>}
-
-      {drafts.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-zinc-900">Drafts</h2>
-            {engine === "fallback" && <Badge>Read by AI fallback</Badge>}
-          </div>
-          {drafts.map((d, i) => {
-            const cents = toCents(d.amount);
-            const valid = d.debtorId && d.creditorId && d.debtorId !== d.creditorId && cents !== null;
-            const mine = d.debtorId === traderId || d.creditorId === traderId;
-            if (d.saved) {
-              return (
-                <Card key={i}>
-                  <p className="text-sm text-zinc-900">
-                    Saved: {name(d.saved.debtorId)} owes {name(d.saved.creditorId)} {formatUsd(d.saved.amountCents)}. The other side must
-                    confirm it.
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Link href="/" className={btn.small}>
-                      Go to the market
-                    </Link>
-                    <Link href="/confirm" className={btn.small}>
-                      Go to Confirm
-                    </Link>
-                  </div>
-                </Card>
-              );
-            }
-            return (
-              <Card
-                key={i}
-                title={`Draft ${i + 1}`}
-                actions={<Badge tone={confidenceTone[d.confidence]}>{d.confidence} confidence</Badge>}
-              >
-                <div className="space-y-4">
-                  {d.question && (
-                    <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">AI question: {d.question}</p>
-                  )}
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    {(["debtorId", "creditorId"] as const).map((key) => (
-                      <div key={key} className="space-y-1.5">
-                        <label htmlFor={`${key}-${i}`} className={label}>
-                          {key === "debtorId" ? "Debtor (owes)" : "Creditor (is owed)"}
-                        </label>
-                        <select id={`${key}-${i}`} value={d[key]} onChange={(e) => update(i, { [key]: e.target.value })} className={field}>
-                          <option value="">Choose a trader</option>
-                          {traders.map((t) => (
-                            <option key={t.id} value={t.id}>
-                              {t.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    ))}
-                    <div className="space-y-1.5">
-                      <label htmlFor={`amount-${i}`} className={label}>
-                        Amount (USD)
-                      </label>
-                      <input
-                        id={`amount-${i}`}
-                        inputMode="decimal"
-                        value={d.amount}
-                        onChange={(e) => update(i, { amount: e.target.value })}
-                        placeholder="50"
-                        className={field}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label htmlFor={`note-${i}`} className={label}>
-                      Note
-                    </label>
-                    <input id={`note-${i}`} value={d.note} onChange={(e) => update(i, { note: e.target.value })} className={field} />
-                  </div>
-                  {d.debtorId && d.debtorId === d.creditorId && <p className="text-sm text-red-700">The debtor and the creditor must be different traders.</p>}
-                  {d.amount && cents === null && <p className="text-sm text-red-700">Type an amount above 0, for example 50 or 12.50.</p>}
-                  {valid && !mine && (
-                    <p className="text-sm text-red-700">
-                      You view the app as {name(traderId)}. You can only save a debt where you are the debtor or the creditor. Change
-                      &quot;View as&quot; first.
-                    </p>
-                  )}
-                  {d.error && <ErrorNote error={d.error} />}
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" className={btn.primary} disabled={!valid || !mine || d.saving} onClick={() => save(i)}>
-                      {d.saving ? "Saving..." : "Save"}
-                    </button>
-                    <button type="button" className={btn.secondary} onClick={() => setDrafts((all) => all.filter((_, j) => j !== i))}>
-                      Discard
-                    </button>
-                  </div>
+      {(reading || engine) && (
+        <div ref={view} className="capture-result space-y-4">
+          {engine && (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-medium text-zinc-900">Drafts</h2>
+                {engine === "fallback" && <Badge>Read without AI: check each line</Badge>}
+              </div>
+              {!allSaved && (
+                <button type="button" className={btn.small} disabled={saving} onClick={again}>
+                  Read another page
+                </button>
+              )}
+            </div>
+          )}
+          <div className="capture-view">
+            <div className="capture-source">
+              {photo ? (
+                <div className="capture-photo">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- local blob preview, nothing to optimise */}
+                  <img src={photo.url} alt="Your notebook page" />
+                  {reading && <div className="capture-scan" aria-hidden="true" />}
                 </div>
-              </Card>
-            );
-          })}
+              ) : (
+                <blockquote className="capture-sentence">{text}</blockquote>
+              )}
+            </div>
+            <div className="min-w-0 space-y-3">
+              {reading ? (
+                <p role="status" className="capture-status">
+                  <span className="capture-dots" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                  {STEPS[step]}
+                </p>
+              ) : drafts.length === 0 ? (
+                <p className="text-sm text-zinc-600">No draft left. Read another page to start again.</p>
+              ) : (
+                <>
+                  <ol className="grid gap-2">
+                    {drafts.map((d, i) => (
+                      <DraftRow
+                        key={d.n}
+                        d={d}
+                        index={i}
+                        traders={traders}
+                        traderId={traderId}
+                        name={name}
+                        busy={saving}
+                        onChange={(patch) => update(d.n, patch)}
+                        onDiscard={() => setDrafts((all) => all.filter((x) => x.n !== d.n))}
+                      />
+                    ))}
+                  </ol>
+                  {allSaved ? (
+                    <div role="status" className="capture-done">
+                      <p className="text-sm text-zinc-900">All debts are saved. The other side of each debt must confirm it.</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Link href="/" className={btn.small}>
+                          Go to the market
+                        </Link>
+                        <Link href="/confirm" className={btn.small}>
+                          Go to Confirm
+                        </Link>
+                        <button type="button" className={btn.small} onClick={again}>
+                          Read another page
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="capture-savebar">
+                      <p role="status" className="text-sm text-zinc-600">
+                        {[saved && `${saved} saved`, `${ready} ready`, waiting && `${waiting} ${waiting === 1 ? "needs" : "need"} an answer`]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </p>
+                      <button type="button" className={btn.primary} disabled={ready === 0 || saving} onClick={saveAll}>
+                        {saving ? "Saving..." : `Save ${ready} ${ready === 1 ? "debt" : "debts"}`}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
         </div>
       )}
+      <Workflow current={0} />
     </div>
   );
 }

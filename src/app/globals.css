@@ -132,6 +132,59 @@ a.beat:hover { background: #e2efff; }
 .footer-bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 24px; border-top: 1px solid #ffffff30; padding-block: 28px; color: #d8e9ff; font-size: 12px; }
 .footer-logo { display: inline-flex; border-radius: 12px; background: white; padding: 6px 12px; }
 .footer-logo .brand-logo { width: 120px; }
+.capture-pick { position: relative; cursor: pointer; }
+.capture-pick:has(:focus-visible) { outline: 3px solid #0070e0; outline-offset: 4px; }
+.capture-shot { display: grid; place-items: center; gap: 10px; width: 100%; padding: 26px 12px; border-radius: 20px; background: #0070e0; color: white; font-size: 16px; font-weight: 600; text-align: center; transition: background .2s; }
+.capture-shot:hover { background: #005cbb; }
+.capture-alt { padding-inline: 12px; }
+.capture-shot svg { width: 44px; height: 44px; }
+.capture-result { scroll-margin-top: 16px; }
+.capture-view { display: grid; gap: 16px; }
+.capture-photo { position: relative; width: fit-content; max-width: 100%; margin-inline: auto; overflow: hidden; border-radius: 14px; background: #052969; }
+.capture-photo img { display: block; max-width: 100%; max-height: 180px; }
+.capture-scan { position: absolute; inset-inline: 0; top: -22%; height: 22%; background: linear-gradient(to bottom, #0070e000, #0070e073); border-bottom: 2px solid white; animation: capture-scan 1.5s linear infinite; }
+@keyframes capture-scan { to { top: 100%; } }
+.capture-sentence { border-radius: 14px; background: #eff6ff; padding: 16px 18px; color: #052969; font-size: 15px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.capture-status { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; background: #eff6ff; color: #003087; font-size: 13px; font-weight: 500; }
+.capture-dots { display: inline-flex; gap: 4px; }
+.capture-dots span { width: 6px; height: 6px; border-radius: 50%; background: #0070e0; animation: capture-blink 1s infinite; }
+.capture-dots span:nth-child(2) { animation-delay: .2s; }
+.capture-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes capture-blink { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.capture-draft { display: grid; gap: 8px; padding: 10px 14px; border: 1px solid #dce5f2; border-radius: 16px; background: white; animation: capture-in .35s ease-out both; }
+.capture-draft[data-state="ask"] { border-color: #fcd34d; background: #fffbeb; }
+.capture-draft[data-state="saved"] { background: #f6f9fe; }
+@keyframes capture-in { from { opacity: 0; transform: translateY(6px); } }
+.capture-line { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: center; gap: 6px 12px; }
+.capture-num { width: 24px; height: 24px; border-radius: 50%; background: #0070e0; color: white; font-size: 11px; font-weight: 600; line-height: 24px; text-align: center; }
+.capture-draft[data-state="ask"] .capture-num { background: #ffc439; color: #052969; }
+.capture-draft[data-state="saved"] .capture-num { background: #0a7d4f; }
+.capture-amount { color: #052969; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.capture-tools { grid-column: 2 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.capture-ask { flex-basis: 100%; color: #92400e; font-size: 13px; line-height: 1.5; }
+.capture-answer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.capture-mini-field { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; }
+.capture-mini { min-height: 40px; max-width: 100%; border: 1px solid #cbd8ea; border-radius: 10px; background: white; padding: 6px 10px; color: #052969; font-size: 13px; }
+.capture-mini:focus { border-color: #0070e0; }
+input.capture-mini { width: 96px; }
+.capture-savebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 4px; }
+.capture-done { border: 1px solid #dce5f2; border-radius: 16px; background: #f6f9fe; padding: 16px; }
+@media (min-width: 640px) {
+  .capture-type { display: none; }
+  .capture-shot { padding: 18px 12px; font-size: 14px; }
+  .capture-shot svg { width: 32px; height: 32px; }
+  .capture-line { grid-template-columns: 24px minmax(0, 1fr) auto auto; }
+  .capture-tools { grid-column: auto; justify-content: flex-end; }
+  .capture-answer { padding-left: 36px; }
+}
+@media (min-width: 768px) {
+  .capture-view { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); align-items: start; gap: 24px; }
+  .capture-source { position: sticky; top: 16px; }
+  .capture-photo img { max-height: calc(100vh - 140px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .capture-scan { display: none; }
+}
 
 @media (max-width: 900px) {
   .market-hero .band-content { gap: 32px; }
