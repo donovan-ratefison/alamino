@@ -236,9 +236,9 @@ test("statement for soa: lines, net and action come from plain code", () => {
       ["d4", "Rivo", "you_owe", 11000, 11000],
     ],
   );
-  assert.match(s.summary, /\$180\.00/); // 90 + 90 cancelled
-  assert.match(s.summary, /You pay \$170\.00/);
-  assert.match(s.lines[1].reason, /all \$90\.00/);
+  assert.match(s.summary, /cancelled \$180 of/); // 90 + 90 cancelled
+  assert.match(s.summary, /You pay \$170 into/);
+  assert.match(s.lines[1].reason, /all \$90 of/);
 });
 
 test("statement action for a receiver and for a trader with no position", () => {

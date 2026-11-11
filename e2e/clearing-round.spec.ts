@@ -27,6 +27,17 @@ test.describe("Clearing round", () => {
     await expect(main.getByRole("heading", { level: 1 })).toHaveText(/\$990 of debt to settle with \$320/);
     for (const text of ["$990", "$570", "$320", "67.7%"]) await expect(main).toContainText(text);
 
+    // One network with a Before / After toggle. The replay plays once by itself, then rests on After.
+    const before = main.getByRole("button", { name: "Before", exact: true });
+    const after = main.getByRole("button", { name: "After", exact: true });
+    await expect(after).toHaveAttribute("aria-pressed", "true", { timeout: 20_000 });
+    await expect(main.getByLabel("Debts after circles cancel")).toBeVisible();
+    await expect(main.getByText("Cancelled, no money moved", { exact: true }).locator("..")).toContainText("$570");
+    await before.click();
+    await expect(before).toHaveAttribute("aria-pressed", "true");
+    await expect(after).toHaveAttribute("aria-pressed", "false");
+    await expect(main.getByLabel("Debts before the round")).toBeVisible();
+
     // The circles and the settlement plan are behind one disclosure.
     await page.getByText(/see what cancelled/i).click();
 

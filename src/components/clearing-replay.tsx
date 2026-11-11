@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Edge, Round, TraderId } from "@/lib/types";
 import { formatUsd } from "./api";
 import { useApp } from "./app";
 import { Network } from "./network";
-import { btn, Card } from "./ui";
+import { btn } from "./ui";
 
 interface Frame {
   edges: Edge[];
@@ -18,27 +18,31 @@ interface Frame {
 const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
 const pair = (a: TraderId, b: TraderId) => `${a}>${b}`;
 const dollars = (cents: number) => Math.round(cents / 100) * 100;
+const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// The Before and After networks. "Replay clearing" plays each cancellation on the Before network.
+// One network of the round with a Before / After toggle. It rests on the final state.
+// "Replay clearing" plays each cancellation on the same network. The first visit of a round in a session plays it once.
+// `highlight` (a circle from the list) shows that circle on the Before view.
 export function ClearingReplay({ round, highlight }: { round: Round; highlight?: TraderId[] }) {
   const { traders, name } = useApp();
-  const [frame, setFrame] = useState<Frame | null>(null);
+  const [view, setView] = useState<"before" | "after">("after");
+  const [frame, setFrame] = useState<Frame | null>(null); // the last replay frame, kept for its caption
   const [running, setRunning] = useState(false);
   const { stats, cancellations, remaining } = round.result;
 
   async function replay() {
-    setRunning(true);
     const end: Frame = {
       edges: remaining,
       left: stats.remainingCents,
       cancelled: stats.clearedByCirclesCents,
       caption: `No circle is left. ${formatUsd(stats.remainingCents)} of debt is left. ${formatUsd(stats.clearedByCirclesCents)} cancelled, no money moved.`,
     };
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    setView("after");
+    if (reducedMotion()) {
       setFrame(end);
-      setRunning(false);
       return;
     }
+    setRunning(true);
 
     const amounts = new Map<string, Edge>();
     for (const e of round.debtsBefore) {
@@ -87,20 +91,60 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
     setRunning(false);
   }
 
-  const left = frame?.left ?? stats.grossCents;
-  const cancelled = frame?.cancelled ?? 0;
+  // Play once by itself on the first visit of this round in the session. The key is set when the replay starts,
+  // so a double effect run in development does not cancel it. Without storage, the page rests on the final state.
+  const roundId = round.id;
+  useEffect(() => {
+    const key = `alamino-replayed-${roundId}`;
+    try {
+      if (sessionStorage.getItem(key) || reducedMotion()) return;
+    } catch {
+      return;
+    }
+    const timer = setTimeout(() => {
+      try {
+        sessionStorage.setItem(key, "1");
+      } catch {}
+      replay();
+    }, 600);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roundId]);
+
+  const before = !running && (view === "before" || !!highlight);
+  const edges = running && frame ? frame.edges : before ? round.debtsBefore : remaining;
+  const left = running && frame ? frame.left : stats.remainingCents;
+  const cancelled = running && frame ? frame.cancelled : stats.clearedByCirclesCents;
+  const toggle = (v: "before" | "after", text: string) => {
+    const pressed = !running && (v === "before") === before;
+    return (
+      <button
+        type="button"
+        aria-pressed={pressed}
+        disabled={running}
+        onClick={() => {
+          setView(v);
+          setFrame(null);
+        }}
+        className={`rounded-full px-3.5 py-1.5 text-sm font-medium disabled:opacity-60 ${
+          pressed ? "bg-white text-brand shadow-sm" : "text-zinc-600 hover:text-brand"
+        }`}
+      >
+        {text}
+      </button>
+    );
+  };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="button" className={btn.secondary} disabled={running} onClick={replay}>
+    <div className="min-w-0 space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div role="group" aria-label="Network view" className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 p-0.5">
+          {toggle("before", "Before")}
+          {toggle("after", "After")}
+        </div>
+        <button type="button" className={btn.small} disabled={running} onClick={replay}>
           Replay clearing
         </button>
-        {frame && (
-          <p aria-live="polite" className="min-w-0 text-sm text-zinc-700">
-            {frame.caption}
-          </p>
-        )}
       </div>
 
       <dl className="grid grid-cols-2 gap-3">
@@ -114,35 +158,19 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
         </div>
       </dl>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card
-          title={frame ? "Clearing replay" : "Before"}
-          actions={
-            frame ? (
-              !running && (
-                <button type="button" className={btn.small} onClick={() => setFrame(null)}>
-                  Show before
-                </button>
-              )
-            ) : (
-              <span className="text-xs text-zinc-500">Select a circle to show it here</span>
-            )
-          }
-        >
-          {traders.length > 0 && (
-            <Network
-              traders={traders}
-              edges={frame?.edges ?? round.debtsBefore}
-              highlight={frame ? frame.highlight : highlight}
-              label="Debts before the round"
-            />
-          )}
-        </Card>
-        <Card title="After circles cancel">
-          {traders.length > 0 && <Network traders={traders} edges={remaining} label="Debts after circles cancel" />}
-          {remaining.every((e) => e.amountCents === 0) && <p className="mt-3 text-sm text-zinc-600">No debt is left.</p>}
-        </Card>
-      </div>
+      {traders.length > 0 && (
+        <Network
+          traders={traders}
+          edges={edges}
+          highlight={running ? frame?.highlight : before ? highlight : undefined}
+          circles={before && !highlight ? cancellations.map((c) => c.path) : undefined}
+          interactive={!running}
+          label={running ? "Debts during the clearing replay" : before ? "Debts before the round" : "Debts after circles cancel"}
+        />
+      )}
+      <p aria-live="polite" className="min-h-5 text-sm text-zinc-700">
+        {frame?.caption ?? (!before && remaining.every((e) => e.amountCents === 0) ? "No debt is left." : "")}
+      </p>
     </div>
   );
 }
