@@ -57,7 +57,7 @@ test("fallback capture asks about an unknown trader", () => {
   assert.deepEqual(sides(d), [null, "you_owe", null, null, 5000]);
   assert.equal(d.counterpartyText, "Zaza");
   assert.equal(d.confidence, "low");
-  assert.match(d.question ?? "", /who is "zaza"/i);
+  assert.equal(d.question, undefined); // the screen asks, not the fallback
 });
 
 test("fallback capture matches aliases, cents and several sentences", () => {
@@ -104,27 +104,34 @@ test("validation derives debtor and creditor from the direction", () => {
 test("validation never keeps the speaker or an unknown id as the counterparty", () => {
   const self = validate({ counterpartyId: "soa", counterpartyText: "Soa" });
   assert.deepEqual(sides(self), [null, "you_owe", null, null, 30000]);
-  assert.equal(self.question, "Who is the other trader?");
+  assert.equal(self.confidence, "low");
   const unknown = validate({ counterpartyId: "bema", counterpartyText: "Bema" });
   assert.deepEqual(sides(unknown), [null, "you_owe", null, null, 30000]);
-  assert.match(unknown.question ?? "", /Bema/);
+  assert.deepEqual([unknown.counterpartyText, unknown.confidence], ["Bema", "low"]);
 });
 
-test("validation asks when the direction or the amount is missing", () => {
+test("validation gives low confidence when the direction or the amount is missing", () => {
   const way = validate({ direction: "sideways" });
   assert.deepEqual(sides(way), ["hery", null, null, null, 30000]);
   assert.deepEqual([way.debtorText, way.creditorText], ["", "Hery"]);
-  assert.match(way.question ?? "", /owe/);
   assert.equal(way.confidence, "low");
   for (const amountCents of [null, 300.5, -100, "300"]) {
     const d = validate({ amountCents });
     assert.equal(d.amountCents, null);
-    assert.ok(d.question);
+    assert.equal(d.confidence, "low");
   }
 });
 
-test("validation keeps the model question, drops an empty one, and rejects a bad structure", () => {
-  assert.equal(validate({ question: "Which week?" }).question, "Which week?");
+test("validation keeps the model question on an incomplete draft only", () => {
+  const complete = validate({ question: "Which way does the debt with Fidy go?", confidence: "medium" });
+  assert.deepEqual(sides(complete), ["hery", "you_owe", "soa", "hery", 30000]);
+  assert.equal("question" in complete, false);
+  assert.equal(complete.confidence, "low");
+  const open = validate({ direction: null, question: "Which way does the debt go?", confidence: "medium" });
+  assert.deepEqual([open.question, open.confidence], ["Which way does the debt go?", "medium"]);
+});
+
+test("validation drops an empty question and rejects a bad structure", () => {
   assert.equal(validate({ question: " " }).question, undefined);
   assert.equal(validate({ confidence: "sure" }).confidence, "low");
   assert.throws(() => validateDrafts({ drafts: "x" }, traders, "soa"), /no drafts/);

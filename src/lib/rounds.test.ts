@@ -7,7 +7,7 @@ import { join } from "node:path";
 import type { Debt } from "./types.ts";
 
 process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "alamino-")), "test.db");
-const { confirmDebt, getDebt, insertDebt, listDebts, listTraders, newId, updateDebt, updateSettlement, HttpError } =
+const { addAlias, confirmDebt, getDebt, insertDebt, listDebts, listTraders, newId, updateDebt, updateSettlement, HttpError } =
   await import("./db.ts");
 const { reset } = await import("./seed.ts");
 const { finishRound, runRound } = await import("./rounds.ts");
@@ -30,6 +30,17 @@ const proposed = (debtorId: string, creditorId: string, cents: number, by: strin
 const status = (code: number) => (e: unknown) => e instanceof HttpError && e.status === code;
 
 beforeEach(() => reset());
+
+test("addAlias keeps a new unique name, and a reset removes it", () => {
+  const rivo = () => listTraders().find((t) => t.id === "rivo")!;
+  assert.equal(addAlias("rivo", "  Zaza ").aliases.at(-1), "Zaza");
+  assert.equal(rivo().aliases.at(-1), "Zaza");
+  for (const taken of ["zaza", "HERY", "fidy MOTO"]) assert.throws(() => addAlias("rivo", taken), status(409));
+  for (const bad of ["Z", " a ", "x".repeat(41)]) assert.throws(() => addAlias("rivo", bad), status(400));
+  assert.throws(() => addAlias("bema", "Bema"), status(404));
+  reset();
+  assert.equal(rivo().aliases.includes("Zaza"), false);
+});
 
 test("seed gives 5 traders and 8 confirmed debts", () => {
   assert.deepEqual(

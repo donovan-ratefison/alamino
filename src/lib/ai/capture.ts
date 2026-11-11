@@ -70,22 +70,12 @@ function matchTrader(text: string, traders: Trader[], speakerId: TraderId): Trad
   return traders.find((tr) => names(tr).some((n) => padded.includes(` ${n} `)))?.id ?? null;
 }
 
-// The speaker is always one side. Derives debtor and creditor, and asks when a part is missing.
+// The speaker is always one side. Derives debtor and creditor. The screen asks for a missing part:
+// the question here is only the hint of the model or of the fallback.
 function toDraft(f: Found, traders: Trader[], speakerId: TraderId): DebtDraft {
   const speakerName = traders.find((t) => t.id === speakerId)?.name ?? speakerId;
-  const { question: asked, ...rest } = f;
+  const { question, ...rest } = f;
   const { counterpartyId: other, counterpartyText: text, direction } = f;
-  const named = text.trim() && matchTrader(text, traders, speakerId) !== speakerId;
-  const missing = !other
-    ? named
-      ? `Who is "${text.trim()}"? Pick the other trader.`
-      : "Who is the other trader?"
-    : !direction
-      ? "Do you owe this, or is it owed to you?"
-      : f.amountCents === null
-        ? "How much, in US dollars?"
-        : undefined;
-  const question = asked || missing;
   const known = other && direction;
   return {
     ...rest,
@@ -93,7 +83,7 @@ function toDraft(f: Found, traders: Trader[], speakerId: TraderId): DebtDraft {
     creditorId: known ? (direction === "you_owe" ? other : speakerId) : null,
     debtorText: direction === "you_owe" ? speakerName : direction === "owed_to_you" ? text : "",
     creditorText: direction === "owed_to_you" ? speakerName : text,
-    confidence: !asked && question ? "low" : f.confidence,
+    confidence: !question && !(known && f.amountCents !== null) ? "low" : f.confidence,
     ...(question ? { question } : {}),
   };
 }
@@ -111,19 +101,21 @@ export function validateDrafts(raw: unknown, traders: Trader[], speakerId: Trade
     const str = (v: unknown) => (typeof v === "string" ? v : fail(`draft ${i} has a field that is not text`));
     const id = d.counterpartyId;
     const amount = d.amountCents;
-    return toDraft(
-      {
-        counterpartyId: id !== speakerId && traders.some((t) => t.id === id) ? (id as TraderId) : null,
-        counterpartyText: str(d.counterpartyText),
-        direction: DIRECTIONS.find((x) => x === d.direction) ?? null,
-        amountCents: typeof amount === "number" && Number.isSafeInteger(amount) && amount > 0 ? amount : null,
-        note: str(d.note),
-        confidence: CONFIDENCE.find((c) => c === d.confidence) ?? "low",
-        question: d.question == null ? undefined : str(d.question).trim() || undefined,
-      },
-      traders,
-      speakerId,
-    );
+    const found: Found = {
+      counterpartyId: id !== speakerId && traders.some((t) => t.id === id) ? (id as TraderId) : null,
+      counterpartyText: str(d.counterpartyText),
+      direction: DIRECTIONS.find((x) => x === d.direction) ?? null,
+      amountCents: typeof amount === "number" && Number.isSafeInteger(amount) && amount > 0 ? amount : null,
+      note: str(d.note),
+      confidence: CONFIDENCE.find((c) => c === d.confidence) ?? "low",
+      question: d.question == null ? undefined : str(d.question).trim() || undefined,
+    };
+    // Plain code asks only for a missing field. A question on a complete draft becomes low confidence.
+    if (found.question && found.counterpartyId && found.direction && found.amountCents !== null) {
+      found.question = undefined;
+      found.confidence = "low";
+    }
+    return toDraft(found, traders, speakerId);
   });
 }
 
@@ -179,7 +171,8 @@ function systemPrompt(traders: Trader[], speakerId: TraderId): string {
     `If a line names only ${speaker}, or a person who is not in the trader list, set counterpartyId to null, set counterpartyText to the name as written, and write a question that asks who the other trader is.`,
     "All amounts are US dollars. amountCents is the dollar amount times 100: 300 means 30000, 12.50 means 1250. Take the amount as written. If the amount is not clear, set amountCents to null and write a short question. Never guess an amount.",
     "Skip totals and headings. Return one draft for each debt line. note says in a few English words what the debt is for.",
-    "confidence is high when the name, the direction and the amount are clear, medium when you had to interpret, low when you are not sure. question is null when nothing is unclear.",
+    "confidence is high when the name, the direction and the amount are clear, medium when you had to interpret, low when you are not sure.",
+    "question is null when you filled counterpartyId, direction and amountCents. Put a doubt about a filled field in confidence, not in question. When a field is null, question is one short hint about it.",
   ].join("\n");
 }
 

@@ -99,6 +99,22 @@ export function listTraders(): Trader[] {
   }));
 }
 
+// A new name the capture matches to this trader. Names and aliases are unique across traders.
+export function addAlias(traderId: TraderId, alias: string): Trader {
+  const name = alias.trim();
+  if (name.length < 2 || name.length > 40) throw new HttpError(400, "alias must be 2 to 40 characters");
+  return db().transaction(() => {
+    const traders = listTraders();
+    const t = traders.find((x) => x.id === traderId);
+    if (!t) throw new HttpError(404, `No trader ${traderId}`);
+    const taken = (x: Trader) => [x.name, ...x.aliases].some((n) => n.toLowerCase() === name.toLowerCase());
+    if (traders.some(taken)) throw new HttpError(409, `"${name}" is already the name of a trader`);
+    const aliases = [...t.aliases, name];
+    db().prepare("UPDATE traders SET aliases = ? WHERE id = ?").run(JSON.stringify(aliases), traderId);
+    return { ...t, aliases };
+  })();
+}
+
 // ---- Debts ----
 
 function toDebt(r: Row): Debt {

@@ -7,7 +7,6 @@ import { api, toCents } from "@/components/api";
 import { useApp } from "@/components/app";
 import { DraftRow, problem, toDraft, type Draft } from "@/components/capture-drafts";
 import { Badge, btn, Card, ErrorNote, field, label, PageHeader } from "@/components/ui";
-import { Workflow } from "@/components/workflow";
 
 // A real AI call takes 5 to 10 seconds. The last step stays until the answer.
 const STEPS = ["Reading the handwriting", "Matching names to traders", "Checking the amounts"];
@@ -25,7 +24,7 @@ async function readImage(file: File): Promise<{ imageBase64: string; mediaType: 
 }
 
 export default function AddPage() {
-  const { traders, traderId, name, refreshPending } = useApp();
+  const { traderId, name, refreshPending } = useApp();
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false); // phone: the sentence field is open
   const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
@@ -64,6 +63,8 @@ export default function AddPage() {
   const ready = drafts.filter(isReady).length;
   const waiting = drafts.length - saved - ready;
   const allSaved = drafts.length > 0 && saved === drafts.length;
+  // The other open drafts with no direction: one answer can serve them all.
+  const noWay = (n: number) => drafts.filter((x) => x.n !== n && !x.saved && !x.direction);
 
   async function read(file: File | null) {
     setReading(true);
@@ -161,7 +162,10 @@ export default function AddPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <PageHeader title="Add a debt">
-        You add debts as <span className="font-medium text-zinc-900">{viewer}</span>. Nothing is saved before you check it.
+        {/* A phone shows the trader in "View as" and above the drafts: no need to say it here. */}
+        <span className="max-sm:hidden">
+          You add debts as <span className="font-medium text-zinc-900">{viewer}</span>. Nothing is saved before you check it.
+        </span>
       </PageHeader>
 
       {!reading && !engine && (
@@ -275,12 +279,11 @@ export default function AddPage() {
                         key={d.n}
                         d={d}
                         index={i}
-                        traders={traders}
-                        traderId={traderId}
-                        name={name}
                         busy={saving}
                         onChange={(patch) => update(d.n, patch)}
                         onDiscard={() => setDrafts((all) => all.filter((x) => x.n !== d.n))}
+                        applyCount={d.wayAnswered ? noWay(d.n).length : 0}
+                        onApply={() => noWay(d.n).forEach((x) => update(x.n, { direction: d.direction, answered: true }))}
                       />
                     ))}
                   </ol>
@@ -318,7 +321,6 @@ export default function AddPage() {
           </div>
         </div>
       )}
-      <Workflow current={0} />
     </div>
   );
 }
