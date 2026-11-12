@@ -39,10 +39,14 @@ point() {
   mv -Tf -- "$temporary" "$STATE/$name"
 }
 activate() {
-  local target=$1 commit=unmanaged
+  local target=$1 commit=unmanaged present
   if [[ -f "$target/.deploy-sha" ]]; then commit=$(cat "$target/.deploy-sha"); fi
+  # PM2 reload can retain the preceding release's script and cwd. Recreate only
+  # this process so each immutable release uses its own executable and config.
+  present=$(pm2 jlist 9>&- | node -e 'let s="";process.stdin.on("data",x=>s+=x);process.stdin.on("end",()=>{const a=JSON.parse(s).filter(x=>x.name==="alamino");if(a.length>1)process.exit(1);console.log(a.length)})') || return
+  if [[ "$present" == 1 ]]; then pm2 delete alamino 9>&- || return; fi
   # Close the deployment lock in PM2 and its daemon, so it cannot retain the lock.
-  (trap - ERR; cd "$target"; ALAMINO_DEPLOY_SHA="$commit" pm2 startOrReload "$target/deploy/ecosystem.config.cjs" --only alamino --update-env 9>&-)
+  (trap - ERR; cd "$target" || exit; ALAMINO_DEPLOY_SHA="$commit" pm2 start "$target/deploy/ecosystem.config.cjs" --only alamino --update-env 9>&-)
 }
 health() {
   local target=$1 expected='' endpoint=/ response code url attempt
