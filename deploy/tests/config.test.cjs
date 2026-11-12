@@ -5,6 +5,16 @@ const path = require('node:path');
 const yaml = require('js-yaml');
 const root = path.resolve(__dirname, '../..');
 
+test('all workflow files have valid names and supported top-level keys', () => {
+  const folder = path.join(root, '.github/workflows');
+  const allowed = new Set(['name', 'run-name', 'on', 'permissions', 'env', 'defaults', 'concurrency', 'jobs']);
+  for (const name of fs.readdirSync(folder).filter(name => /\.ya?ml$/.test(name))) {
+    const workflow = yaml.load(fs.readFileSync(path.join(folder, name), 'utf8'));
+    assert.equal(typeof workflow.name, 'string', name + ' requires a valid name');
+    for (const key of Object.keys(workflow)) assert.ok(allowed.has(key), name + ': unsupported key ' + key);
+  }
+});
+
 test('workflow verifies the exact commit before a serialized main-only deployment', () => {
   const workflow = yaml.load(fs.readFileSync(path.join(root, '.github/workflows/deploy.yml'), 'utf8'));
   assert.deepEqual(workflow.on.push.branches, ['main']);
