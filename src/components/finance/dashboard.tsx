@@ -2,10 +2,11 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import type { FinanceAccess, FinanceSnapshot, FinanceSource } from "@/lib/finance/types";
 import { money, totals } from "@/lib/finance/metrics";
 import { useApi } from "@/components/api";
+import { useApp } from "@/components/app";
 import { btn, Empty, ErrorNote, field, Loading, PageHeader } from "@/components/ui";
 
 const Studio = dynamic(() => import("@/components/finance/studio"), { ssr: false, loading: () => <Loading text="Loading AG Studio…" /> });
@@ -24,22 +25,18 @@ function Kpi({ label, value, hint }: { label: string; value: string; hint: strin
 }
 
 export default function FinancePage() {
-  const access = useApi<FinanceAccess>("/api/finance/session");
+  const { operator, asOperator } = useApp();
+  // The route ignores the query. It changes the path, so the access loads again after an operator sign-in or sign-out.
+  const access = useApi<FinanceAccess>(`/api/finance/session?operator=${operator.signedIn}`);
   const [source, setSource] = useState<FinanceSource>("ledger");
   const [currency, setCurrency] = useState("USD");
   const [period, setPeriod] = useState(() => ({ start: day(new Date(Date.now() - 30 * 86400000)), end: day(new Date()) }));
   const [applied, setApplied] = useState(period);
   const [refresh, setRefresh] = useState(0);
   const [clock, setClock] = useState(() => Date.now());
-  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [showLogin, setShowLogin] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  // The header link "Sign in on Finance" opens /finance#sign-in: show the sign-in form at once.
-  useEffect(() => {
-    if (location.hash === "#sign-in") { setSettingsOpen(true); setShowLogin(true); } // eslint-disable-line react-hooks/set-state-in-effect
-  }, []);
   const range = useMemo(() => {
     const now = new Date(clock);
     const endOfDay = new Date(`${applied.end}T23:59:59.999Z`);
@@ -58,22 +55,13 @@ export default function FinancePage() {
   const synced = snapshot.data?.syncedAt ? ` · retrieved ${new Date(snapshot.data.syncedAt).toISOString().slice(11, 16)} UTC` : "";
   const sandboxReady = !!access.data?.authenticated && !!access.data?.paypalConfigured;
 
-  async function login(e: FormEvent) {
-    e.preventDefault(); setBusy(true); setError(null);
-    try {
-      const result = await fetch("/api/finance/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
-      if (!result.ok) throw new Error((await result.json()).error);
-      setPassword(""); setShowLogin(false); access.reload();
-    } catch (e) { setError(e as Error); }
-    finally { setBusy(false); }
-  }
   async function logout() {
     setBusy(true); setError(null);
     try {
       const result = await fetch("/api/finance/session", { method: "DELETE" });
       if (!result.ok) throw new Error((await result.json()).error);
       if (source === "sandbox") setSource("ledger");
-      access.reload();
+      operator.reload();
     } catch (e) { setError(e as Error); }
     finally { setBusy(false); }
   }
@@ -102,17 +90,12 @@ export default function FinancePage() {
         <label className={fieldLabel}>Data source<select value={source} onChange={(e) => { setSource(e.target.value as FinanceSource); setRefresh(0); }} className={`${field} mt-1`}>
           <option value="ledger">{SOURCES.ledger}</option>
           <option value="demo">{SOURCES.demo}</option>
-          <option value="sandbox" disabled={!sandboxReady}>{SOURCES.sandbox}{sandboxReady ? "" : access.data?.authenticated ? " (credentials not configured)" : " (admin sign-in required)"}</option>
+          <option value="sandbox" disabled={!sandboxReady}>{SOURCES.sandbox}{sandboxReady ? "" : access.data?.authenticated ? " (credentials not configured)" : " (operator sign-in required)"}</option>
         </select></label>
         {access.data?.authenticated
           ? <button type="button" className={btn.small} onClick={logout} disabled={busy}>Sign out</button>
-          : <button type="button" className={btn.small} aria-expanded={showLogin} aria-controls="finance-login" onClick={() => setShowLogin(!showLogin)}>Admin sign-in</button>}
+          : <button type="button" className={btn.small} onClick={() => asOperator(access.reload, true)}>Operator sign-in</button>}
       </div>
-      {showLogin && !access.data?.authenticated && <form id="finance-login" onSubmit={login} className="flex flex-wrap items-end gap-3">
-        <label className={fieldLabel}>Finance admin password<input type="password" autoComplete="current-password" className={`${field} mt-1`} value={password} onChange={(e) => setPassword(e.target.value)} required maxLength={256} /></label>
-        <button className={btn.primary} disabled={busy || !password}>{busy ? "Signing in…" : "Sign in"}</button>
-        {access.data && !access.data.passwordConfigured && <p className="w-full text-xs text-amber-800">Set FINANCE_ADMIN_PASSWORD (at least 16 characters) on the server. Do not use PayPal credentials as this password.</p>}
-      </form>}
       <form onSubmit={apply} className="flex flex-wrap items-end gap-3">
         <label className={fieldLabel}>From (UTC)<input type="date" className={`${field} mt-1`} value={period.start} max={period.end} onChange={(e) => setPeriod({ ...period, start: e.target.value })} required /></label>
         <label className={fieldLabel}>To (UTC)<input type="date" className={`${field} mt-1`} value={period.end} max={day(new Date(clock))} min={period.start} onChange={(e) => setPeriod({ ...period, end: e.target.value })} required /></label>
@@ -126,7 +109,7 @@ export default function FinancePage() {
 
     {error && <ErrorNote error={error} />}
     {snapshot.error ? <ErrorNote error={snapshot.error} onRetry={snapshot.reload} />
-      : source === "sandbox" && !access.data?.authenticated ? <Empty title="Sign in to see the PayPal Sandbox account.">Open Settings and use Admin sign-in.</Empty>
+      : source === "sandbox" && !access.data?.authenticated ? <Empty title="Sign in to see the PayPal Sandbox account.">Open Settings and use Operator sign-in.</Empty>
       : !snapshot.data ? <Loading text="Loading financial data…" />
       : source === "ledger" && !snapshot.data.transactions.length ? <Empty title="No payment yet.">
         <p>Payments show here when traders pay in a clearing round. Run clearing on the market page, then pay in.</p>

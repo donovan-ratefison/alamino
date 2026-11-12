@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 
 export const btn = {
@@ -66,16 +65,10 @@ export function Loading({ text = "Loading..." }: { text?: string }) {
   );
 }
 
-// A 401 is an operator action without the Finance sign-in: link to the sign-in form.
-export function ErrorNote({ error, onRetry }: { error: { message: string; status?: number }; onRetry?: () => void }) {
+export function ErrorNote({ error, onRetry }: { error: { message: string }; onRetry?: () => void }) {
   return (
     <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
       <span>Error: {error.message}</span>
-      {error.status === 401 && (
-        <Link href="/finance#sign-in" className={btn.small}>
-          Sign in on Finance
-        </Link>
-      )}
       {onRetry && (
         <button type="button" className={btn.small} onClick={onRetry}>
           Try again

@@ -27,6 +27,18 @@ export function MoreMenu() {
   const button = useRef<HTMLButtonElement>(null);
   const [resetting, setResetting] = useState(false);
   const [resetError, setResetError] = useState<Error | null>(null);
+  const { operator, asOperator } = useApp();
+
+  async function signOut() {
+    setResetError(null);
+    try {
+      const res = await fetch("/api/finance/session", { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `Request failed (${res.status})`);
+      operator.reload();
+    } catch (e) {
+      setResetError(e as Error);
+    }
+  }
 
   // Reseed the database, then reload on the market so every list shows the seed data.
   async function reset() {
@@ -105,6 +117,22 @@ export function MoreMenu() {
             <button type="button" className="nav-link w-full disabled:opacity-60" disabled={resetting} onClick={reset}>
               {resetting ? "Resetting..." : "Reset demo"}
             </button>
+            {operator.signedIn ? (
+              <button type="button" className="nav-link w-full" onClick={signOut}>
+                Operator sign-out
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="nav-link w-full"
+                onClick={() => {
+                  setOpen(false);
+                  asOperator(() => {}, true);
+                }}
+              >
+                Operator sign-in
+              </button>
+            )}
             {resetError && <ErrorNote error={resetError} />}
           </div>
           <div className="grid gap-2 border-t border-zinc-200 px-2 pt-3">

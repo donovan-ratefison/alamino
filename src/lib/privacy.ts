@@ -8,7 +8,7 @@ import type { Cancellation, ClearingResult, ClearingStats, Debt, Edge, Round, St
 
 // Reads the `x-alamino-viewer` header. No header means the house.
 // Every view is open to read: "View as" already shows every trader. In sandbox mode the
-// house actions (run clearing, pay-ins, payouts) need the Finance sign-in on their routes.
+// house actions (run clearing, pay-ins, payouts) need the operator sign-in on their routes.
 export function viewerOf(req: Request): Viewer {
   const id = req.headers.get("x-alamino-viewer") || HOUSE;
   if (id !== HOUSE) {

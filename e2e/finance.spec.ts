@@ -22,7 +22,7 @@ test.describe("AI Finance Dashboard", () => {
     await expect(settingsButton).toBeVisible();
   });
 
-  test("toggles settings panel and admin sign-in form", async ({ page }) => {
+  test("toggles settings panel and opens the operator sign-in dialog", async ({ page }) => {
     await page.goto("/finance");
 
     const settingsButton = page.getByRole("button", { name: "Settings" });
@@ -36,14 +36,16 @@ test.describe("AI Finance Dashboard", () => {
     await expect(sourceSelect).toBeVisible();
     await expect(sourceSelect).toHaveValue("ledger");
 
-    // Admin sign in
-    const adminSignInButton = settingsSection.getByRole("button", { name: "Admin sign-in" });
-    await expect(adminSignInButton).toBeVisible();
-    await adminSignInButton.click();
+    // Operator sign in
+    const signInButton = settingsSection.getByRole("button", { name: "Operator sign-in" });
+    await expect(signInButton).toBeVisible();
+    await signInButton.click();
 
-    // Password input form
-    const passwordInput = page.getByLabel(/finance admin password/i);
-    await expect(passwordInput).toBeVisible();
+    // Sign-in dialog
+    const dialog = page.getByRole("dialog", { name: "Sign in as the clearing house operator" });
+    await expect(dialog.getByLabel("Operator password")).toBeVisible();
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toBeHidden();
   });
 
   test("switches to demo source to display demonstration fixtures and KPIs", async ({ page }) => {

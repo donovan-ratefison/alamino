@@ -32,7 +32,7 @@ function TraderOutcome({ preview }: { preview?: Preview }) {
 
 export default function MarketPage() {
   const router = useRouter();
-  const { traders, debts, traderId, isHouse, name } = useApp();
+  const { traders, debts, traderId, isHouse, name, asOperator } = useApp();
   const latest = useApi<Round>("/api/rounds/latest");
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<Error | null>(null);
@@ -83,7 +83,7 @@ export default function MarketPage() {
                 <p className="text-sm">The clearing house runs the next round.</p>
               ) : (
                 <>
-                  <button type="button" className={btn.inverse} onClick={runClearing} disabled={running || debts.loading || stats === null}>
+                  <button type="button" className={btn.inverse} onClick={() => asOperator(runClearing)} disabled={running || debts.loading || stats === null}>
                     {running ? "Running clearing..." : "Run clearing"}
                   </button>
                   {stats ? (

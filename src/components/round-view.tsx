@@ -46,10 +46,8 @@ function SandboxButtons(props: PayPalButtonsComponentProps) {
 }
 
 function PayIn({ roundId, s, onPaid }: { roundId: string; s: Settlement; onPaid: () => void }) {
-  const { config } = useApp();
+  const { config, operator, asOperator } = useApp();
   const sandbox = config?.paypalMode === "sandbox" && !!paypalOptions.clientId;
-  // Sandbox orders need the finance admin session: check it first, so the button area never stays empty.
-  const session = useApi<{ authenticated: boolean }>(sandbox ? "/api/finance/session" : null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const base = `/api/rounds/${roundId}/payin/${s.traderId}`;
@@ -82,20 +80,11 @@ function PayIn({ roundId, s, onPaid }: { roundId: string; s: Settlement; onPaid:
         </button>
       ) : !sandbox ? (
         <p className="text-sm text-red-700">The PayPal button needs NEXT_PUBLIC_PAYPAL_CLIENT_ID.</p>
-      ) : session.error ? (
-        <ErrorNote error={session.error} onRetry={session.reload} />
-      ) : !session.data ? (
-        <p role="status" className={placeholder}>
-          Loading PayPal
-        </p>
-      ) : !session.data.authenticated ? (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Sandbox payments need the finance admin.{" "}
-          <Link href="/finance" className="font-medium text-accent underline">
-            Sign in on the Finance page
-          </Link>
-          , then come back to pay {formatUsd(s.amountCents)}.
-        </p>
+      ) : !operator.signedIn ? (
+        // Sandbox orders need the operator session. After the sign-in, the PayPal buttons show.
+        <button type="button" className={`${btn.primary} w-full sm:w-auto`} onClick={() => asOperator(() => {})}>
+          Sign in to pay {formatUsd(s.amountCents)}
+        </button>
       ) : (
         <PayPalScriptProvider options={paypalOptions}>
           <SandboxButtons
@@ -122,7 +111,7 @@ function traderTitle(r: Round, me: Settlement | undefined): string {
 }
 
 export function RoundView({ id }: { id: string }) {
-  const { traderId, setTraderId, name, isHouse } = useApp();
+  const { traderId, setTraderId, name, isHouse, operator, asOperator } = useApp();
   const round = useApi<Round>(`/api/rounds/${id}`);
   const { set, reload } = round;
   // The round was loaded for another viewer ("View as" changed): load it again before it shows.
@@ -139,13 +128,15 @@ export function RoundView({ id }: { id: string }) {
   const status = round.data?.status;
 
   // Payouts are sent: ask the server every 3 s until PayPal confirms them. The answer is the round as this viewer sees it.
+  // The refresh is an operator action: without the sign-in in sandbox mode, the round waits.
+  const canRefresh = !operator.needed || operator.signedIn;
   useEffect(() => {
-    if (status !== "paying" || !roundId) return;
+    if (status !== "paying" || !roundId || !canRefresh) return;
     const timer = setInterval(() => {
       api<Round>(`/api/rounds/${roundId}/payout/refresh`, {}).then(set, (e) => setActionError(e as Error));
     }, 3000);
     return () => clearInterval(timer);
-  }, [status, roundId, set]);
+  }, [status, roundId, set, canRefresh]);
 
   if (round.error?.status === 404) {
     return (
@@ -364,7 +355,7 @@ export function RoundView({ id }: { id: string }) {
                     <p className="text-sm text-zinc-600">The clearing house sends the payouts when everyone has paid.</p>
                   ) : (
                     canSendPayouts && (
-                      <button type="button" className={`${btn.primary} w-full sm:w-auto`} disabled={sending} onClick={sendPayouts}>
+                      <button type="button" className={`${btn.primary} w-full sm:w-auto`} disabled={sending} onClick={() => asOperator(sendPayouts)}>
                         {sending ? "Sending payouts..." : "Send payouts"}
                       </button>
                     )

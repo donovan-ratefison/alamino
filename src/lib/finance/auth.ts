@@ -17,7 +17,7 @@ export function authenticated(req: Request): boolean {
   return !!sig && /^\d+$/.test(expiry) && Number(expiry) > Date.now() && Number(expiry) <= Date.now() + lifetime * 1000 && safeEqual(sig, signature(`${expiry}.${nonce}`));
 }
 export function requireAdmin(req: Request) {
-  if (!authenticated(req)) throw new HttpError(401, "Sign in on the Finance page as the clearing house operator.");
+  if (!authenticated(req)) throw new HttpError(401, "Sign in as the clearing house operator.");
 }
 // The host the browser used. Behind a proxy or on a network address, req.url holds
 // an internal host, so the Host and X-Forwarded-Host headers are checked too.

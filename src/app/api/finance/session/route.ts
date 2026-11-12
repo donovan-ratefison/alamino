@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     sameOrigin(req); rateLimit("finance-login", 10, 15 * 60000);
     if (!configured()) throw new HttpError(503, "Set FINANCE_ADMIN_PASSWORD to at least 16 characters on the server.");
     const body = await readBody(req, 2000);
-    if (typeof body.password !== "string" || !safeEqual(body.password, process.env.FINANCE_ADMIN_PASSWORD!)) throw new HttpError(401, "Incorrect finance password.");
+    if (typeof body.password !== "string" || !safeEqual(body.password, process.env.FINANCE_ADMIN_PASSWORD!)) throw new HttpError(401, "Incorrect operator password.");
     return Response.json({ ok: true }, { headers: { "Set-Cookie": sessionCookie(req), "Cache-Control": "no-store" } });
   } catch (e) { return financeError(e); }
 }

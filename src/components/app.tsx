@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { createContext, Suspense, useContext, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, Suspense, useContext, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { HOUSE, type Debt, type Trader, type TraderId, type Viewer } from "@/lib/types";
 import { useApi, VIEWER_KEY, waitingFor } from "./api";
 import { Brand } from "./brand";
 import { Bell } from "./bell";
 import { MoreMenu } from "./more-menu";
+import { OperatorSignIn } from "./operator-sign-in";
 import { TourTrigger } from "./guided-tour";
 import { TraderChip } from "./trader-chip";
 
@@ -26,6 +27,10 @@ interface AppState {
   debts: ReturnType<typeof useApi<Debt[]>>; // shared list, already filtered for the viewer: reload it after a change
   pendingCount: number;
   refreshPending: () => void;
+  // The clearing house operator session. Sandbox mode needs it for clearing and PayPal actions.
+  operator: { needed: boolean; signedIn: boolean; reload: () => void };
+  // Runs the action, or first opens the operator sign-in when it is needed. `force` opens it in simulated mode too.
+  asOperator: (action: () => void, force?: boolean) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -63,6 +68,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const config = useApi<AppConfig>("/api/config").data;
   // The route ignores the query. It changes the path, so the list loads again for a new viewer.
   const debts = useApi<Debt[]>(`/api/debts?viewer=${traderId}`);
+  const session = useApi<{ authenticated: boolean }>("/api/finance/session");
+  const needed = config?.paypalMode === "sandbox";
+  const signedIn = !!session.data?.authenticated;
+  const pending = useRef<(() => void) | null>(null);
+  const [signingIn, setSigningIn] = useState(false);
 
   const value: AppState = {
     traders,
@@ -74,9 +84,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     debts,
     pendingCount: (debts.data ?? []).filter((d) => waitingFor(d, traderId)).length, // always 0 for the house
     refreshPending: debts.reload,
+    operator: { needed, signedIn, reload: session.reload },
+    asOperator: (action, force) => {
+      // While the session loads, run the action: the server decides.
+      if ((needed || force) && session.data && !signedIn) {
+        pending.current = action;
+        setSigningIn(true);
+      } else action();
+    },
   };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  function closeSignIn() {
+    pending.current = null;
+    setSigningIn(false);
+  }
+
+  function signedInNow() {
+    const action = pending.current;
+    closeSignIn();
+    session.reload();
+    action?.();
+  }
+
+  return (
+    <AppContext.Provider value={value}>
+      {children}
+      <OperatorSignIn open={signingIn} onClose={closeSignIn} onSignedIn={signedInNow} />
+    </AppContext.Provider>
+  );
 }
 
 const links = [
