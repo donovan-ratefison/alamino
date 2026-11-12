@@ -131,6 +131,24 @@ test("validation keeps the model question on an incomplete draft only", () => {
   assert.deepEqual([open.question, open.confidence], ["Which way does the debt go?", "medium"]);
 });
 
+test("a name that fits two traders gives no trader; the longest name wins", () => {
+  const twins = [...traders, trader("hery2", "Hery", ["Hery hena"])];
+  const fb = (text: string) => fallbackCapture({ text, traders: twins, speakerId: "rivo" })[0];
+  assert.deepEqual(sides(fb("I owe Hery 50")), [null, "you_owe", null, null, 5000]);
+  assert.equal(fb("I owe Hery 50").counterpartyText, "Hery");
+  assert.equal(fb("I owe Hery hena 50").counterpartyId, "hery2");
+  assert.equal(fb("I owe Rakoto 50").counterpartyId, "hery");
+  const model = (patch: Record<string, unknown>, speakerId = "soa") =>
+    validateDrafts({ drafts: [modelDraft(patch)] }, twins, speakerId)[0];
+  const d = model({});
+  assert.deepEqual(sides(d), [null, "you_owe", null, null, 30000]);
+  assert.equal(d.confidence, "low");
+  assert.match(d.question ?? "", /More than one trader is called "Hery"/);
+  assert.equal(model({ counterpartyId: "hery2", counterpartyText: "Hery hena" }).counterpartyId, "hery2");
+  // The speaker is never a candidate: in the notebook of one Hery, "Hery" is the other one.
+  assert.equal(model({ counterpartyId: "hery2" }, "hery").counterpartyId, "hery2");
+});
+
 test("validation drops an empty question and rejects a bad structure", () => {
   assert.equal(validate({ question: " " }).question, undefined);
   assert.equal(validate({ confidence: "sure" }).confidence, "low");

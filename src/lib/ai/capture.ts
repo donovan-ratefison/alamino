@@ -62,12 +62,22 @@ function emptyDraft(question: string): DebtDraft {
 
 const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 
+// The traders whose name or alias is in the text. The longest name wins: "Hery vary" beats "Hery".
+// Two or more ids mean the text fits several traders.
+function candidates(text: string, traders: Trader[]): TraderId[] {
+  const padded = ` ${norm(text)} `;
+  const best = traders.map((tr) =>
+    Math.max(0, ...[tr.name, ...tr.aliases].map(norm).filter((n) => n && padded.includes(` ${n} `)).map((n) => n.length)),
+  );
+  const top = Math.max(0, ...best);
+  return top ? traders.filter((_, i) => best[i] === top).map((tr) => tr.id) : [];
+}
+
 function matchTrader(text: string, traders: Trader[], speakerId: TraderId): TraderId | null {
   const t = norm(text);
   if (t === "i" || t === "me") return speakerId;
-  const padded = ` ${t} `;
-  const names = (tr: Trader) => [tr.name, ...tr.aliases].map(norm).filter(Boolean);
-  return traders.find((tr) => names(tr).some((n) => padded.includes(` ${n} `)))?.id ?? null;
+  const ids = candidates(text, traders);
+  return ids.length === 1 ? ids[0] : null;
 }
 
 // The speaker is always one side. Derives debtor and creditor. The screen asks for a missing part:
@@ -110,6 +120,13 @@ export function validateDrafts(raw: unknown, traders: Trader[], speakerId: Trade
       confidence: CONFIDENCE.find((c) => c === d.confidence) ?? "low",
       question: d.question == null ? undefined : str(d.question).trim() || undefined,
     };
+    // A name that fits several traders: plain code does not let the model choose.
+    const others = traders.filter((t) => t.id !== speakerId);
+    if (found.counterpartyId && candidates(found.counterpartyText, others).length > 1) {
+      found.counterpartyId = null;
+      found.confidence = "low";
+      found.question = `More than one trader is called "${found.counterpartyText.trim()}". Which one is it?`;
+    }
     // Plain code asks only for a missing field. A question on a complete draft becomes low confidence.
     if (found.question && found.counterpartyId && found.direction && found.amountCents !== null) {
       found.question = undefined;
@@ -169,6 +186,7 @@ function systemPrompt(traders: Trader[], speakerId: TraderId): string {
     "When a line does not say the direction, find it in this order. First, the goods: the trader whose business sells the goods on the line is the one who is owed (a restaurant that notes meat next to the butcher owes the butcher; a rice seller who notes bags next to a name is owed by that person). Second, the line above it, or the page heading: a line with only a name and an amount takes that direction. In both cases confidence is medium or low, never high.",
     "If nothing on the page gives the direction, set direction to null and write a question that asks which way the debt goes.",
     `If a line names only ${speaker}, or a person who is not in the trader list, set counterpartyId to null, set counterpartyText to the name as written, and write a question that asks who the other trader is.`,
+    "If the name fits more than one trader in the list, set counterpartyId to null, set counterpartyText to the name as written, and write a question that asks which trader it is.",
     "All amounts are US dollars. amountCents is the dollar amount times 100: 300 means 30000, 12.50 means 1250. Take the amount as written. If the amount is not clear, set amountCents to null and write a short question. Never guess an amount.",
     "Skip totals and headings. Return one draft for each debt line. note says in a few English words what the debt is for.",
     "confidence is high when the name, the direction and the amount are clear, medium when you had to interpret, low when you are not sure.",
