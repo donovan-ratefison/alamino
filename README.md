@@ -33,6 +33,7 @@
   <a href="#ai">AI</a> ·
   <a href="#screens">Screens</a> ·
   <a href="#environment-variables">Env vars</a> ·
+  <a href="#contributors">Contributors</a> ·
   <a href="#docs">Docs</a>
 </p>
 
@@ -305,6 +306,34 @@ npm run e2e         # Playwright journeys on a production build, no keys, own da
 - [Architecture](docs/ARCHITECTURE.md)
 - [Overall flow diagram](docs/clearing-house-system.md)
 - [User journeys, sequence diagrams](docs/user-journeys.md)
+
+## Contributors
+
+<table>
+  <tr>
+    <td align="center" width="180">
+      <a href="https://github.com/donovan-ratefison">
+        <img src="https://avatars.githubusercontent.com/u/23360410?s=96&amp;v=4" width="80" height="80" alt="Donovan's GitHub avatar"><br>
+        <strong>Donovan</strong><br>
+        <sub>@donovan-ratefison</sub>
+      </a>
+    </td>
+    <td align="center" width="180">
+      <a href="https://github.com/Tokiarivelo">
+        <img src="https://avatars.githubusercontent.com/u/37537133?s=96&amp;v=4" width="80" height="80" alt="Tokiarivelo's GitHub avatar"><br>
+        <strong>Tokiarivelo</strong><br>
+        <sub>@Tokiarivelo</sub>
+      </a>
+    </td>
+    <td align="center" width="180">
+      <a href="https://github.com/TsilaRH">
+        <img src="https://avatars.githubusercontent.com/u/158848282?s=96&amp;v=4" width="80" height="80" alt="Tendry Tsilavina's GitHub avatar"><br>
+        <strong>Tendry Tsilavina</strong><br>
+        <sub>@TsilaRH</sub>
+      </a>
+    </td>
+  </tr>
+</table>
 
 ## Licence
 
