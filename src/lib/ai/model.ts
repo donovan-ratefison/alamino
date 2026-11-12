@@ -1,5 +1,5 @@
 // One call to an OpenAI-compatible Chat Completions API that returns JSON.
-// Callers validate the result in plain code. Default provider: Meta Model API.
+// Callers validate the result in plain code. Any OpenAI-compatible provider works (AI_BASE_URL, AI_MODEL).
 
 export type Part = { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } };
 
