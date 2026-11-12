@@ -313,6 +313,12 @@ body.clean #ctrl{display:none}
 #full{position:absolute;inset:0;z-index:12;color:#fff;opacity:0;pointer-events:none;transition:opacity .8s;
   background:radial-gradient(1400px 800px at 50% 35%,#0b3a86 0%,#062456 55%,#031331 100%)}
 #full.on{opacity:1}
+/* Veil: an opaque backdrop under the full-frame cards. It stays on from one card to the next, so a card change never
+   shows the stage or the bottom band. It fades only when the video goes from a card to the stage, or back. */
+#veil{position:absolute;inset:0;z-index:11;opacity:0;pointer-events:none;transition:opacity .8s;
+  background:radial-gradient(1400px 800px at 50% 35%,#0b3a86 0%,#062456 55%,#031331 100%)}
+#veil.on{opacity:1}
+#titlecard{background:none}
 .panel{position:absolute;inset:0;opacity:0;transition:opacity .6s}
 .panel.on{opacity:1}
 body.full #sub,body.centred #sub{left:0;right:0}
@@ -489,6 +495,7 @@ body.problem :is(#phone,#laptop,#base){opacity:.45}
   <div class="ntag" id="tag-o"></div>
   <div id="tcard"><div class="tw"></div><div class="tx"><span id="typed"></span><i class="caret"></i></div><div class="tai"></div><div id="drafts"></div><div class="tsaved"></div></div>
 
+  <div id="veil"></div>
   <div class="card-over" id="titlecard"><h1></h1></div>
 
   <div id="full">
@@ -1097,6 +1104,7 @@ function state(s){
   focus(s.focus||null); bubble(null);
   subPlace(s.full || s.title ? 'full' : '');
   $('#titlecard').classList.toggle('on', !!s.title);
+  $('#veil').classList.toggle('on', !!(s.full || s.title));
   $('#shot').className=''; $('#shot').style.transform='';
   document.querySelectorAll('.coin').forEach(c=>c.remove());
   $('#full').classList.toggle('on', !!s.full);
@@ -1161,13 +1169,13 @@ const V = k => VO[k].p;
 // One scene per voice-over segment. Durations in ms, total 175 s.
 const SCENES = [
   {key:'S00', label:'S00 Opening', dur:VO.S00.d, step:'Alamino', title:CONFIG.tagline, body:'Clearing for small businesses, with AI and PayPal.',
-   setup(){ state({phone:[null,'idle'], full:'open'}); $('#feed').innerHTML=''; },
+   setup(){ state({phone:[null,'idle'], full:'open', market:'hidden'}); $('#feed').innerHTML=''; },
    steps:[[100,()=>$('#openp').classList.add('rise')], [300,()=>sfx.chime()], [1200,()=>$('#openp').classList.add('show')]]},
   {key:'S01', label:'S01 Hook', dur:VO.S01.d, step:'The problem', title:'Banks clear their debts every day', body:'Small businesses have no clearing house. Each debt waits for cash.',
    setup(){ state({phone:[null,'idle'], title:true, market:'hidden'}); },
    steps:[]},
   {key:'S02', label:'S02 Team', dur:VO.S02.d, step:'The team', title:'Built for small businesses', body:`${FIRST_NAMES}, for the ${CONFIG.hackathon}.`,
-   setup(){ state({phone:[null,'idle'], full:'team'}); },
+   setup(){ state({phone:[null,'idle'], full:'team', market:'hidden'}); },
    steps:[[300,()=>$('#teamp').classList.add('show')]]},
   {key:'S03', label:'S03 Problem', dur:VO.S03.d, step:'The problem', title:'Five businesses, five notebooks', body:'They deliver now and get paid later. Nobody sees the whole circle.',
    setup(){ state({phone:[null,'idle'], market:'hidden'}); },
