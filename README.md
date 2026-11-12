@@ -51,6 +51,7 @@ The issue walks live in `e2e/issue-*.spec.ts` (`npm run test:e2e:issues`). They 
 
 ## Docs
 
+- [Automatic VPS deployment, SSH secrets and rollback](docs/DEPLOYMENT.md)
 - [First-visit tour, illustrated guides and navigation](docs/ONBOARDING.md)
 - [AI Finance Dashboard: setup, Sandbox, AG Studio and validation](docs/FINANCE.md)
 

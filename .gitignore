@@ -44,6 +44,7 @@ next-env.d.ts
 
 # project
 /data/
+/.deploy/
 !.env.example
 
 # playwright
