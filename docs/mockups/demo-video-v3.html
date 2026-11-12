@@ -1,0 +1,1167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alamino Demo Stage v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#0070e0; --brand:#003087; --ink:#052969; --soft:#eff6ff; --line:#dce5f2;
+  --muted:#5b6b86; --paid:#16a34a; --paypal:#ffc439;
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:#070d1a;overflow:hidden;font-family:Inter,system-ui,sans-serif;color:var(--ink)}
+button{font:inherit;cursor:pointer}
+
+/* Controls (outside the video frame) */
+#ctrl{position:fixed;inset:0 0 auto 0;height:52px;display:flex;align-items:center;gap:8px;padding:0 16px;background:#0b1428;border-bottom:1px solid #1b2a4a;z-index:10;overflow-x:auto}
+#ctrl button{border:1px solid #2a3b60;background:#12203d;color:#dbe7ff;border-radius:999px;padding:6px 14px;font-size:13px;white-space:nowrap}
+#ctrl button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+#ctrl .hint{color:#7f93b8;font-size:12px;margin-left:auto;white-space:nowrap}
+body.clean #ctrl{display:none}
+
+/* 1920 x 1080 frame, scaled to the window. #cam holds the content. It never moves: focus() lifts one block instead. */
+#frame{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden;background:var(--soft)}
+#cam{position:absolute;left:0;top:0;width:1920px;height:1080px}
+.notrans,.notrans *{transition:none!important}
+#stage{position:absolute;inset:0 0 auto 0;height:660px;
+  background:radial-gradient(1100px 620px at 50% 25%,#0d4aa8 0%,#063585 45%,#041f55 100%)}
+#stage::after{content:"";position:absolute;inset:auto 0 0 0;height:120px;background:linear-gradient(transparent,rgba(2,12,40,.45))}
+#progress{position:absolute;left:0;top:0;height:4px;background:var(--paypal);z-index:20;width:0}
+
+/* Phone: inner screen 270 x 614, a 30px notch strip on top of a 270 x 584 video area (390:844, the clip ratio) */
+#phone{position:absolute;left:60px;top:14px;width:290px;height:634px;border-radius:46px;border:10px solid var(--pc,#003087);
+  background:#fff;overflow:hidden;z-index:2;transition:border-color .6s,box-shadow .6s,opacity .6s,transform .6s;
+  box-shadow:0 0 0 2px rgba(255,255,255,.15),0 40px 90px -20px var(--pc,#003087)}
+.notch{position:absolute;left:50%;top:6px;width:84px;height:20px;margin-left:-42px;background:#0b1220;border-radius:12px;z-index:5}
+.pstatus{height:30px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-size:11px;font-weight:600}
+.phead{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--pc,#003087);color:#fff;transition:background .6s}
+.phead b{font-size:17px;letter-spacing:-.01em}
+.phead .who{font-size:12px;background:rgba(255,255,255,.22);padding:4px 10px;border-radius:999px}
+#pscreen{position:absolute;left:0;right:0;top:86px;bottom:0;padding:16px}
+#pscreen.swap{animation:fadein .45s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+/* The video starts under the notch strip, so the notch never hides the app header. */
+.pvid{position:absolute;left:0;right:0;top:30px;bottom:0;width:100%;height:calc(100% - 30px);object-fit:contain;object-position:top;background:#fff;z-index:3;display:none}
+.pvid.on{display:block}
+.tap{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:rgba(0,112,224,.35);border:2px solid rgba(255,255,255,.9);z-index:6;pointer-events:none;animation:tap .6s ease-out forwards}
+@keyframes tap{from{transform:scale(.4);opacity:1}to{transform:scale(1.6);opacity:0}}
+#ptoast{position:absolute;left:14px;right:14px;bottom:26px;z-index:6;border-radius:14px;padding:12px 14px;background:#0b2a6f;color:#fff;font-size:13px;font-weight:600;line-height:1.35;
+  opacity:0;transform:translateY(16px);transition:opacity .35s,transform .35s}
+#ptoast.on{opacity:1;transform:none}
+#pnotif{position:absolute;left:10px;right:10px;top:34px;z-index:6;border-radius:16px;background:#0b2a6f;color:#fff;padding:12px 14px;font-size:14px;
+  opacity:0;transform:translateY(-40px);transition:opacity .4s,transform .6s cubic-bezier(.2,.9,.3,1.2)}
+#pnotif.on{opacity:1;transform:none}
+#pnotif small{display:block;color:var(--paypal);font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px}
+.lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);height:18px}
+.thumb{display:block;width:238px;height:165px;object-fit:cover;border-radius:12px;margin-bottom:12px}
+.card{border:1px solid var(--line);border-radius:16px;padding:12px 14px;background:#fff}
+.tag{font-size:11px;font-weight:600;color:var(--accent);background:var(--soft);border-radius:999px;padding:3px 9px;display:inline-block;margin-bottom:6px}
+.row{display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-bottom:1px solid #eef2f8}
+.row:last-child{border-bottom:0}
+.row span{color:var(--muted)}
+.row.total b{color:var(--paid);font-size:16px}
+.btn{display:block;width:100%;margin-top:12px;border:0;border-radius:999px;padding:12px;background:var(--pc,#003087);color:#fff;font-weight:600;font-size:15px;position:relative;overflow:hidden}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn.paypal{background:var(--paypal);color:#0b2a6f}
+.btn.press{animation:press .35s ease}
+.btn.press::after{content:"";position:absolute;left:50%;top:50%;width:20px;height:20px;margin:-10px;border-radius:50%;background:rgba(255,255,255,.6);animation:ripple .5s ease-out forwards}
+@keyframes press{50%{transform:scale(.95)}}
+@keyframes ripple{to{transform:scale(18);opacity:0}}
+.ok{margin-top:12px;border-radius:14px;padding:12px;background:#e8f7ee;color:#11632f;font-weight:600;font-size:14px;animation:fadein .4s ease}
+.amt{font-size:40px;font-weight:700;letter-spacing:-.02em;margin:4px 0}
+.muted{font-size:13px;color:var(--muted);line-height:1.4}
+.fine{font-size:11px;color:var(--muted);text-align:center;margin-top:8px}
+.center{text-align:center}
+.idle{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center}
+.idle img{width:190px}
+.cam{position:absolute;inset:0;background:#0b1220;color:#cbd5e1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;font-size:13px}
+.cam .vf{width:220px;height:150px;border:2px dashed rgba(255,255,255,.35);border-radius:12px}
+.cam .shutter{position:absolute;bottom:28px;width:62px;height:62px;border-radius:50%;border:5px solid #fff;background:rgba(255,255,255,.2)}
+.ai{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--accent);margin:4px 0 12px}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--soft);border-top-color:var(--accent);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.shim{height:12px;border-radius:6px;margin:8px 0;background:linear-gradient(90deg,#eef3fb 25%,#dbe7f8 50%,#eef3fb 75%);background-size:300% 100%;animation:shim 1.2s linear infinite}
+.shim.short{width:60%}
+@keyframes shim{from{background-position:100% 0}to{background-position:0 0}}
+
+/* Laptop (inner 1032 x 552) */
+#laptop{position:absolute;left:600px;top:24px;width:1060px;height:580px;border:14px solid #0f172a;border-radius:20px;background:#fff;overflow:hidden;z-index:2;
+  box-shadow:0 40px 90px -30px rgba(0,0,0,.7);transition:box-shadow .6s,opacity .6s,transform .6s}
+#laptop.live{box-shadow:0 0 0 3px var(--accent),0 40px 100px -20px #3b9bff}
+#base{position:absolute;left:570px;top:600px;width:1120px;height:24px;border-radius:0 0 22px 22px;background:linear-gradient(#d5dde9,#97a6bd);z-index:2;transition:opacity .6s}
+#base::before{content:"";position:absolute;left:50%;top:0;width:150px;height:8px;margin-left:-75px;border-radius:0 0 10px 10px;background:#8494ad}
+.ltop{height:46px;display:flex;align-items:center;gap:14px;padding:0 18px;border-bottom:1px solid var(--line)}
+.ltop img{height:22px}
+.ltop .sep{width:1px;height:20px;background:var(--line)}
+.ltop .t{font-weight:600;font-size:14px}
+.ltop .live{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
+.ltop .live i{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.2)}
+.lbody{padding:14px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;height:78px}
+.kpi{border:1px solid var(--line);border-radius:14px;padding:10px 14px;transition:background .5s,border-color .5s}
+.kpi span{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.kpi b{display:block;font-size:28px;letter-spacing:-.02em;margin-top:4px}
+.kpi.hot{background:var(--soft);border-color:#9cc7f5}
+.lmain{display:grid;grid-template-columns:580px 1fr;gap:14px;margin-top:12px;height:388px}
+.box{border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.bhead{height:42px;flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;font-weight:600;font-size:13px;border-bottom:1px solid var(--line)}
+.bhead small{font-weight:500;color:var(--muted);font-size:12px}
+.lbtn{margin-left:auto;border:0;border-radius:999px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;padding:6px 14px;position:relative;overflow:hidden}
+.lbtn[disabled]{background:#c7d3e6;cursor:default}
+.lbtn.press{animation:press .35s ease}
+#pbody{flex:1;overflow:hidden}
+.empty{padding:40px 16px;text-align:center;font-size:14px;color:var(--muted)}
+.bfoot{height:42px;flex:none;display:flex;align-items:center;gap:12px;padding:0 14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.bar{flex:1;height:8px;border-radius:4px;background:#e8eef7;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--paid);transition:width .9s ease}
+#feed{list-style:none;padding:6px 14px;overflow:hidden;flex:1}
+#feed li{display:grid;grid-template-columns:44px 1fr;gap:6px;font-size:12.5px;line-height:1.4;padding:9px 0;border-bottom:1px solid #eef2f8;animation:fadein .5s ease}
+#feed time{color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* Clearing round panel */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{height:25px;padding:0 14px;text-align:left;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:1px solid var(--line)}
+.tbl .pill{padding:1px 8px;font-size:11px}
+.tbl td{height:24px;padding:0 14px;border-bottom:1px solid #eef2f8}
+.tbl td:nth-child(3){font-weight:600;font-variant-numeric:tabular-nums}
+.tbl tr.fresh{animation:fadein .5s ease;background:#f5f9ff}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:1px}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;border-radius:999px;padding:3px 10px;transition:background .4s,color .4s}
+.pill.ok{background:#e8f7ee;color:#11632f}
+.pill.wait{background:#fff4dc;color:#8a5a00}
+.pill.done{background:#11632f;color:#fff}
+.crow{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #eef2f8;animation:fadein .5s ease}
+.crow div{flex:1}
+.crow b{font-size:14px}
+.crow p{font-size:12.5px;color:var(--muted);margin-top:3px}
+.crow em{font-style:normal;font-weight:700;color:var(--accent);font-size:14px}
+.prow{display:grid;grid-template-columns:150px 1fr 90px 100px;align-items:center;height:56px;padding:0 16px;border-bottom:1px solid #eef2f8;font-size:14px;animation:fadein .5s ease both}
+.prow b{font-size:17px;font-variant-numeric:tabular-nums}
+.prow .act{color:var(--muted)}
+.prow .pill{justify-self:end}
+
+/* Photo capture overlay */
+#shot{position:absolute;left:620px;top:96px;width:720px;height:480px;z-index:5;opacity:0;transform-origin:0 0;transform:scale(.94);pointer-events:none;
+  transition:opacity .5s,transform .5s ease}
+#shot img{width:100%;height:100%;object-fit:cover;border-radius:22px;box-shadow:0 40px 120px rgba(0,0,0,.6)}
+#shot .vf{position:absolute;inset:32px;border:0}
+#shot .vf i{position:absolute;width:48px;height:48px;border:4px solid #fff}
+#shot .vf i:nth-child(1){left:0;top:0;border-right:0;border-bottom:0}
+#shot .vf i:nth-child(2){right:0;top:0;border-left:0;border-bottom:0}
+#shot .vf i:nth-child(3){left:0;bottom:0;border-right:0;border-top:0}
+#shot .vf i:nth-child(4){right:0;bottom:0;border-left:0;border-top:0}
+#shot.show{opacity:1;transform:none}
+#shot.fly{transition:transform .7s cubic-bezier(.6,0,.3,1),opacity .3s .6s}
+#shot.fly .vf{display:none}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;z-index:10;pointer-events:none}
+#flash.on{animation:flash .45s ease-out}
+@keyframes flash{0%{opacity:.95}100%{opacity:0}}
+
+/* Overlays: badge, speech bubble, coins, subtitles */
+#badge{position:absolute;left:380px;top:40px;z-index:6;display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:999px;background:#fff;border:1px solid #9cc7f5;
+  box-shadow:0 12px 30px -10px rgba(0,0,0,.45);font-size:18px;font-weight:600;opacity:0;transform:translateY(-8px);transition:opacity .4s,transform .4s}
+#badge i{width:10px;height:10px;border-radius:50%;background:var(--accent)}
+#badge.on{opacity:1;transform:none}
+#bubble{position:absolute;z-index:6;max-width:230px;padding:10px 16px;border-radius:18px;background:#fff;color:var(--ink);font-size:18px;font-weight:600;line-height:1.3;
+  box-shadow:0 14px 34px -10px rgba(0,0,0,.5);opacity:0;transform:scale(.9);transform-origin:20% 100%;transition:opacity .3s,transform .3s}
+#bubble::after{content:"";position:absolute;bottom:-9px;left:60px;width:18px;height:18px;background:#fff;transform:rotate(45deg)}
+#bubble.r{transform-origin:80% 100%}
+#bubble.r::after{left:auto;right:60px}
+#bubble.on{opacity:1;transform:none}
+.coin{position:absolute;left:0;top:0;width:30px;height:30px;border-radius:50%;background:var(--paypal);border:2px solid #e0a800;color:#7a5200;
+  font:700 16px/26px Inter,system-ui,sans-serif;text-align:center;z-index:9;pointer-events:none;box-shadow:0 4px 10px rgba(0,0,0,.25)}
+/* Fixed over the laptop (x 590 to 1690), so it never covers the phone or the people */
+#sub{position:absolute;left:590px;right:230px;margin:0 auto;width:max-content;top:590px;z-index:20;max-width:1100px;padding:11px 26px;border-radius:999px;background:rgba(5,15,40,.88);color:#fff;
+  font-size:25px;font-weight:500;line-height:1.3;text-align:center;opacity:0;transition:opacity .4s}
+#sub.on{opacity:1}
+
+/* Title and end cards */
+.card-over{position:absolute;inset:0 0 auto 0;height:660px;z-index:8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center;color:#fff;
+  background:radial-gradient(900px 500px at 50% 45%,#0a3f9a,#031a45);opacity:0;pointer-events:none;transition:opacity .8s}
+.card-over.on{opacity:1}
+.card-over .k{font-size:22px;color:#9cc7f5;letter-spacing:.02em}
+.card-over h1{font-size:64px;font-weight:600;letter-spacing:-.03em;line-height:1.08;max-width:1500px}
+.card-over h1 em{font-style:normal;color:var(--paypal)}
+.card-over p{font-size:26px;color:#cfe0fb;max-width:1100px}
+.card-over .stats{display:flex;gap:56px}
+.card-over .stats div{font-size:18px;color:#9cc7f5}
+.card-over .stats b{display:block;font-size:46px;color:#fff;letter-spacing:-.02em}
+
+/* Bottom region: caption, market, Finance desk */
+#bottom{position:absolute;inset:660px 0 0 0;background:var(--soft);border-top:1px solid var(--line)}
+#caption{position:absolute;left:40px;top:24px;width:470px;height:372px;display:flex;flex-direction:column}
+#caption img{height:30px;align-self:flex-start;margin-bottom:20px}
+#caption .step{font-size:15px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.1em}
+#caption h2{font-size:34px;font-weight:600;letter-spacing:-.02em;line-height:1.12;margin:10px 0 12px}
+#caption p{font-size:19px;line-height:1.45;color:var(--muted)}
+#caption.swap > *:not(img){animation:fadein .5s ease both}
+#dots{display:flex;gap:8px;margin-top:auto}
+#dots i{width:30px;height:5px;border-radius:3px;background:#c9d8ee;transition:background .4s}
+#dots i.on{background:var(--accent)}
+#ellipse{position:absolute;left:550px;top:676px;width:1040px;height:384px;border-radius:50%;border:2px dashed #b9cbe6;background:rgba(255,255,255,.55);
+  transition:opacity .6s,transform .6s,box-shadow .6s,border-color .6s}
+#market{transition:opacity .6s}
+
+/* Market drawing */
+#market{position:absolute;left:0;top:0;width:1920px;height:1080px;z-index:3;pointer-events:none;overflow:visible}
+#market text{font-family:Inter,system-ui,sans-serif;text-anchor:middle}
+.mlabel{font-size:13px;font-weight:700;letter-spacing:.12em;fill:#7f93b8}
+.edge{opacity:0;transition:opacity .5s}
+.edge path{fill:none;stroke:#94a3b8;stroke-width:2.6;marker-end:url(#m-grey);stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset .8s ease,stroke .3s}
+.edge text{font-size:15px;font-weight:700;fill:var(--ink);paint-order:stroke;stroke:var(--soft);stroke-width:5px;transition:fill .3s}
+.edge.on{opacity:1}
+.edge.on path{stroke-dashoffset:0}
+.edge.dash path{stroke:var(--accent);stroke-dasharray:.018 .012;marker-end:url(#m-blue)}
+.edge.dash text{fill:var(--accent)}
+.edge.lit path{stroke:var(--accent);marker-end:url(#m-blue);animation:pulse .45s ease-in-out infinite alternate}
+.edge.lit text{fill:var(--accent);font-size:18px}
+@keyframes pulse{to{stroke-width:5.5}}
+.edge.on.zero{opacity:0}
+#market.hub .edge{opacity:0}
+.hubedge,.hubnode{opacity:0;transition:opacity .6s}
+#market.hub .hubedge,#market.hub .hubnode{opacity:1}
+.hubedge path{fill:none;stroke:var(--accent);stroke-width:3.2;marker-end:url(#m-blue);stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset .9s ease,stroke .5s}
+#market.hub .hubedge path{stroke-dashoffset:0}
+.hubedge text{font-size:16px;font-weight:700;fill:var(--accent);paint-order:stroke;stroke:var(--soft);stroke-width:5px;transition:fill .5s}
+.hubedge.paid path{stroke:var(--paid);marker-end:url(#m-green)}
+.hubedge.paid text{fill:var(--paid)}
+.hubnode rect{fill:var(--brand)}
+.hubnode text{font-size:14px;font-weight:600;fill:#fff}
+.node .ring{fill:rgba(255,255,255,.7);stroke-width:2.2;stroke-dasharray:6 5;opacity:0;transition:opacity .4s}
+.node .in{font-size:15px;font-weight:700;opacity:0;transition:opacity .4s}
+.node .lab,.node .prof{paint-order:stroke;stroke:var(--soft);stroke-width:5px;transition:opacity .4s}
+.node .lab{font-size:15px;font-weight:700}
+.node .prof{font-size:12.5px;font-weight:500;fill:var(--muted)}
+.node.away .ring,.node.away .in{opacity:1}
+.node.away .lab,.node.away .prof{opacity:0}
+.node.ops .lab{font-size:14px;font-weight:600;fill:var(--muted)}
+
+/* Characters */
+.fig{position:absolute;left:0;top:0;width:120px;height:140px;transform-origin:60px 140px;z-index:4;
+  transition:transform .8s cubic-bezier(.65,0,.35,1)}
+.fig svg{width:100%;height:100%;overflow:visible}
+.fig.act svg{animation:bob 1.8s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-4px)}}
+
+/* Focus: one block glows and lifts a little, the two others dim */
+/* Devices on the dark stage dim with brightness (opacity washes them out); the market on the light band uses opacity. */
+#phone,#laptop,#base{transition:filter .6s,transform .6s,border-color .6s,box-shadow .6s,opacity .6s}
+#cam[data-focus] :is(#phone,#laptop,#base){filter:brightness(.5) saturate(.8)}
+#cam[data-focus] :is(#ellipse,#market){opacity:.6}
+#cam[data-focus=phone] #phone,#cam[data-focus=laptop] :is(#laptop,#base){filter:none}
+#cam[data-focus=market] :is(#ellipse,#market){opacity:1}
+#cam[data-focus=phone] #phone{transform:scale(1.03);box-shadow:0 0 0 2px rgba(255,255,255,.15),0 0 0 7px rgba(0,112,224,.5),0 0 70px 6px rgba(59,155,255,.55)}
+#cam[data-focus=laptop] #laptop{transform:scale(1.03);box-shadow:0 0 0 4px var(--accent),0 0 80px 6px rgba(59,155,255,.6)}
+#cam[data-focus=market] #ellipse{transform:scale(1.03);border-color:#7fb3ec;box-shadow:0 0 0 4px rgba(0,112,224,.14),0 0 60px rgba(0,112,224,.28)}
+
+/* Name tag under a person at the phone or the laptop */
+.ntag{position:absolute;top:648px;z-index:5;padding:5px 14px;border-radius:999px;background:#fff;border:1px solid var(--line);box-shadow:0 8px 20px -8px rgba(0,0,0,.4);
+  font-size:15px;white-space:nowrap;color:var(--muted);opacity:0;transition:opacity .4s}
+.ntag b{color:var(--ink)}
+.ntag.on{opacity:1}
+#tag-t{left:470px;transform:translateX(-50%)}
+#tag-o{right:20px}
+
+/* Approved badge above a trader in the market */
+.okb{position:absolute;z-index:5;display:flex;align-items:center;gap:6px;padding:4px 11px 4px 8px;border-radius:999px;background:var(--paid);color:#fff;font-size:13px;font-weight:600;
+  transform:translate(-50%,-100%) scale(.8);opacity:0;transition:opacity .3s,transform .3s}
+.okb svg{width:14px;height:14px}
+.okb.on{opacity:1;transform:translate(-50%,-100%)}
+
+/* Soa's desktop: grows from the phone, then closes back into it */
+#phone.gone{opacity:0;transform:scale(.6)}
+#desk{position:absolute;left:8px;top:24px;width:572px;height:406px;z-index:3;transform-origin:197px 307px;transform:scale(.35);opacity:0;pointer-events:none;
+  transition:transform .6s cubic-bezier(.65,0,.35,1),opacity .6s}
+#desk.on{transform:none;opacity:1}
+#desk .chip{position:absolute;left:50%;top:0;transform:translateX(-50%);padding:6px 16px;border-radius:999px;background:#fff;color:var(--ink);font-size:15px;font-weight:600;white-space:nowrap;
+  box-shadow:0 8px 20px -8px rgba(0,0,0,.5)}
+#dscreen{position:absolute;left:12px;top:42px;width:548px;height:350px;border:10px solid var(--dc,#e11d48);border-radius:14px;background:#fff;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(255,255,255,.15),0 30px 80px -16px var(--dc,#e11d48)}
+#dbase{position:absolute;left:0;top:392px;width:572px;height:14px;border-radius:0 0 14px 14px;background:linear-gradient(#d5dde9,#97a6bd)}
+#dbase::before{content:"";position:absolute;left:50%;top:0;width:90px;height:5px;margin-left:-45px;border-radius:0 0 6px 6px;background:#8494ad}
+.dvid{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;z-index:2;display:none}
+.dvid.on{display:block}
+#bubble.dk::after{left:18px}
+
+/* Team card (S02) */
+#team{position:absolute;left:50%;top:330px;z-index:9;min-width:580px;padding:34px 64px;border-radius:24px;background:#fff;text-align:center;
+  box-shadow:0 40px 100px -20px rgba(0,0,0,.6);opacity:0;transform:translate(-50%,-50%) scale(.94);transition:opacity .6s,transform .6s}
+#team.on{opacity:1;transform:translate(-50%,-50%)}
+#team img{height:48px;margin-bottom:18px}
+#team .k{font-size:14px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
+#team .names div{font-size:32px;font-weight:600;letter-spacing:-.01em;line-height:1.4}
+
+/* Full-frame scenes (S09 to S11): a dark-blue backdrop over everything */
+#full{position:absolute;inset:0;z-index:12;color:#fff;opacity:0;pointer-events:none;transition:opacity .8s;
+  background:radial-gradient(1400px 800px at 50% 35%,#0b3a86 0%,#062456 55%,#031331 100%)}
+#full.on{opacity:1}
+.panel{position:absolute;inset:0;opacity:0;transition:opacity .6s}
+.panel.on{opacity:1}
+body.full #sub,body.centred #sub{left:0;right:0}
+body.full #sub{top:972px;max-width:1500px}
+
+/* S09 Architecture */
+#arch h2{position:absolute;left:0;right:0;top:48px;text-align:center;font-size:46px;font-weight:600;letter-spacing:-.02em}
+.lane{position:absolute;left:60px;width:1800px;height:176px;border-radius:24px;border:1px solid color-mix(in srgb,var(--c) 35%,transparent);
+  background:color-mix(in srgb,var(--c) 6%,transparent);opacity:.35;transition:opacity .6s,background .6s,border-color .6s,box-shadow .6s}
+.lane.on{opacity:1;background:color-mix(in srgb,var(--c) 13%,transparent);border-color:color-mix(in srgb,var(--c) 70%,transparent);box-shadow:0 0 40px -10px var(--c)}
+.lhead{position:absolute;left:24px;top:26px;width:320px;display:grid;grid-template-columns:56px 1fr;gap:6px 16px;align-items:start}
+.lhead .ic{grid-row:span 2;width:56px;height:56px;border-radius:16px;background:var(--c);display:flex;align-items:center;justify-content:center}
+.lhead .ic svg,.lhead .ic img{width:30px;height:30px}
+.lhead .ic img{filter:brightness(0) invert(1)}
+.lane.pp .ic{background:linear-gradient(135deg,#003087,#009cde)}
+.lhead b{font-size:24px;font-weight:700;display:flex;align-items:center;gap:10px}
+.lhead p{font-size:15px;line-height:1.4;color:#c9d8f2}
+.lock{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;background:#fff;color:#5b21b6;font-size:12px;font-weight:700;
+  opacity:0;transform:scale(.6);transition:opacity .4s,transform .5s cubic-bezier(.3,1.6,.5,1)}
+.lock svg{width:12px;height:12px}
+.lock.on{opacity:1;transform:none}
+#wires{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:visible}
+.wire{fill:none;stroke:rgba(255,255,255,.18);stroke-width:2;stroke-dasharray:5 7}
+.trail{fill:none;stroke:currentColor;stroke-width:4;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 0 6px currentColor)}
+#dot{position:absolute;left:0;top:0;width:22px;height:22px;border-radius:50%;background:#fff;opacity:0;
+  box-shadow:0 0 0 4px rgba(255,255,255,.25),0 0 26px 10px var(--dc,#9cc7f5)}
+.st{position:absolute;width:140px;height:70px;display:flex;align-items:center;justify-content:center;padding:0 12px;border-radius:14px;text-align:center;
+  font-size:14.5px;font-weight:600;line-height:1.25;color:#e6eefc;background:#0d2c63;border:1px solid color-mix(in srgb,var(--c) 55%,transparent);
+  opacity:.4;transition:opacity .5s,background .4s,box-shadow .4s,border-color .4s}
+.st i{position:absolute;left:9px;top:6px;font-style:normal;font-size:11px;opacity:.7}
+.st.on{opacity:1}
+.st.lit{background:color-mix(in srgb,var(--c) 32%,#0a2a5e);border-color:var(--c);box-shadow:0 0 28px -2px var(--c);color:#fff}
+#arch.all .st{box-shadow:0 0 34px 0 var(--c)}
+
+/* S10 Proof */
+#proof{display:flex;flex-direction:column;align-items:center;padding-top:96px}
+#pnum{font-size:150px;font-weight:700;letter-spacing:-.04em;line-height:1;color:var(--paypal);font-variant-numeric:tabular-nums}
+#proof h2{font-size:54px;font-weight:600;letter-spacing:-.02em;margin-top:22px;opacity:0;transform:translateY(12px);transition:opacity .6s,transform .6s}
+#proof h2 em{font-style:normal;color:var(--paypal)}
+#proof.done h2{opacity:1;transform:none}
+#tiles{display:grid;grid-template-columns:repeat(5,300px);gap:28px;margin-top:70px}
+.tile{height:230px;border-radius:22px;padding:28px 26px;background:rgba(255,255,255,.07);border:1px solid rgba(156,199,245,.3);
+  opacity:0;transform:translateY(24px) scale(.96);transition:opacity .6s,transform .6s cubic-bezier(.2,.9,.3,1.2)}
+.tile.on{opacity:1;transform:none}
+.tile b{display:block;font-size:64px;font-weight:700;letter-spacing:-.03em;line-height:1.05}
+.tile span{display:block;margin-top:14px;font-size:19px;line-height:1.4;color:#c9d8f2}
+
+/* S11 End */
+#endp{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;padding-bottom:80px;text-align:center}
+#endp > *{opacity:0;transform:translateY(14px);transition:opacity 1.2s,transform 1.2s}
+#endp.on > *{opacity:1;transform:none}
+#endp.on > :nth-child(2){transition-delay:.5s}
+#endp.on > :nth-child(3){transition-delay:1s}
+#endp.on > :nth-child(4){transition-delay:1.5s}
+#endp.on > :nth-child(5){transition-delay:2s}
+.logo-tile{padding:22px 40px;border-radius:24px;background:#fff}
+.logo-tile img{height:72px;display:block}
+#endp h2{font-size:46px;font-weight:600;letter-spacing:-.02em}
+#endp .repo{font:500 26px ui-monospace,SFMono-Regular,Menlo,monospace;color:#cfe0fb}
+#endp .team{display:flex;gap:64px}
+#endp .team b{display:block;font-size:26px;font-weight:600}
+#endp .team span{font-size:18px;color:#9cc7f5}
+#endp .hk{font-size:15px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--paypal)}
+</style>
+</head>
+<body>
+<div id="ctrl"></div>
+
+<div id="frame">
+ <div id="cam">
+  <div id="stage">
+    <div id="phone">
+      <div class="notch"></div>
+      <div class="pstatus"><span>08:12</span><span>4G</span></div>
+      <div class="phead"><b>Alamino</b><span class="who" id="pwho">Market</span></div>
+      <div id="pscreen"></div>
+      <div id="ptoast"></div>
+      <div id="pnotif"></div>
+    </div>
+
+    <div id="laptop">
+      <div class="ltop">
+        <img src="../../public/alamino-logo.png" alt="Alamino">
+        <span class="sep"></span><span class="t">Clearing house</span>
+        <span class="live" id="live"></span>
+      </div>
+      <div class="lbody">
+        <div class="kpis">
+          <div class="kpi" id="k-total"><span>Total debts</span><b>$0</b></div>
+          <div class="kpi" id="k-cancel"><span>Cancelled, no cash</span><b>$0</b></div>
+          <div class="kpi" id="k-move"><span>Cash to move</span><b>-</b></div>
+          <div class="kpi" id="k-saved"><span>Cash saved</span><b>-</b></div>
+        </div>
+        <div class="lmain">
+          <div class="box">
+            <div class="bhead"><span>Clearing round</span><small id="ptitle"></small><button class="lbtn" id="lbtn">Run clearing</button></div>
+            <div id="pbody"></div>
+            <div class="bfoot"><span>Pay-ins captured</span><div class="bar"><i id="pbar"></i></div><b id="ptext"></b></div>
+          </div>
+          <div class="box">
+            <div class="bhead"><span>Live activity</span></div>
+            <ul id="feed"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="base"></div>
+
+    <div id="desk">
+      <div class="chip">Same app, on a desktop</div>
+      <div id="dscreen"><div class="idle"><img src="../../public/alamino-logo.png" alt="Alamino"><p class="muted">Clearing for market traders</p></div></div>
+      <div id="dbase"></div>
+    </div>
+  </div>
+
+  <div id="bottom">
+    <div id="caption"><img src="../../public/alamino-logo.png" alt="Alamino"><div class="step"></div><h2></h2><p></p><div id="dots"></div></div>
+  </div>
+  <div id="ellipse"></div>
+  <svg id="market" viewBox="0 0 1920 1080">
+    <defs>
+      <marker id="m-grey" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#94a3b8"/></marker>
+      <marker id="m-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#0070e0"/></marker>
+      <marker id="m-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#16a34a"/></marker>
+    </defs>
+    <text class="mlabel" x="1070" y="1046">The market</text>
+  </svg>
+
+  <div id="shot"><img src="../test-photos/photo-1-rivo-hery-50.jpg" alt=""><div class="vf"><i></i><i></i><i></i><i></i></div></div>
+  <div id="badge"><i></i>The AI reads. Plain code counts. The AI never sets an amount.</div>
+  <div id="bubble"></div>
+  <div class="ntag" id="tag-t"></div>
+  <div class="ntag" id="tag-o"></div>
+
+  <div class="card-over" id="titlecard"><div class="k"></div><h1></h1><p>Alamino brings clearing to the market.</p></div>
+  <div id="team"><img src="../../public/alamino-logo.png" alt="Alamino"><div class="k"></div><div class="names"></div></div>
+
+  <div id="full">
+    <div class="panel" id="arch"><h2>How Alamino works</h2><svg id="wires" viewBox="0 0 1920 1080"></svg><div id="dot"></div></div>
+    <div class="panel" id="proof"><div id="pnum"></div><h2></h2><div id="tiles"></div></div>
+    <div class="panel" id="endp">
+      <div class="logo-tile"><img src="../../public/alamino-logo.png" alt="Alamino"></div>
+      <h2>Clearing for the market, with AI and PayPal.</h2>
+      <div class="repo"></div>
+      <div class="team"></div>
+      <div class="hk"></div>
+    </div>
+  </div>
+  <div id="flash"></div>
+ </div>
+ <div id="sub"></div>
+ <div id="progress"></div>
+</div>
+
+<script>
+// Rename here. The phone clips are real recordings and keep the app's names.
+// Every visible text of the video is built from CONFIG, so one change here changes the whole video.
+const CONFIG = {
+  hackathon: 'PayPal AI Hackathon 2026',
+  repo: 'https://github.com/donovan-ratefison/alamino',
+  team: [{name:'Donovan Ratefison', github:'donovan-ratefison'}, {name:'Tendry Tsilavina', github:'TsilavinaZh'}, {name:'Tokiarivelo', github:'Tokiarivelo'}],
+  place: {city:'Antananarivo', clearing:'BFM', banks:'Malagasy banks'},
+  people: {
+    hery:  {name:'Hery',  job:'Rice wholesaler'},
+    soa:   {name:'Soa',   job:'Restaurant owner'},
+    rivo:  {name:'Rivo',  job:'Butcher'},
+    lalao: {name:'Lalao', job:'Vegetable seller'},
+    fidy:  {name:'Fidy',  job:'Delivery driver'},
+    ops:   {name:'Finance desk', job:'Clearing house operator'},
+  },
+  PROOF: [
+    {value:'$570',  label:'cancelled in circles, no cash'},
+    {value:'67.7%', label:'less cash moved'},
+    {value:'3 + 1', label:'real PayPal sandbox calls: 3 Checkout payments, 1 Payouts batch'},
+    {value:'93',    label:'unit tests pass'},
+    {value:'49',    label:'end-to-end tests replay every journey'},
+  ],
+};
+
+// Clips: real screen recordings. Phone clips are 390 x 844, the desk clip is 1280 x 800. Times in seconds from the clip start.
+// taps: [time, x %, y %] tap ripples over the video. saved: the app shows "Saved". paid: PayPal confirms the payment.
+// toast: [time, text] and notif: [time, title, text] are optional overlays on the phone.
+const CLIPS = {
+  soaDesk:      { src:'demo-v3/soa-desk.mp4',      dur:6.0, saved:4.6, taps:[], desk:true },
+  fidyText:     { src:'demo-v3/fidy-text.mp4',     dur:3.7, saved:2.75, taps:[] },
+  rivoText:     { src:'demo-v3/rivo-text.mp4',     dur:3.8, saved:2.86, taps:[] },
+  lalaoText:    { src:'demo-v3/lalao-text.mp4',    dur:3.9, saved:2.94, taps:[] },
+  rivoAdd:      { src:'demo-v3/rivo-add.mp4',      dur:7.0, saved:4.7, taps:[] },
+  heryConfirm:  { src:'demo-v3/hery-confirm.mp4',  dur:5.0, taps:[] },
+  soaPay:       { src:'demo-v3/soa-pay.mp4',       dur:8.0, paid:7.0, taps:[] },
+  lalaoPay:     { src:'demo-v3/lalao-pay.mp4',     dur:3.5, paid:2.8, taps:[] },
+  fidyPay:      { src:'demo-v3/fidy-pay.mp4',      dur:3.5, paid:2.8, taps:[] },
+  heryStatement:{ src:'demo-v3/hery-statement.mp4',dur:5.0, taps:[] },
+};
+// Fallback when a clip file does not load: mock screens. screens: [clip time, screen, arg]. ok: text after a tap.
+const MOCK = {
+  soaDesk:      { who:'soa',   screens:[[0,'idle']] },
+  fidyText:     { who:'fidy',  screens:[[0,'idle']] },
+  rivoText:     { who:'rivo',  screens:[[0,'idle']] },
+  lalaoText:    { who:'lalao', screens:[[0,'idle']] },
+  rivoAdd:      { who:'rivo',  screens:[[0,'reading'],[1.9,'draft']], ok:'Saved.' },
+  heryConfirm:  { who:'hery',  screens:[[0,'confirm']], ok:'Confirmed by both sides.' },
+  soaPay:       { who:'soa',   screens:[[0,'pay','soa']] },
+  lalaoPay:     { who:'lalao', screens:[[0,'pay','lalao']] },
+  fidyPay:      { who:'fidy',  screens:[[0,'pay','fidy']] },
+  heryStatement:{ who:'hery',  screens:[[0,'payout']] },
+};
+
+/* Text helpers: every name comes from CONFIG */
+const PL = CONFIG.place, N = id => CONFIG.people[id].name, B = id => `<b>${N(id)}</b>`;
+const list = a => a.length>1 ? a.slice(0,-1).join(', ')+' and '+a[a.length-1] : a.join('');
+const HACK_SHORT = CONFIG.hackathon.replace(/\s*\d{4}$/,'');
+const FIRST_NAMES = list(CONFIG.team.map(m=>m.name.split(' ')[0]));
+
+/* Data. Real numbers from the netting engine. */
+const ORDER = ['hery','soa','rivo','lalao','fidy','ops'];
+const LOOK = {
+  hery:  {c:'#d97706', skin:'#8d5524', hair:'short', hc:'#1f1a17'},
+  soa:   {c:'#e11d48', skin:'#c68642', hair:'bun',   hc:'#2b1d16'},
+  rivo:  {c:'#0d9488', skin:'#a0663d', hair:'cap',   hc:'#0f3d3a', apron:true},
+  lalao: {c:'#4d7c0f', skin:'#b5793f', hair:'long',  hc:'#3a2418'},
+  fidy:  {c:'#7c3aed', skin:'#7a4a2a', hair:'crop',  hc:'#16110e', stripe:true, beard:true},
+  ops:   {c:'#003087', skin:'#9c6b3f', hair:'short', hc:'#2a2a2a', glasses:true},
+};
+const PEOPLE = Object.fromEntries(ORDER.map(id=>[id, {...LOOK[id], name:N(id), biz:CONFIG.people[id].job}]));
+// [debtor, creditor, dollars]
+const DEBTS = [['soa','hery',300],['hery','fidy',120],['fidy','soa',90],['lalao','soa',150],['soa','rivo',110],
+  ['rivo','lalao',70],['fidy','rivo',40],['lalao','hery',60],['rivo','hery',50]];
+const CIRCLES = [{path:['fidy','rivo','hery'], v:40}, {path:['fidy','soa','hery'], v:80}, {path:['soa','rivo','lalao'], v:70}];
+const CANCELLED = [0,120,360,570];
+const NET = {soa:-170, lalao:-140, fidy:-10, hery:290, rivo:30};
+const DEBT_TOTAL = DEBTS.reduce((a,d)=>a+d[2],0), PAY_TOTAL = -Object.values(NET).filter(v=>v<0).reduce((a,v)=>a+v,0);
+// The week: each trader adds debts, the other side approves. Rivo adds rivo>hery on Saturday.
+const WEEK = [
+  {who:'soa', clip:'soaDesk', say:'Three debts, typed at my desk.', keys:['soa>hery','fidy>soa','lalao>soa'], ok:['hery','fidy','lalao'], day:'Mon', how:'at her desk'},
+  {who:'fidy', clip:'fidyText', say:`${N('hery')} owes me 120 for the deliveries.`, keys:['hery>fidy'], ok:['hery'], day:'Tue', how:'in one sentence'},
+  {who:'rivo', clip:'rivoText', say:`${N('soa')} owes me 110. ${N('fidy')} owes me 40.`, keys:['soa>rivo','fidy>rivo'], ok:['soa','fidy'], day:'Wed', how:'in one sentence'},
+  {who:'lalao', clip:'lalaoText', say:`${N('rivo')} owes me 70. I owe ${N('hery')} 60.`, keys:['rivo>lalao','lalao>hery'], ok:['rivo','hery'], day:'Thu', how:'in one sentence'},
+];
+const ADD_ORDER = [...WEEK.flatMap(w=>w.keys), 'rivo>hery'];
+const ADDER = {'rivo>hery':'rivo'}; WEEK.forEach(w=>w.keys.forEach(k=>ADDER[k]=w.who));
+const WEEK_TOTAL = DEBT_TOTAL - 50;
+// Market anchors (frame coordinates). Figures stand on them, arrows link them.
+const POS = {hery:[1070,742], lalao:[700,850], fidy:[1440,850], rivo:[900,955], soa:[1240,955], hub:[1070,880], ops:[1770,905]};
+const HOME = {ops:[1770,960,.85]};
+Object.keys(NET).forEach(id=>HOME[id]=[POS[id][0], POS[id][1]+45, .7]);
+const SPOT = {trader:[470,652,1.7], ops:[1795,652,1.6]};
+const PHONE_PT = [205,330], BAR_PT = [940,555], LAPTOP_PT = [1130,330];
+const BRAND = '#003087';
+const $ = s => document.querySelector(s);
+const cam = $('#cam'), frame = $('#frame');
+
+/* Subtitles: variant A of the voice-over, in chunks of about 80 characters or less.
+   timed() spreads the chunks over the segment in proportion to their length. Result: [second from scene start, text]. */
+function timed(dur, chunks, lead=.4, tail=.6){
+  const n = chunks.reduce((a,c)=>a+c.length,0), span = dur-lead-tail; let at = lead;
+  return chunks.map(c=>{ const r=[+at.toFixed(1), c]; at += span*c.length/n; return r; });
+}
+const SUBS = {
+  S01: timed(9,  [`Every day, ${PL.banks} settle what they owe each other through ${PL.clearing}.`, `Market traders? They can't.`]),
+  S02: timed(11, [`In a market in ${PL.city}, everyone sells on credit,`, `and every debt sits in a paper notebook.`,
+                  `We are ${FIRST_NAMES}.`, `We built Alamino for the ${HACK_SHORT}.`]),
+  S03: timed(23, [`So, all week, each trader puts their debts into Alamino.`, `${N('soa')} runs a restaurant, so she types hers on her desktop.`,
+                  `${list(['fidy','rivo','lalao'].map(N))} type one sentence on their phone.`, `The AI drafts each debt, and the other side approves it.`,
+                  `For the first time, the whole market is visible.`]),
+  S04: timed(10, [`Saturday. ${N('rivo')} finds one more note, scribbled in French.`, `He takes a photo. The AI reads the handwriting and drafts the debt.`,
+                  `${N('rivo')} checks it, and saves.`]),
+  S05: timed(7,  [`${N('hery')} gets a notification.`, `Yes, ${N('rivo')} owes him 50. One tap, and it counts.`]),
+  S06: timed(13, [`Now the clearing house runs the round.`, `It finds circles: I owe you, you owe him, he owes me.`,
+                  `$${CANCELLED[3]} of debt just cancel out. No money moves.`]),
+  S07: timed(18, [`What is left is one number per trader.`, `${N('soa')} pays $${-NET.soa} with PayPal, and her whole week is settled.`,
+                  `${N('lalao')} and ${N('fidy')} do the same.`, `Three payments, instead of nine debts to chase.`]),
+  S08: timed(10, [`Then PayPal pays the traders who are owed.`, `${N('hery')} gets $${NET.hery}, ${N('rivo')} gets $${NET.rivo}.`,
+                  `And everyone gets a plain statement of why.`]),
+  S09: timed(37, [`Here is how it works.`, `People stay in charge: they add the debts, and they approve them.`,
+                  `The AI model reads photos and sentences, and explains the results.`, `But it never sets an amount.`,
+                  `Every number comes from plain code:`, `the algorithm finds the circles and works out who pays what.`,
+                  `And PayPal moves the money:`, `Checkout for the payments in, Payouts for the payments out.`,
+                  `Each part does the one thing it does best.`]),
+  S10: timed(27, [`So, the numbers.`, `$${DEBT_TOTAL} of debt, settled with $${PAY_TOTAL}.`, `${CONFIG.PROOF[1].value} less cash moved.`,
+                  `Real payments in the PayPal sandbox.`,
+                  `${CONFIG.PROOF[3].value} unit tests pass, and ${CONFIG.PROOF[4].value} end-to-end tests replay every journey.`]),
+  S11: timed(10, [`Alamino. Clearing for the market, with AI and PayPal.`, `The code is open on GitHub.`, `Thank you.`]),
+};
+
+/* Run guard: every scene change bumps gen, so late timers and counters from the old scene stop */
+let gen = 0;
+function later(ms, f){ const g=gen; setTimeout(()=>{ if(g===gen) f(); }, ms); }
+function anim(ms, f){ const g=gen, t0=performance.now(); (function s(now){ if(g!==gen) return; const k=Math.min(1,(now-t0)/ms); f(1-Math.pow(1-k,3)); if(k<1) requestAnimationFrame(s); })(t0); }
+
+/* Sound: Web Audio only. The context starts on the first click or key press. */
+let ctx=null, master=null, soundOn=true, padAt=0, padI=0;
+function audio(){
+  if(!ctx){ ctx=new AudioContext(); master=ctx.createGain(); master.gain.value=soundOn?1:0; master.connect(ctx.destination); }
+  if(playing) ctx.resume();
+}
+function tone(f, at, dur, type, g, f2){
+  if(!ctx) return;
+  const o=ctx.createOscillator(), v=ctx.createGain(); o.type=type; o.frequency.setValueAtTime(f,at);
+  if(f2) o.frequency.exponentialRampToValueAtTime(f2, at+dur);
+  v.gain.setValueAtTime(g,at); v.gain.exponentialRampToValueAtTime(.0001, at+dur);
+  o.connect(v).connect(master); o.start(at); o.stop(at+dur+.05);
+}
+const sfx = {
+  tap(){ if(ctx) tone(900, ctx.currentTime, .07, 'sine', .12, 520); },
+  tick(){ if(ctx) tone(1480, ctx.currentTime, .08, 'sine', .05, 1180); },
+  chime(){ if(!ctx) return; const n=ctx.currentTime; tone(880,n,.5,'triangle',.14); tone(1318.5,n+.13,.8,'triangle',.14); },
+  approve(){ if(!ctx) return; const n=ctx.currentTime; tone(660,n,.18,'sine',.08); tone(990,n+.09,.3,'sine',.08); },
+  coin(i){ if(ctx) tone(1900+i*80, ctx.currentTime, .09, 'triangle', .05, 2700+i*80); },
+  shutter(){
+    if(!ctx) return; const n=ctx.currentTime;
+    [0,.07].forEach((d,k)=>{
+      const len=ctx.sampleRate*.05|0, b=ctx.createBuffer(1,len,ctx.sampleRate), x=b.getChannelData(0);
+      for(let j=0;j<len;j++) x[j]=(Math.random()*2-1)*Math.pow(1-j/len,2);
+      const s=ctx.createBufferSource(), f=ctx.createBiquadFilter(), v=ctx.createGain();
+      s.buffer=b; f.type='highpass'; f.frequency.value=1800; v.gain.value=k?.25:.45;
+      s.connect(f).connect(v).connect(master); s.start(n+d);
+    });
+  },
+};
+const PAD = [[130.81,261.63,329.63,392,493.88],[110,220,261.63,329.63,392],[87.31,174.61,220,261.63,349.23]];
+function pad(){ // background chords, 4 s each, overlapped. Called from tick.
+  if(!ctx || ctx.state!=='running' || padAt > ctx.currentTime+.3) return;
+  const at=Math.max(padAt, ctx.currentTime+.05);
+  PAD[padI++%PAD.length].forEach(f=>{
+    const o=ctx.createOscillator(), v=ctx.createGain(); o.type='sine'; o.frequency.value=f;
+    v.gain.setValueAtTime(0,at); v.gain.linearRampToValueAtTime(.016,at+1.4); v.gain.setValueAtTime(.016,at+3.4); v.gain.linearRampToValueAtTime(0,at+5);
+    o.connect(v).connect(master); o.start(at); o.stop(at+5.1);
+  });
+  padAt = at+4;
+}
+function sound(){
+  soundOn=!soundOn; const b=$('#snd'); b.textContent=soundOn?'Sound on':'Sound off'; b.classList.toggle('on',soundOn);
+  if(master) master.gain.setTargetAtTime(soundOn?1:0, ctx.currentTime, .05);
+}
+
+/* Characters */
+function figSVG(p){
+  const hc = p.hc;
+  const back = p.hair==='long' ? `<path d="M29 60C25 28 44 20 60 20s35 8 31 40l5 44H24z" fill="${hc}"/>` : '';
+  const top = {
+    short:`<path d="M34 54C32 32 45 26 60 26s28 6 26 28c-6-10-15-14-26-14s-20 4-26 14z" fill="${hc}"/>`,
+    bun:`<circle cx="60" cy="23" r="11" fill="${hc}"/><path d="M34 54C32 33 45 27 60 27s28 6 26 27c-5-11-15-16-26-16s-21 5-26 16z" fill="${hc}"/>`,
+    long:`<path d="M35 52C37 33 47 28 60 28s24 5 25 24c-8-9-16-12-25-12s-17 3-25 12z" fill="${hc}"/>`,
+    cap:`<path d="M34 50C34 31 46 25 60 25s26 6 26 25z" fill="${hc}"/><path d="M62 45h34a4 4 0 0 1 0 8H62z" fill="${hc}"/>`,
+    crop:`<path d="M36 52C35 37 46 30 60 30s25 7 24 22c-5-7-13-10-24-10s-19 3-24 10z" fill="${hc}"/>` +
+      [-165,-145,-125,-105,-90,-75,-55,-35,-15].map(a=>`<circle cx="${(60+23*Math.cos(a*Math.PI/180)).toFixed(1)}" cy="${(55+23*Math.sin(a*Math.PI/180)).toFixed(1)}" r="4.2" fill="${hc}"/>`).join(''),
+  }[p.hair];
+  return `<svg viewBox="0 0 120 140" aria-hidden="true">${back}
+    <path d="M10 140c0-30 21-46 50-46s50 16 50 46z" fill="${p.c}"/>
+    <rect x="52" y="74" width="16" height="22" rx="6" fill="${p.skin}"/>
+    <path d="M49 95l11 11 11-11z" fill="${p.skin}"/>
+    ${p.apron?'<path d="M43 108h34v32H43z" fill="#f8fafc"/><path d="M45 108l-7-13M75 108l7-13" stroke="#f8fafc" stroke-width="3"/>':''}
+    ${p.stripe?'<path d="M14 126h92" stroke="#fde047" stroke-width="5"/>':''}
+    <circle cx="60" cy="56" r="25" fill="${p.skin}"/>
+    <circle cx="51" cy="58" r="2.6" fill="#1e1b18"/><circle cx="69" cy="58" r="2.6" fill="#1e1b18"/>
+    <path d="M52 68q8 6 16 0" stroke="#1e1b18" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    ${top}
+    ${p.beard?`<g fill="${hc}" opacity=".88"><path d="M36 57C36 74 47 82 60 82S84 74 84 57C81 65 77 70 72 73C67 76 53 76 48 73C43 70 39 65 36 57z"/><path d="M51 66q9-4 18 0q-9 2.5-18 0z"/></g>`:''}
+    ${p.glasses?'<g fill="none" stroke="#0f172a" stroke-width="2"><circle cx="51" cy="58" r="7"/><circle cx="69" cy="58" r="7"/><path d="M58 58h4"/></g>':''}
+  </svg>`;
+}
+function place(id, [x,y,s]){ $('#fig-'+id).style.transform = `translate(${x-60}px,${y-140}px) scale(${s})`; }
+
+/* Market: nodes, debt arrows, clearing hub */
+const NS = 'http://www.w3.org/2000/svg', mk = $('#market');
+function el(tag, attrs, parent=mk){ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); parent.appendChild(e); return e; }
+function curve(a, b, off, hubEnd, hubStart){
+  const [ax,ay]=a, [bx,by]=b, dx=bx-ax, dy=by-ay, L=Math.hypot(dx,dy), ux=dx/L, uy=dy/L;
+  const cut = hub => hub ? Math.min(100/Math.abs(ux||1e-6), 24/Math.abs(uy||1e-6))+8 : 56;
+  const sx=ax+ux*cut(hubStart), sy=ay+uy*cut(hubStart), ex=bx-ux*(cut(hubEnd)+4), ey=by-uy*(cut(hubEnd)+4);
+  const mx=(sx+ex)/2-uy*off, my=(sy+ey)/2+ux*off;
+  return {d:`M${sx} ${sy}Q${mx} ${my} ${ex} ${ey}`, lx:.25*sx+.5*mx+.25*ex, ly:.25*sy+.5*my+.25*ey, ux, uy};
+}
+const EDGES = {}, AMT = {};
+DEBTS.forEach(([a,b,v])=>{
+  const k=a+'>'+b, g=el('g',{class:'edge'}), c=curve(POS[a],POS[b], k==='lalao>soa'?-26:26);
+  el('path',{d:c.d,pathLength:1},g);
+  EDGES[k] = {g, tx:el('text',{x:c.lx,y:c.ly+5},g), v};
+});
+const edge = k => EDGES[k].g;
+function setAmt(k, v){ AMT[k]=v; EDGES[k].tx.textContent='$'+Math.round(v); }
+Object.entries(NET).forEach(([id,v],i)=>{
+  const g = el('g',{class:'hubedge',id:'h-'+id});
+  const c = v<0 ? curve(POS[id],POS.hub,0,true,false) : curve(POS.hub,POS[id],0,false,true);
+  el('path',{d:c.d,pathLength:1,style:`transition-delay:${200+i*150}ms`},g);
+  // Label on the trader side of the arrow, so it never touches the hub pill.
+  const [x0,y0]=POS[id], dx=POS.hub[0]-x0, dy=POS.hub[1]-y0, L=Math.hypot(dx,dy);
+  const k = id==='hery' ? .62 : .42;
+  el('text',{x:x0+dx*k-dy/L*24, y:y0+dy*k+dx/L*24+5},g).textContent='$'+Math.abs(v);
+});
+const hubG = el('g',{class:'hubnode'});
+el('rect',{x:POS.hub[0]-100,y:POS.hub[1]-24,width:200,height:48,rx:24},hubG);
+el('text',{x:POS.hub[0],y:POS.hub[1]+5},hubG).textContent='Clearing account';
+ORDER.forEach(id=>{
+  const p=PEOPLE[id], [x,y]=POS[id], ops=id==='ops', g=el('g',{class:'node'+(ops?' ops':''),id:'n-'+id});
+  el('circle',{class:'ring',cx:x,cy:y,r:ops?62:52,stroke:p.c},g);
+  el('text',{class:'in',x,y:y+5,fill:p.c},g).textContent=p.name;
+  // Hery stands at the top: the hub arrow comes from below, so his labels go to the right
+  const [lx,ly,anchor] = ops ? [x,990,'middle'] : id==='hery' ? [x+58,y-12,'start'] : [x,y+64,'middle'];
+  el('text',{class:'lab',x:lx,y:ly,fill:p.c,style:`text-anchor:${anchor}`},g).textContent=p.name;
+  el('text',{class:'prof',x:lx,y:ly+17,style:`text-anchor:${anchor}`},g).textContent=p.biz;
+  const okb=document.createElement('div'); okb.className='okb'; okb.id='ok-'+id; okb.style.left=x+'px'; okb.style.top=(HOME[id][1]-(ops?112:92))+'px';
+  okb.innerHTML='<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 7.5l2.6 2.6L11 4.5" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Approved';
+  cam.appendChild(okb);
+  const fig=document.createElement('div'); fig.className='fig'; fig.id='fig-'+id; fig.innerHTML=figSVG(p);
+  cam.insertBefore(fig, $('#shot'));
+});
+
+/* Fixed texts built from CONFIG */
+$('#live').innerHTML = `<i></i>Live, ${N('ops')}`;
+$('#titlecard .k').textContent = `${PL.city}, a market morning`;
+$('#titlecard h1').innerHTML = `${PL.banks} net their debts through ${PL.clearing}.<br>Market traders <em>can't</em>.`;
+$('#team .k').textContent = `Built for the ${CONFIG.hackathon}`;
+$('#team .names').innerHTML = CONFIG.team.map(m=>`<div>${m.name}</div>`).join('');
+$('#proof h2').innerHTML = `$${DEBT_TOTAL} of debt. Settled with <em>$${PAY_TOTAL}</em>.`;
+$('#tiles').innerHTML = CONFIG.PROOF.map(p=>`<div class="tile"><b>${p.value}</b><span>${p.label}</span></div>`).join('');
+$('#endp .repo').textContent = CONFIG.repo.replace(/^https?:\/\//,'');
+$('#endp .team').innerHTML = CONFIG.team.map(m=>`<div><b>${m.name}</b><span>@${m.github}</span></div>`).join('');
+$('#endp .hk').textContent = CONFIG.hackathon;
+$('#desk').style.setProperty('--dc', PEOPLE.soa.c);
+
+/* Phone screens (mocks, used when a clip file is missing) */
+const PHOTO = '../test-photos/photo-1-rivo-hery-50.jpg';
+$('#shot img').alt = `Notebook page: ${N('rivo')} owes ${N('hery')} 50 dollars for rice`;
+const SCREENS = {
+  idle: () => `<div class="idle"><img src="../../public/alamino-logo.png" alt="Alamino"><p class="muted">Clearing for market traders</p></div>`,
+  camera: () => `<div class="cam"><div class="vf"></div>Point at the notebook page<div class="shutter"></div></div>`,
+  reading: () => `<p class="lbl">Notebook photo</p><img class="thumb" src="${PHOTO}" alt=""><div class="ai"><span class="spin"></span>AI is reading the page</div><div class="shim"></div><div class="shim short"></div><div class="shim"></div>`,
+  draft: () => `<p class="lbl">Notebook photo</p><img class="thumb" src="${PHOTO}" alt="">
+    <div class="card"><span class="tag">AI draft. Check it before you save.</span>
+    <div class="row"><span>Debtor</span><b>${N('rivo')}</b></div><div class="row"><span>Creditor</span><b>${N('hery')}</b></div>
+    <div class="row"><span>Amount</span><b>$50.00</b></div><div class="row"><span>Note</span><b>rice</b></div></div>
+    <div id="pact"><button class="btn" id="pbtn">Save</button></div>`,
+  confirm: () => `<p class="lbl">Waiting for you</p>
+    <div class="card"><div class="muted">${N('rivo')} says</div><div class="amt" style="font-size:22px">${N('rivo')} owes ${N('hery')}</div><div class="amt">$50.00</div>
+    <div class="muted">Note: rice. Source: notebook photo.</div><img class="thumb" style="width:100%;height:110px;margin:10px 0 0" src="${PHOTO}" alt=""></div>
+    <div id="pact"><button class="btn" id="pbtn">Approve</button><button class="btn ghost">Different amount</button></div>`,
+  pay: (id) => `<p class="lbl">After clearing</p>
+    <div class="card center"><div class="muted">You pay into the clearing account</div><div class="amt">$${-NET[id]}.00</div>
+    <div class="muted">All your debts and credits in this round are now one number.</div></div>
+    <div id="pact"><button class="btn paypal" id="pbtn">Pay with PayPal</button><p class="fine">PayPal sandbox</p></div>`,
+  payout: () => `<div style="height:76px"></div><p class="lbl">Your statement</p>
+    <div class="card"><div class="row"><span>Owed to you</span><b>$410.00</b></div><div class="row"><span>You owed</span><b>$120.00</b></div>
+    <div class="row total"><span>You receive</span><b>$290.00</b></div></div>
+    <p class="muted" style="margin-top:12px">Circles cancelled part of these debts with no cash. PayPal paid you the rest.</p>`,
+};
+function phone(who, screen, arg){
+  const p = who ? PEOPLE[who] : null;
+  $('#phone').style.setProperty('--pc', p ? p.c : BRAND);
+  $('#pwho').textContent = p ? 'Viewing as '+p.name : 'Market';
+  const s = $('#pscreen'); s.innerHTML = SCREENS[screen](arg);
+  s.classList.remove('swap'); void s.offsetWidth; s.classList.add('swap');
+}
+function press(sel, after){ const b=$(sel); if(!b) return; sfx.tap(); b.classList.remove('press'); void b.offsetWidth; b.classList.add('press'); if(after) later(350, after); }
+function ok(text){ const a=$('#pact'); if(a) a.innerHTML = `<div class="ok">${text}</div>`; }
+
+/* Clips: one video per clip, preloaded. The clip clock follows the timeline clock t. */
+const VIDS = {};
+for (const n in CLIPS){
+  const v=document.createElement('video'), desk=CLIPS[n].desk; v.className=desk?'dvid':'pvid'; v.muted=true; v.preload='auto';
+  v.setAttribute('muted',''); v.setAttribute('playsinline',''); v.src=CLIPS[n].src;
+  if (desk) $('#dscreen').appendChild(v); else $('#phone').insertBefore(v, $('#ptoast'));
+  VIDS[n]=v;
+}
+let CLIP = null;
+function clip(name){
+  stopClip();
+  const c=CLIPS[name], m=MOCK[name], v=VIDS[name], live = !v.error && v.readyState>=2, desk=!!c.desk;
+  if (!desk) phone(m.who, live ? 'idle' : m.screens[0][1], m.screens[0][2]);
+  if (live){ v.currentTime=0; v.classList.add('on'); }
+  const ev=[];
+  if (!live && !desk) m.screens.slice(1).forEach(([at,scr,arg])=>ev.push([at,()=>phone(m.who,scr,arg)]));
+  (c.taps||[]).forEach(([at,x,y])=>ev.push([at,()=>{
+    if (!live) return desk || press('#pbtn', m.ok && (()=>ok(m.ok)));
+    sfx.tap(); const r=document.createElement('div'); r.className='tap'; r.style.left=x+'%';
+    r.style.top = desk ? y+'%' : `calc(30px + (100% - 30px) * ${y/100})`;
+    (desk ? $('#dscreen') : $('#phone')).appendChild(r); later(700,()=>r.remove());
+  }]));
+  if (c.toast) ev.push([c.toast[0],()=>{ $('#ptoast').textContent=c.toast[1]; $('#ptoast').className='on'; }]);
+  if (c.notif) ev.push([c.notif[0],()=>{ $('#pnotif').innerHTML=`<small>${c.notif[1]}</small>${c.notif[2]}`; $('#pnotif').className='on'; sfx.chime(); }]);
+  ev.sort((a,b)=>a[0]-b[0]);
+  CLIP = {at:t, dur:c.dur, video: live ? v : null, ev};
+}
+function stopClip(){
+  if (CLIP && CLIP.video){ CLIP.video.pause(); CLIP.video.currentTime=0; CLIP.video.classList.remove('on'); }
+  CLIP = null; $('#ptoast').className=''; $('#pnotif').className='';
+  document.querySelectorAll('.tap').forEach(e=>e.remove());
+}
+function clipTick(){
+  if (!CLIP) return;
+  const ct=(t-CLIP.at)/1000, v=CLIP.video;
+  while (CLIP.ev.length && CLIP.ev[0][0]<=ct) CLIP.ev.shift()[1]();
+  if (!v) return;
+  if (playing && ct<CLIP.dur){ if (Math.abs(v.currentTime-ct)>.25) v.currentTime=ct; if (v.paused) v.play().catch(()=>{}); }
+  else if (!v.paused) v.pause();
+}
+
+/* Laptop helpers */
+const kpi = (id, v) => $('#k-'+id+' b').textContent = v;
+function count(id, from, to, ms, fmt = v=>'$'+Math.round(v)){
+  anim(ms, k=>kpi(id, fmt(from+(to-from)*k)));
+  $('#k-'+id).classList.add('hot'); later(ms+800, ()=>$('#k-'+id).classList.remove('hot'));
+}
+// One list per scene (S01 to S11). go() rebuilds the feed from the scenes before the current one.
+const FEED = [
+  [], [],
+  WEEK.flatMap((w,i)=>[[w.day,`${B(w.who)} added ${w.keys.length} debt${w.keys.length>1?'s':''} ${w.how}.`],
+    [w.day,`${list(w.ok.map(B))} approved.${i===WEEK.length-1?` Total $${WEEK_TOTAL}.`:''}`]]),
+  [['Sat',`${B('rivo')} added a debt from a photo. ${N('rivo')} owes ${N('hery')} $50. Waiting for ${N('hery')}.`]],
+  [['Sat',`${B('hery')} approved. The debt is confirmed. Total $${DEBT_TOTAL}.`]],
+  [['08:30',`Clearing round 1. Three circles cancelled $${CANCELLED[3]}. No cash moved.`],['08:30',`Net plan: 3 pay-ins, 2 payouts, $${PAY_TOTAL} in total.`]],
+  ['soa','lalao','fidy'].map((id,i)=>[['08:41','08:44','08:47'][i], `${B(id)} paid $${-NET[id]} through PayPal.${i===2?' All pay-ins captured.':''}`]),
+  [['08:50',`Payout batch sent. ${N('hery')} $${NET.hery}, ${N('rivo')} $${NET.rivo}. Round settled.`]],
+  [], [], [],
+];
+function push([t,txt]){ const li=document.createElement('li'); li.innerHTML=`<time>${t}</time><span>${txt}</span>`; $('#feed').prepend(li); }
+function payin(v){ $('#pbar').style.width = (v/PAY_TOTAL*100)+'%'; $('#ptext').textContent = `$${v} of $${PAY_TOTAL}`; }
+const dot = id => `<i class="dot" style="background:${PEOPLE[id].c}"></i>`;
+// Edge status: 0 hidden, 1 waiting for approval, 2 confirmed
+const ST = {};
+const total = () => DEBTS.reduce((a,[d,c,v])=>a+(ST[d+'>'+c]===2?v:0), 0);
+function setEdge(k, st){ ST[k]=st; EDGES[k].g.setAttribute('class', 'edge' + (st ? ' on' : '') + (st===2 ? '' : ' dash')); }
+// Clearing round panel: 'ledger' (rows from ST, in the order of entry), 'circles', 'plan'
+function panel(mode){
+  const b=$('#pbody'), rows=ADD_ORDER.filter(k=>ST[k]);
+  $('#ptitle').textContent = {ledger:'Debts in the app', circles:'Circles found', plan:'Net plan, round 1'}[mode];
+  if (mode==='ledger') b.innerHTML = !rows.length ? '<p class="empty">No debts yet</p>' :
+    '<table class="tbl"><tr><th>Debtor</th><th>Creditor</th><th>Amount</th><th>Status</th></tr>' + rows.map(k=>{
+      const [a,c]=k.split('>'), wait=ST[k]===1, by=ADDER[k]===a?c:a;
+      const st = wait ? `<span class="pill wait">Waiting for ${N(by)}</span>` : '<span class="pill ok">Confirmed</span>';
+      return `<tr${wait?' class="fresh"':''}><td>${dot(a)}${N(a)}</td><td>${dot(c)}${N(c)}</td><td>$${EDGES[k].v}</td><td>${st}</td></tr>`;
+    }).join('') + '</table>';
+  else if (mode==='circles') b.innerHTML = '';
+  else b.innerHTML = ['soa','lalao','fidy','hery','rivo'].map((id,i)=>
+    `<div class="prow" style="animation-delay:${i*120}ms"><span>${dot(id)}${N(id)}</span><span class="act">${NET[id]<0?'Pays in':'Receives'}</span><b>$${Math.abs(NET[id])}</b><span class="pill wait" id="st-${id}">Waiting</span></div>`).join('');
+}
+function circleRow(i){
+  const c=CIRCLES[i], r=document.createElement('div'); r.className='crow';
+  r.innerHTML = `<div><b>Circle ${i+1}: ${c.path.map(N).join(', ')}</b><p>$${c.v} off each of the 3 debts in the circle</p></div><em>$${c.v*3} cancelled</em>`;
+  $('#pbody').appendChild(r);
+}
+function paid(id){
+  $('#h-'+id).classList.add('paid');
+  const s=$('#st-'+id); if(s){ s.className='pill done'; s.textContent = NET[id]<0 ? 'Paid' : 'Received'; }
+}
+
+/* Stage overlays */
+// focus('market' | 'phone' | 'laptop' | null): no zoom, the block glows and the two others dim
+function focus(n){ if(n) cam.dataset.focus=n; else delete cam.dataset.focus; }
+function sub(text){ const e=$('#sub'); e.classList.remove('on'); if(!text) return; void e.offsetWidth; e.textContent=text; e.classList.add('on'); }
+function bubble(id, text, desk){
+  const b=$('#bubble'); b.classList.remove('on'); if(!id) return;
+  const ops = id==='ops'; b.textContent=text; b.classList.toggle('r', ops); b.classList.toggle('dk', !!desk);
+  b.style.left = ops ? 'auto' : desk ? '584px' : '368px'; b.style.right = ops ? '40px' : 'auto';
+  b.style.bottom = (ops ? 1080-448 : 1080-436)+'px';
+  void b.offsetWidth; b.classList.add('on');
+}
+function badge(on){ $('#badge').classList.toggle('on', on); }
+function deskOn(on){ $('#phone').classList.toggle('gone', on); $('#desk').classList.toggle('on', on); }
+// 7 coins fly on an arc from a to b (cam coordinates). Web Animations API.
+function coins(a, b){
+  const g=gen;
+  for (let i=0;i<7;i++){
+    const c=document.createElement('div'); c.className='coin'; c.textContent='$'; cam.appendChild(c);
+    const ax=a[0]+(i%3-1)*18, ay=a[1]+((i*7)%5-2)*12, bx=b[0]+((i*5)%3-1)*16, by=b[1], mx=(ax+bx)/2, my=Math.min(ay,by)-220-i*14, kf=[];
+    for (let k=0;k<=12;k++){ const u=k/12, x=(1-u)*(1-u)*ax+2*(1-u)*u*mx+u*u*bx, y=(1-u)*(1-u)*ay+2*(1-u)*u*my+u*u*by;
+      kf.push({transform:`translate(${x-15}px,${y-15}px) scale(${.6+.5*Math.sin(Math.PI*u)})`, opacity:k===12?0:1}); }
+    c.animate(kf,{duration:950, delay:i*80, easing:'cubic-bezier(.45,0,.55,1)', fill:'both'}).onfinish=()=>{ c.remove(); if(g===gen) sfx.coin(i); };
+  }
+}
+function shotShow(){ $('#shot').className='show'; }
+function shotFly(){ // into the phone screen, where the mock thumb sits (x 86, y 144, width 238)
+  const s=$('#shot'); s.className='show fly'; s.style.transform=`translate(${86-620}px,${144-96}px) scale(${238/720})`;
+}
+function flash(){ const f=$('#flash'); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on'); sfx.shutter(); }
+function approve(ids){ ids.forEach(id=>{ const b=$('#ok-'+id); b.classList.add('on'); later(1200,()=>b.classList.remove('on')); }); sfx.approve(); }
+
+/* S09 Architecture: 4 lanes, 9 steps, a glowing dot runs the loop */
+const ICON = {
+  human:'<svg viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="7.5" r="4"/><path d="M4 21c0-4.4 3.6-7.5 8-7.5s8 3.1 8 7.5z"/></svg>',
+  ai:'<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2l2.2 6.3L20.5 10.5l-6.3 2.2L12 19l-2.2-6.3L3.5 10.5l6.3-2.2z"/><path d="M19 15l1 2.6 2.6 1-2.6 1L19 22l-1-2.4-2.6-1 2.6-1z"/></svg>',
+  algo:'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="5" r="2.6" fill="#fff"/><circle cx="5" cy="18" r="2.6" fill="#fff"/><circle cx="19" cy="18" r="2.6" fill="#fff"/><path d="M10.6 7.3L6.4 15.7M7.6 18h8.8M17.6 15.7l-4.2-8.4"/></svg>',
+  pp:'<img src="demo-v3/paypal-mark.svg" alt="">',
+};
+const LOCK = '<svg viewBox="0 0 12 12" fill="#5b21b6"><rect x="2" y="5.5" width="8" height="6" rx="1.4"/><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" fill="none" stroke="#5b21b6" stroke-width="1.4"/></svg>';
+const LANES = [
+  {id:'human', label:'Human', c:'#f59e0b', role:'Adds and approves every debt.'},
+  {id:'ai', label:'AI model', c:'#8b5cf6', role:'Reads photos and sentences. Explains the results. Never sets an amount.'},
+  {id:'algo', label:'Algorithm', c:'#14b8a6', role:'Cancels circles. Computes who pays what. Plain code, same answer every time.'},
+  {id:'pp', label:'<span style="color:#fff">Pay</span><span style="color:#009cde">Pal</span>', c:'#009cde', role:'Checkout takes the payments in. Payouts sends the payments out.'},
+];
+// [step text, lane]
+const STEPS = [['Notebook, photo or sentence',0],['Draft debt',1],['Approve',0],['Cancel circles',2],['Net positions',2],
+  ['Pay in, Checkout',3],['Payouts',3],['Plain statement',1],['Read and trust',0]];
+const ARCH = $('#arch'), WIRES = $('#wires');
+const laneY = i => 150 + i*196, nodeX = k => 420 + (k+.5)*157.8, nodeY = k => laneY(STEPS[k][1]) + 88;
+LANES.forEach((l,i)=>{
+  const d=document.createElement('div'); d.className='lane'+(l.id==='pp'?' pp':''); d.id='lane-'+i; d.style.top=laneY(i)+'px'; d.style.setProperty('--c',l.c);
+  d.innerHTML=`<div class="lhead"><span class="ic">${ICON[l.id]}</span><b><span>${l.label}</span>${l.id==='ai'?`<span class="lock" id="lock">${LOCK}No amounts</span>`:''}</b><p>${l.role}</p></div>`;
+  ARCH.insertBefore(d, WIRES);
+});
+// Connector k links step k to step k+1: a cubic curve from centre to centre, under the cards
+function bez(k, u){
+  const x1=nodeX(k), y1=nodeY(k), x2=nodeX(k+1), y2=nodeY(k+1), a=x1+(x2-x1)*.55, b=x2-(x2-x1)*.55, v=1-u;
+  return [v*v*v*x1+3*v*v*u*a+3*v*u*u*b+u*u*u*x2, v*v*v*y1+3*v*v*u*y1+3*v*u*u*y2+u*u*u*y2];
+}
+const TRAILS = STEPS.slice(1).map((s,k)=>{
+  const x1=nodeX(k), y1=nodeY(k), x2=nodeX(k+1), y2=nodeY(k+1), d=`M${x1} ${y1}C${x1+(x2-x1)*.55} ${y1} ${x2-(x2-x1)*.55} ${y2} ${x2} ${y2}`;
+  el('path',{d,class:'wire'},WIRES);
+  return el('path',{d,class:'trail',pathLength:1,style:`color:${LANES[s[1]].c}`},WIRES);
+});
+const DOT = $('#dot');
+
+const NODES = STEPS.map(([txt,li],k)=>{
+  const n=document.createElement('div'); n.className='st'; n.style.setProperty('--c',LANES[li].c);
+  n.style.left=(nodeX(k)-70)+'px'; n.style.top=(nodeY(k)-35)+'px'; n.innerHTML=`<i>${k+1}</i>${txt}`;
+  ARCH.appendChild(n); return n;
+});
+function dotAt(k){
+  DOT.getAnimations().forEach(a=>a.cancel());
+  DOT.style.setProperty('--dc', LANES[STEPS[k][1]].c); DOT.style.transform=`translate(${nodeX(k)-11}px,${nodeY(k)-11}px)`; DOT.style.opacity=1;
+}
+function hop(k, ms){ // dot from step k to step k+1, the connector lights up and fades to a faint trail
+  const kf=[]; for (let i=0;i<=16;i++){ const [x,y]=bez(k,i/16); kf.push({transform:`translate(${x-11}px,${y-11}px)`}); }
+  DOT.getAnimations().forEach(a=>a.cancel()); DOT.style.setProperty('--dc', LANES[STEPS[k+1][1]].c);
+  DOT.animate(kf,{duration:ms, easing:'cubic-bezier(.45,0,.55,1)', fill:'forwards'});
+  TRAILS[k].animate([{strokeDashoffset:1,opacity:1},{strokeDashoffset:0,opacity:1,offset:ms/(ms+1400)},{strokeDashoffset:0,opacity:.25}],{duration:ms+1400, fill:'forwards'});
+}
+function pop(k){
+  const n=NODES[k]; n.classList.add('on','lit');
+  n.animate([{transform:'scale(1)'},{transform:'scale(1.16)',offset:.35},{transform:'scale(.97)',offset:.7},{transform:'scale(1)'}],{duration:650, easing:'ease-out'});
+  sfx.tick();
+}
+function lane(i){ $('#lane-'+i).classList.add('on'); NODES.forEach((n,k)=>{ if(STEPS[k][1]===i) n.classList.add('on'); }); }
+function archReset(){
+  ARCH.classList.remove('all'); $('#lock').classList.remove('on');
+  LANES.forEach((l,i)=>$('#lane-'+i).classList.remove('on'));
+  [DOT, ...NODES, ...TRAILS].forEach(e=>e.getAnimations().forEach(a=>a.cancel()));
+  NODES.forEach(n=>n.className='st'); DOT.style.opacity=0;
+}
+function archSteps(){
+  const st=[[3000,()=>lane(0)],[9000,()=>lane(1)],[14100,()=>{ $('#lock').classList.add('on'); sfx.approve(); }],[17000,()=>lane(2)],[25000,()=>lane(3)]];
+  // First pass: the dot reaches each step with the voice. Second pass (30.6 to 35.4 s): faster, all steps glow.
+  const A=[3,9,12.8,17,21,25,27.4,29,30];
+  st.push([A[0]*1000,()=>{ dotAt(0); pop(0); }]);
+  for (let k=1;k<9;k++) st.push([(A[k]-.9)*1000,()=>hop(k-1,900)], [A[k]*1000,()=>pop(k)]);
+  st.push([30600,()=>{ ARCH.classList.add('all'); dotAt(0); pop(0); }]);
+  for (let k=1;k<9;k++){ const at=30600+k*600; st.push([at-450,()=>hop(k-1,450)], [at,()=>pop(k)]); }
+  return st;
+}
+
+/* State: every scene sets it in full, so any scene can start cold */
+const ACT = {active:null, ops:false};
+function figures(){
+  ORDER.forEach(id=>{
+    const on = id==='ops' ? ACT.ops : id===ACT.active;
+    place(id, on ? SPOT[id==='ops'?'ops':'trader'] : HOME[id]);
+    $('#fig-'+id).classList.toggle('act', on);
+    $('#n-'+id).classList.toggle('away', on);
+  });
+  const tag = (el, id) => { el.classList.toggle('on', !!id); if(id) el.innerHTML=`<b>${N(id)}</b>, ${PEOPLE[id].biz}`; };
+  tag($('#tag-t'), ACT.active); tag($('#tag-o'), ACT.ops && 'ops');
+  $('#laptop').classList.toggle('live', ACT.ops);
+}
+function turn(id){ ACT.active=id; figures(); stopClip(); phone(id,'idle'); bubble(null); }
+// edges: 'none' | 'week' (8 confirmed) | 'proposed' (8 + Rivo's debt waiting) | 'all' (9 confirmed) | 'hub'
+// full: null | 'arch' | 'proof' | 'end' (full-frame panel over the stage)
+function state(s){
+  ACT.active=s.active||null; ACT.ops=!!s.ops; figures();
+  stopClip(); deskOn(false);
+  const e=s.edges||'none';
+  mk.setAttribute('class', e==='hub'?'hub':'');
+  ADD_ORDER.forEach((k,i)=>{ setAmt(k, EDGES[k].v); setEdge(k, e==='none' ? 0 : i<8 ? 2 : e==='week' ? 0 : e==='proposed' ? 1 : 2); });
+  document.querySelectorAll('.hubedge').forEach(e=>e.classList.remove('paid'));
+  document.querySelectorAll('.okb').forEach(e=>e.classList.remove('on'));
+  panel(s.panel||'ledger');
+  (s.paid||[]).forEach(paid);
+  payin(s.payin||0);
+  kpi('total','$'+total()); kpi('cancel','$'+(s.cancel||0)); kpi('move', s.move?'$'+s.move:'-'); kpi('saved', s.saved||'-');
+  document.querySelectorAll('.kpi').forEach(k=>k.classList.remove('hot'));
+  const b=$('#lbtn'); b.textContent = s.btn==='payout' ? 'Send payouts' : 'Run clearing'; b.disabled = !!s.btnOff;
+  const ph = s.phone || [ACT.active,'idle']; phone(ph[0], ph[1], ph[2]);
+  focus(s.focus||null); sub(null); bubble(null); badge(false);
+  $('#titlecard').classList.toggle('on', !!s.title); document.body.classList.toggle('centred', !!s.title);
+  $('#team').classList.remove('on');
+  $('#shot').className=''; $('#shot').style.transform='';
+  document.querySelectorAll('.coin').forEach(c=>c.remove());
+  $('#full').classList.toggle('on', !!s.full); document.body.classList.toggle('full', !!s.full);
+  ['arch','proof','endp'].forEach(id=>$('#'+id).classList.toggle('on', s.full===(id==='endp'?'end':id)));
+  archReset();
+  $('#proof').classList.remove('done'); $('#pnum').textContent='$'+DEBT_TOTAL; document.querySelectorAll('.tile').forEach(x=>x.classList.remove('on'));
+  $('#endp').classList.remove('on');
+}
+
+/* Scene helpers */
+const subSteps = key => SUBS[key].map(([s,text])=>[s*1000, ()=>sub(text)]);
+function circleSteps(i, T){
+  const c=CIRCLES[i], keys=c.path.map((a,k)=>a+'>'+c.path[(k+1)%3]);
+  return [
+    [T, ()=>{ keys.forEach(k=>edge(k).classList.add('lit')); circleRow(i); count('cancel', CANCELLED[i], CANCELLED[i+1], 1200); sfx.tap(); }],
+    [T+300, ()=>keys.forEach(k=>{ const from=AMT[k], to=from-c.v; AMT[k]=to; anim(1000, p=>EDGES[k].tx.textContent='$'+Math.round(from+(to-from)*p)); })],
+    [T+1500, ()=>keys.forEach(k=>{ if(!AMT[k]) edge(k).classList.add('zero'); })],
+    [T+1800, ()=>keys.forEach(k=>edge(k).classList.remove('lit'))],
+  ];
+}
+// S03: 4 turns. Soa uses the desktop, the others the phone. The next trader moves when the previous turn ends (0.8 s move).
+function weekSteps(dur){
+  // The AI badge waits for the desk to close, so it never covers the desk chip.
+  const st=[[0,()=>badge(!CLIPS[WEEK[0].clip].desk)]]; let T=0;
+  WEEK.forEach((w,i)=>{
+    const c=CLIPS[w.clip], desk=!!c.desk;
+    if (i) st.push([T,()=>turn(w.who)]);
+    if (desk) st.push([T+200,()=>deskOn(true)]);
+    st.push([T+(desk?500:400),()=>bubble(w.who, w.say, desk)]);
+    const C = T+(desk?1000:800), S = C + c.saved*1000;
+    st.push([C,()=>clip(w.clip)],
+      [S,()=>{ w.keys.forEach(k=>setEdge(k,1)); panel('ledger'); push(FEED[2][2*i]); }],
+      [S+700,()=>{ const from=total(); w.keys.forEach(k=>setEdge(k,2)); panel('ledger'); approve(w.ok); count('total',from,total(),900); push(FEED[2][2*i+1]); }]);
+    let end = Math.max(C + c.dur*1000, S+700);
+    if (desk){ st.push([end,()=>{ stopClip(); deskOn(false); bubble(null); badge(true); }]); end += 600; }
+    T = end;
+  });
+  if (T > dur) console.warn(`S03: the turns need ${T} ms, the segment has ${dur} ms. Shorten the clips.`);
+  return st;
+}
+// S07: 3 pay-ins. Coins, the green hub arrow, the Paid row and the pay-in bar follow the clip's paid time.
+function payInSteps(dur){
+  const st=[], turns=[['soa','soaPay',`One payment of $${-NET.soa} and I am done.`],['lalao','lalaoPay',`$${-NET.lalao}, paid.`],['fidy','fidyPay',`$${-NET.fidy}, paid.`]];
+  let T=0, sum=0;
+  turns.forEach(([id,name,say],i)=>{
+    const c=CLIPS[name], at=T+(i?700:800), p=at+(c.paid ?? c.dur)*1000, s=(sum+=-NET[id]);
+    if (i) st.push([T,()=>turn(id)]);
+    st.push([i ? p-400 : 200,()=>bubble(id, say)], [at,()=>clip(name)], [p,()=>{ coins(PHONE_PT, BAR_PT); sfx.chime(); }],
+      [p+800,()=>{ paid(id); payin(s); push(FEED[6][i]); if(s===PAY_TOTAL) $('#lbtn').disabled=false; }]);
+    T = Math.max(at+c.dur*1000, p+800);
+  });
+  if (T > dur) console.warn(`S07: the pay-ins need ${T} ms, the segment has ${dur} ms. Shorten the clips.`);
+  return st;
+}
+
+const AFTER_CLEAR = {cancel:CANCELLED[3], move:PAY_TOTAL, saved:'67.7%', edges:'hub', panel:'plan', btn:'payout', btnOff:true};
+const ALL = ['soa','lalao','fidy','hery','rivo'];
+const SAT_CLIP = 2600, CONFIRM_CLIP = 1000, PAYOUT_CLIP = 2500;
+// One scene per voice-over segment. Durations in ms, total 175 s.
+const SCENES = [
+  {key:'S01', label:'S01 Hook', dur:9000, step:'The problem', title:`${PL.banks} clear their debts every day`, body:'Market traders have no clearing house. Each debt waits for cash.',
+   setup(){ state({phone:[null,'idle'], title:true}); $('#feed').innerHTML=''; },
+   steps:[]},
+  {key:'S02', label:'S02 Context', dur:11000, step:'The market', title:'Five traders sell on credit', body:'Each debt lives in a paper notebook. Nobody can see the whole picture.',
+   setup(){ state({phone:[null,'idle']}); },
+   steps:[[300,()=>focus('market')], [5200,()=>$('#team').classList.add('on')]]},
+  {key:'S03', label:'S03 The week', dur:23000, step:'The week', title:'Every trader puts debts into the app', body:'A desktop or a phone. A few words are enough. The other side approves each debt.',
+   setup(){ state({active:'soa'}); },
+   steps:weekSteps(23000)},
+  {key:'S04', label:'S04 Saturday', dur:10000, step:'Saturday', title:`${N('rivo')} finds one more note`, body:`The AI reads the photo and drafts the debt. ${N('rivo')} checks it and saves.`,
+   setup(){ state({active:'rivo', phone:['rivo','camera'], edges:'week'}); },
+   steps:[[200,()=>bubble('rivo',`I owe ${N('hery')} 50 for rice.`)],
+     [800,()=>{ focus('phone'); shotShow(); }],
+     [1800,flash],
+     [2000,shotFly],
+     [SAT_CLIP,()=>{ bubble(null); $('#shot').className='fly'; clip('rivoAdd'); badge(true); }],
+     [SAT_CLIP+CLIPS.rivoAdd.saved*1000,()=>{ setEdge('rivo>hery',1); panel('ledger'); push(FEED[3][0]); focus(null); }],
+     [SAT_CLIP+CLIPS.rivoAdd.dur*1000,()=>badge(false)]]},
+  {key:'S05', label:'S05 Confirm', dur:7000, step:'Confirm', title:`${N('hery')} approves the debt`, body:'Both sides must agree before a debt counts in the round.',
+   setup(){ state({active:'hery', edges:'proposed'}); },
+   steps:[[300,()=>bubble('hery',`Yes, ${N('rivo')} owes me 50.`)],
+     [CONFIRM_CLIP,()=>clip('heryConfirm')],
+     [CONFIRM_CLIP+2100,()=>{ setEdge('rivo>hery',2); count('total',WEEK_TOTAL,DEBT_TOTAL,900); panel('ledger'); push(FEED[4][0]); }],
+     [3800,()=>bubble(null)]]},
+  {key:'S06', label:'S06 Clear', dur:13000, step:'Clear', title:`Circles of debt cancel $${CANCELLED[3]}`, body:'The clearing house runs a round. Plain code does every calculation, never the AI.',
+   setup(){ state({ops:true, edges:'all'}); },
+   steps:[[200,()=>bubble('ops','Time to clear the market.')],
+     [500,()=>focus('laptop')],
+     [1000,()=>press('#lbtn')],
+     [2000,()=>bubble(null)],
+     [2200,()=>{ focus('market'); panel('circles'); }],
+     ...circleSteps(0,2200), ...circleSteps(1,4600), ...circleSteps(2,7000),
+     [9400,()=>push(FEED[5][0])],
+     [9600,()=>{ mk.setAttribute('class','hub'); panel('plan'); count('move',0,PAY_TOTAL,1200); count('saved',0,67.7,1200,v=>v.toFixed(1)+'%');
+       const b=$('#lbtn'); b.textContent='Send payouts'; b.disabled=true; }],
+     [10400,()=>push(FEED[5][1])]]},
+  {key:'S07', label:'S07 Pay in', dur:18000, step:'Pay in', title:'Three traders pay what they still owe', body:`${list(['soa','lalao','fidy'].map(N))} pay $${PAY_TOTAL} in total into the clearing account through PayPal.`,
+   setup(){ state({...AFTER_CLEAR, active:'soa'}); },
+   steps:payInSteps(18000)},
+  {key:'S08', label:'S08 Pay out', dur:10000, step:'Pay out', title:'PayPal pays the traders who are owed', body:`${N('hery')} gets $${NET.hery} and ${N('rivo')} gets $${NET.rivo}. Each trader gets a plain statement.`,
+   setup(){ state({...AFTER_CLEAR, btnOff:false, ops:true, paid:['soa','lalao','fidy'], payin:PAY_TOTAL}); },
+   steps:[[800,()=>press('#lbtn')],
+     [1500,()=>turn('hery')],
+     [PAYOUT_CLIP,()=>{ clip('heryStatement'); coins(LAPTOP_PT, PHONE_PT); }],
+     [PAYOUT_CLIP+900,()=>{ paid('hery'); paid('rivo'); push(FEED[7][0]); $('#lbtn').disabled=true; sfx.chime(); }],
+     [4000,()=>bubble('hery',`My $${NET.hery} is in PayPal.`)]]},
+  {key:'S09', label:'S09 Architecture', dur:37000, step:'How it works', title:'Four parts, one job each', body:'People decide. The AI reads and explains. Plain code counts. PayPal moves the money.',
+   setup(){ state({...AFTER_CLEAR, paid:ALL, payin:PAY_TOTAL, full:'arch'}); },
+   steps:archSteps()},
+  {key:'S10', label:'S10 Proof', dur:27000, step:'Proof', title:`$${DEBT_TOTAL} of debt settled with $${PAY_TOTAL}`, body:'Real PayPal sandbox calls. Every journey is tested.',
+   setup(){ state({...AFTER_CLEAR, paid:ALL, payin:PAY_TOTAL, full:'proof'}); },
+   steps:[[2600,()=>anim(1500, k=>$('#pnum').textContent='$'+Math.round(DEBT_TOTAL-(DEBT_TOTAL-PAY_TOTAL)*k))],
+     [4200,()=>{ $('#proof').classList.add('done'); sfx.chime(); }],
+     ...[5600,8000,11000,14000,17000].map((ms,i)=>[ms,()=>{ document.querySelectorAll('.tile')[i].classList.add('on'); sfx.approve(); }])]},
+  {key:'S11', label:'S11 End', dur:10000, step:'Alamino', title:'Clearing for the market', body:'With AI and PayPal. The code is open on GitHub.',
+   setup(){ state({...AFTER_CLEAR, paid:ALL, payin:PAY_TOTAL, full:'end'}); },
+   steps:[[300,()=>$('#endp').classList.add('on')]]},
+];
+SCENES.forEach(s=>{ s.steps = [...s.steps, ...subSteps(s.key)].sort((a,b)=>a[0]-b[0]); });
+
+/* Timeline */
+let cur=0, t=0, fired=0, playing=true, last=performance.now();
+const ctrl = $('#ctrl');
+ctrl.innerHTML = `<button id="play">Pause</button><button id="snd" class="on">Sound on</button>` + SCENES.map((s,i)=>`<button data-i="${i}">${s.label}</button>`).join('') +
+  `<span class="hint">Click once to start the sound. Space: play or pause. Arrows: scenes. H: hide this bar for recording.</span>`;
+$('#dots').innerHTML = SCENES.map(()=>'<i></i>').join('');
+function go(i){
+  gen++;
+  cur=(i+SCENES.length)%SCENES.length; t=0; fired=0;
+  const s=SCENES[cur];
+  // Rebuild the feed for the scenes before this one
+  if (cur>0){ $('#feed').innerHTML=''; FEED.slice(0,cur).flat().forEach(push); }
+  s.setup();
+  const cap=$('#caption'); cap.querySelector('.step').textContent=s.step; cap.querySelector('h2').textContent=s.title; cap.querySelector('p').textContent=s.body;
+  cap.classList.remove('swap'); void cap.offsetWidth; cap.classList.add('swap');
+  document.querySelectorAll('#dots i').forEach((d,k)=>d.classList.toggle('on',k<=cur));
+  ctrl.querySelectorAll('[data-i]').forEach(b=>b.classList.toggle('on',+b.dataset.i===cur));
+}
+function setPlaying(p){ playing=p; $('#play').textContent=p?'Pause':'Play'; if(ctx) p ? ctx.resume() : ctx.suspend(); }
+function tick(now){
+  const dt=now-last; last=now;
+  if(playing){
+    t+=dt; const s=SCENES[cur];
+    while(fired<s.steps.length && s.steps[fired][0]<=t) s.steps[fired++][1]();
+    // The last scene holds its end state: no loop.
+    if(t>=s.dur){ if(cur===SCENES.length-1) setPlaying(false); else go(cur+1); }
+  }
+  clipTick(); pad();
+  const total=SCENES.reduce((a,s)=>a+s.dur,0), done=SCENES.slice(0,cur).reduce((a,s)=>a+s.dur,0)+Math.min(t,SCENES[cur].dur);
+  $('#progress').style.width=(done/total*100)+'%';
+  requestAnimationFrame(tick);
+}
+function toggle(){ if(!playing && cur===SCENES.length-1 && t>=SCENES[cur].dur) go(0); setPlaying(!playing); }
+addEventListener('pointerdown', audio, true);
+ctrl.addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  if(b.id==='play') toggle(); else if(b.id==='snd') sound(); else { go(+b.dataset.i); setPlaying(true); }
+});
+addEventListener('keydown',e=>{
+  audio();
+  if(e.key===' '){ e.preventDefault(); toggle(); }
+  if(e.key==='ArrowRight') go(cur+1);
+  if(e.key==='ArrowLeft') go(cur-1);
+  if(e.key==='h'||e.key==='H'){ document.body.classList.toggle('clean'); fit(); }
+});
+function fit(){
+  const top = document.body.classList.contains('clean') ? 0 : 52;
+  const s = Math.min(innerWidth/1920, (innerHeight-top)/1080);
+  frame.style.transform = `translate(${(innerWidth-1920*s)/2}px,${top+(innerHeight-top-1080*s)/2}px) scale(${s})`;
+}
+addEventListener('resize',fit); fit();
+const q = new URLSearchParams(location.search);
+if (q.has('clean')) { document.body.classList.add('clean'); fit(); }
+// First placement without transitions, so figures do not fly in from the corner
+frame.classList.add('notrans');
+go(+(q.get('scene')||0));
+requestAnimationFrame(()=>requestAnimationFrame(()=>frame.classList.remove('notrans')));
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
