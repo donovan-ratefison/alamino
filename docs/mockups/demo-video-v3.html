@@ -37,9 +37,13 @@ body.clean #ctrl{display:none}
   box-shadow:0 0 0 2px rgba(255,255,255,.15),0 40px 90px -20px var(--pc,#003087)}
 .notch{position:absolute;left:50%;top:6px;width:84px;height:20px;margin-left:-42px;background:#0b1220;border-radius:12px;z-index:5}
 .pstatus{height:30px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-size:11px;font-weight:600}
-.phead{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--pc,#003087);color:#fff;transition:background .6s}
-.phead b{font-size:17px;letter-spacing:-.01em}
-.phead .who{font-size:12px;background:rgba(255,255,255,.22);padding:4px 10px;border-radius:999px}
+.phead{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:#fff;border-bottom:1px solid var(--line)}
+.phead img{height:20px}
+.phead .who{font-size:12px;font-weight:600;color:#fff;background:var(--pc,#003087);padding:4px 10px;border-radius:999px;transition:background .6s}
+/* Placeholder screen when a clip file is missing: a title and two skeleton cards */
+.skt{font-size:20px;font-weight:700;letter-spacing:-.01em;margin:2px 0 4px}
+.sk{border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-top:12px}
+.sk .shim{display:block}
 #pscreen{position:absolute;left:0;right:0;top:86px;bottom:0;padding:16px}
 #pscreen.swap{animation:fadein .45s ease}
 @keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -161,10 +165,6 @@ body.clean #ctrl{display:none}
 @keyframes flash{0%{opacity:.95}100%{opacity:0}}
 
 /* Overlays: badge, speech bubble, coins, subtitles */
-#badge{position:absolute;left:380px;top:40px;z-index:6;display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:999px;background:#fff;border:1px solid #9cc7f5;
-  box-shadow:0 12px 30px -10px rgba(0,0,0,.45);font-size:18px;font-weight:600;opacity:0;transform:translateY(-8px);transition:opacity .4s,transform .4s}
-#badge i{width:10px;height:10px;border-radius:50%;background:var(--accent)}
-#badge.on{opacity:1;transform:none}
 #bubble{position:absolute;z-index:6;max-width:230px;padding:10px 16px;border-radius:18px;background:#fff;color:var(--ink);font-size:18px;font-weight:600;line-height:1.3;
   box-shadow:0 14px 34px -10px rgba(0,0,0,.5);opacity:0;transform:scale(.9);transform-origin:20% 100%;transition:opacity .3s,transform .3s}
 #bubble::after{content:"";position:absolute;bottom:-9px;left:60px;width:18px;height:18px;background:#fff;transform:rotate(45deg)}
@@ -201,8 +201,7 @@ body.clean #ctrl{display:none}
 #dots{display:flex;gap:8px;margin-top:auto}
 #dots i{width:30px;height:5px;border-radius:3px;background:#c9d8ee;transition:background .4s}
 #dots i.on{background:var(--accent)}
-#ellipse{position:absolute;left:550px;top:676px;width:1040px;height:384px;border-radius:50%;border:2px dashed #b9cbe6;background:rgba(255,255,255,.55);
-  transition:opacity .6s,transform .6s,box-shadow .6s,border-color .6s}
+#ellipse{fill:rgba(255,255,255,.55);stroke:#b9cbe6;stroke-width:2;stroke-dasharray:6 7;transition:stroke .6s,filter .6s}
 #market{transition:opacity .6s}
 
 /* Market drawing */
@@ -250,12 +249,12 @@ body.clean #ctrl{display:none}
 /* Devices on the dark stage dim with brightness (opacity washes them out); the market on the light band uses opacity. */
 #phone,#laptop,#base{transition:filter .6s,transform .6s,border-color .6s,box-shadow .6s,opacity .6s}
 #cam[data-focus] :is(#phone,#laptop,#base){filter:brightness(.5) saturate(.8)}
-#cam[data-focus] :is(#ellipse,#market){opacity:.6}
+#cam[data-focus] #market{opacity:.6}
 #cam[data-focus=phone] #phone,#cam[data-focus=laptop] :is(#laptop,#base){filter:none}
-#cam[data-focus=market] :is(#ellipse,#market){opacity:1}
+#cam[data-focus=market] #market{opacity:1}
 #cam[data-focus=phone] #phone{transform:scale(1.03);box-shadow:0 0 0 2px rgba(255,255,255,.15),0 0 0 7px rgba(0,112,224,.5),0 0 70px 6px rgba(59,155,255,.55)}
 #cam[data-focus=laptop] #laptop{transform:scale(1.03);box-shadow:0 0 0 4px var(--accent),0 0 80px 6px rgba(59,155,255,.6)}
-#cam[data-focus=market] #ellipse{transform:scale(1.03);border-color:#7fb3ec;box-shadow:0 0 0 4px rgba(0,112,224,.14),0 0 60px rgba(0,112,224,.28)}
+#cam[data-focus=market] #ellipse{stroke:#7fb3ec;filter:drop-shadow(0 0 16px rgba(0,112,224,.35))}
 
 /* Name tag under a person at the phone or the laptop */
 .ntag{position:absolute;top:648px;z-index:5;padding:5px 14px;border-radius:999px;background:#fff;border:1px solid var(--line);box-shadow:0 8px 20px -8px rgba(0,0,0,.4);
@@ -287,12 +286,22 @@ body.clean #ctrl{display:none}
 #bubble.dk::after{left:18px}
 
 /* Team card (S02) */
-#team{position:absolute;left:50%;top:330px;z-index:9;min-width:580px;padding:34px 64px;border-radius:24px;background:#fff;text-align:center;
+#team{position:absolute;left:50%;top:330px;z-index:9;padding:34px 56px 40px;border-radius:24px;background:#fff;text-align:center;
   box-shadow:0 40px 100px -20px rgba(0,0,0,.6);opacity:0;transform:translate(-50%,-50%) scale(.94);transition:opacity .6s,transform .6s}
 #team.on{opacity:1;transform:translate(-50%,-50%)}
 #team img{height:48px;margin-bottom:18px}
-#team .k{font-size:14px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
-#team .names div{font-size:32px;font-weight:600;letter-spacing:-.01em;line-height:1.4}
+#team .k{font-size:14px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:24px}
+/* Team columns (team card and end card): 3 equal columns, one after the other */
+.people{display:grid;grid-template-columns:repeat(3,1fr);gap:36px;width:1020px}
+.pcol{display:flex;flex-direction:column;align-items:center;gap:8px;opacity:0;transform:translateY(10px);
+  transition:opacity .6s,transform .6s;transition-delay:calc(var(--d,0s) + var(--i)*.25s)}
+.pcol b{font-size:28px;font-weight:600;letter-spacing:-.01em}
+.pcol span{display:flex;align-items:center;gap:7px;font:500 16px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)}
+.pcol svg{width:16px;height:16px;flex:none}
+#team.on .pcol,#endp.on .pcol{opacity:1;transform:none}
+#endp .pcol b{color:#fff;font-size:26px}
+#endp .pcol span{color:#9cc7f5}
+#endp .people{--d:1.6s}
 
 /* Full-frame scenes (S09 to S11): a dark-blue backdrop over everything */
 #full{position:absolute;inset:0;z-index:12;color:#fff;opacity:0;pointer-events:none;transition:opacity .8s;
@@ -345,22 +354,37 @@ body.full #sub{top:972px;max-width:1500px}
 .tile b{display:block;font-size:64px;font-weight:700;letter-spacing:-.03em;line-height:1.05}
 .tile span{display:block;margin-top:14px;font-size:19px;line-height:1.4;color:#c9d8f2}
 
+/* S00 Opening */
+#openp{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:44px;padding-bottom:70px}
+#openp .logo-tile{opacity:0;transform:translateY(34px);transition:opacity 1s,transform 1.2s cubic-bezier(.2,.8,.2,1)}
+#openp.rise .logo-tile{opacity:1;transform:none}
+#openp h1{font-size:76px;font-weight:600;letter-spacing:-.03em;opacity:0;transform:translateY(16px);transition:opacity .8s,transform .8s}
+#openp.show h1{opacity:1;transform:none}
+#openp h1 em,#endp h2 em,.card-over h1 em{font-style:normal;color:var(--paypal)}
+
 /* S11 End */
 #endp{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:30px;padding-bottom:80px;text-align:center}
-#endp > *{opacity:0;transform:translateY(14px);transition:opacity 1.2s,transform 1.2s}
-#endp.on > *{opacity:1;transform:none}
+#endp > :not(.people){opacity:0;transform:translateY(14px);transition:opacity 1.2s,transform 1.2s}
+#endp.on > :not(.people){opacity:1;transform:none}
 #endp.on > :nth-child(2){transition-delay:.5s}
 #endp.on > :nth-child(3){transition-delay:1s}
-#endp.on > :nth-child(4){transition-delay:1.5s}
-#endp.on > :nth-child(5){transition-delay:2s}
+#endp.on > :nth-child(4){transition-delay:1.25s}
+#endp.on > :nth-child(6){transition-delay:2.4s}
 .logo-tile{padding:22px 40px;border-radius:24px;background:#fff}
 .logo-tile img{height:72px;display:block}
 #endp h2{font-size:46px;font-weight:600;letter-spacing:-.02em}
-#endp .repo{font:500 26px ui-monospace,SFMono-Regular,Menlo,monospace;color:#cfe0fb}
-#endp .team{display:flex;gap:64px}
-#endp .team b{display:block;font-size:26px;font-weight:600}
-#endp .team span{font-size:18px;color:#9cc7f5}
+.lnk{display:flex;align-items:center;gap:12px;font:500 26px ui-monospace,SFMono-Regular,Menlo,monospace;color:#cfe0fb}
+.lnk svg{width:26px;height:26px;flex:none;color:#fff}
+.lnk b{font:600 26px Inter,system-ui,sans-serif;color:#fff}
 #endp .hk{font-size:15px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--paypal)}
+
+/* Desk placeholder: the same app screen in a wide layout */
+.dmock{position:absolute;inset:0;background:#fff}
+.dtop{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:1px solid var(--line)}
+.dtop img{height:20px}
+.dtop .who{font-size:12px;font-weight:600;color:#fff;background:var(--dc,#e11d48);padding:4px 10px;border-radius:999px}
+.dbody{padding:16px 18px}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 </style>
 </head>
 <body>
@@ -372,7 +396,7 @@ body.full #sub{top:972px;max-width:1500px}
     <div id="phone">
       <div class="notch"></div>
       <div class="pstatus"><span>08:12</span><span>4G</span></div>
-      <div class="phead"><b>Alamino</b><span class="who" id="pwho">Market</span></div>
+      <div class="phead"><img src="../../public/alamino-logo.png" alt="Alamino"><span class="who" id="pwho">Market</span></div>
       <div id="pscreen"></div>
       <div id="ptoast"></div>
       <div id="pnotif"></div>
@@ -408,7 +432,7 @@ body.full #sub{top:972px;max-width:1500px}
 
     <div id="desk">
       <div class="chip">Same app, on a desktop</div>
-      <div id="dscreen"><div class="idle"><img src="../../public/alamino-logo.png" alt="Alamino"><p class="muted">Clearing for market traders</p></div></div>
+      <div id="dscreen"><div class="dmock" id="dmock"></div></div>
       <div id="dbase"></div>
     </div>
   </div>
@@ -416,33 +440,34 @@ body.full #sub{top:972px;max-width:1500px}
   <div id="bottom">
     <div id="caption"><img src="../../public/alamino-logo.png" alt="Alamino"><div class="step"></div><h2></h2><p></p><div id="dots"></div></div>
   </div>
-  <div id="ellipse"></div>
   <svg id="market" viewBox="0 0 1920 1080">
     <defs>
       <marker id="m-grey" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#94a3b8"/></marker>
       <marker id="m-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#0070e0"/></marker>
       <marker id="m-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#16a34a"/></marker>
     </defs>
+    <ellipse id="ellipse" cx="1070" cy="868" rx="519" ry="191"/>
     <text class="mlabel" x="1070" y="1046">The market</text>
   </svg>
 
   <div id="shot"><img src="../test-photos/photo-1-rivo-hery-50.jpg" alt=""><div class="vf"><i></i><i></i><i></i><i></i></div></div>
-  <div id="badge"><i></i>The AI reads. Plain code counts. The AI never sets an amount.</div>
   <div id="bubble"></div>
   <div class="ntag" id="tag-t"></div>
   <div class="ntag" id="tag-o"></div>
 
-  <div class="card-over" id="titlecard"><div class="k"></div><h1></h1><p>Alamino brings clearing to the market.</p></div>
-  <div id="team"><img src="../../public/alamino-logo.png" alt="Alamino"><div class="k"></div><div class="names"></div></div>
+  <div class="card-over" id="titlecard"><h1></h1></div>
+  <div id="team"><img src="../../public/alamino-logo.png" alt="Alamino"><div class="k"></div><div class="people"></div></div>
 
   <div id="full">
+    <div class="panel" id="openp"><div class="logo-tile"><img src="../../public/alamino-logo.png" alt="Alamino"></div><h1></h1></div>
     <div class="panel" id="arch"><h2>How Alamino works</h2><svg id="wires" viewBox="0 0 1920 1080"></svg><div id="dot"></div></div>
     <div class="panel" id="proof"><div id="pnum"></div><h2></h2><div id="tiles"></div></div>
     <div class="panel" id="endp">
       <div class="logo-tile"><img src="../../public/alamino-logo.png" alt="Alamino"></div>
-      <h2>Clearing for the market, with AI and PayPal.</h2>
-      <div class="repo"></div>
-      <div class="team"></div>
+      <h2></h2>
+      <div class="lnk" id="l-demo"></div>
+      <div class="lnk" id="l-code"></div>
+      <div class="people"></div>
       <div class="hk"></div>
     </div>
   </div>
@@ -457,8 +482,14 @@ body.full #sub{top:972px;max-width:1500px}
 // Every visible text of the video is built from CONFIG, so one change here changes the whole video.
 const CONFIG = {
   hackathon: 'PayPal AI Hackathon 2026',
+  tagline: 'Cancel the circle. Pay the rest.',
+  hookLine: 'Banks clear what they owe each other every day. Small businesses never could.',
+  // The part of each line that shows in PayPal yellow
+  highlight: {tagline:'Pay the rest.', hookLine:'never could'},
   repo: 'https://github.com/donovan-ratefison/alamino',
+  demo: 'https://alamino.live-preprod.site/',
   team: [{name:'Donovan Ratefison', github:'donovan-ratefison'}, {name:'Tendry Tsilavina', github:'TsilavinaZh'}, {name:'Tokiarivelo', github:'Tokiarivelo'}],
+  // Kept for a local version of the video. No visible text uses it now.
   place: {city:'Antananarivo', clearing:'BFM', banks:'Malagasy banks'},
   people: {
     hery:  {name:'Hery',  job:'Rice wholesaler'},
@@ -471,7 +502,7 @@ const CONFIG = {
   PROOF: [
     {value:'$570',  label:'cancelled in circles, no cash'},
     {value:'67.7%', label:'less cash moved'},
-    {value:'3 + 1', label:'real PayPal sandbox calls: 3 Checkout payments, 1 Payouts batch'},
+    {value:'3 + 1', label:'PayPal Checkout payments and 1 Payouts batch, through the PayPal API'},
     {value:'93',    label:'unit tests pass'},
     {value:'49',    label:'end-to-end tests replay every journey'},
   ],
@@ -481,11 +512,11 @@ const CONFIG = {
 // taps: [time, x %, y %] tap ripples over the video. saved: the app shows "Saved". paid: PayPal confirms the payment.
 // toast: [time, text] and notif: [time, title, text] are optional overlays on the phone.
 const CLIPS = {
-  soaDesk:      { src:'demo-v3/soa-desk.mp4',      dur:6.0, saved:4.6, taps:[], desk:true },
-  fidyText:     { src:'demo-v3/fidy-text.mp4',     dur:3.7, saved:2.75, taps:[] },
-  rivoText:     { src:'demo-v3/rivo-text.mp4',     dur:3.8, saved:2.86, taps:[] },
-  lalaoText:    { src:'demo-v3/lalao-text.mp4',    dur:3.9, saved:2.94, taps:[] },
-  rivoAdd:      { src:'demo-v3/rivo-add.mp4',      dur:7.0, saved:4.7, taps:[] },
+  soaDesk:       { src:'demo-v3/soa-desk.mp4', dur:5.46, saved:4.86, taps:[[2.68,12,53.9], [4.82,89.5,72.3]], desk:true },
+  fidyText:      { src:'demo-v3/fidy-text.mp4', dur:4.2, saved:3.6, taps:[[0.44,72.9,37.8], [1.39,28.2,76], [3.54,78.2,53.1]] },
+  rivoText:      { src:'demo-v3/rivo-text.mp4', dur:4.47, saved:3.87, taps:[[0.43,72.9,37.8], [1.67,28.2,76], [3.81,76.8,64.2]] },
+  lalaoText:     { src:'demo-v3/lalao-text.mp4', dur:4.51, saved:3.91, taps:[[0.42,72.9,37.8], [1.74,28.2,76], [3.88,76.8,64.2]] },
+  rivoAdd:       { src:'demo-v3/rivo-add.mp4', dur:4.11, saved:3.51, taps:[[3.46,78.2,67.8]] },
   heryConfirm:  { src:'demo-v3/hery-confirm.mp4',  dur:5.0, taps:[[2.2, 29.7, 43.6]] },
   soaPay:       { src:'demo-v3/soa-pay.mp4',       dur:8.0, paid:6.4, taps:[[1.15, 50, 56]] },
   lalaoPay:     { src:'demo-v3/lalao-pay.mp4',     dur:3.5, paid:2.3, taps:[[0.95, 50, 56]] },
@@ -494,22 +525,24 @@ const CLIPS = {
 };
 // Fallback when a clip file does not load: mock screens. screens: [clip time, screen, arg]. ok: text after a tap.
 const MOCK = {
-  soaDesk:      { who:'soa',   screens:[[0,'idle']] },
-  fidyText:     { who:'fidy',  screens:[[0,'idle']] },
-  rivoText:     { who:'rivo',  screens:[[0,'idle']] },
-  lalaoText:    { who:'lalao', screens:[[0,'idle']] },
+  soaDesk:      { who:'soa',   screens:[[0,'skel','Add a debt']] },  // desk: #dmock shows instead
+  fidyText:     { who:'fidy',  screens:[[0,'skel','Add a debt']] },
+  rivoText:     { who:'rivo',  screens:[[0,'skel','Add a debt']] },
+  lalaoText:    { who:'lalao', screens:[[0,'skel','Add a debt']] },
   rivoAdd:      { who:'rivo',  screens:[[0,'reading'],[1.9,'draft']], ok:'Saved.' },
   heryConfirm:  { who:'hery',  screens:[[0,'confirm']], ok:'Confirmed by both sides.' },
-  soaPay:       { who:'soa',   screens:[[0,'pay','soa']] },
-  lalaoPay:     { who:'lalao', screens:[[0,'pay','lalao']] },
-  fidyPay:      { who:'fidy',  screens:[[0,'pay','fidy']] },
+  soaPay:       { who:'soa',   screens:[[0,'skel','Payments']] },
+  lalaoPay:     { who:'lalao', screens:[[0,'skel','Payments']] },
+  fidyPay:      { who:'fidy',  screens:[[0,'skel','Payments']] },
   heryStatement:{ who:'hery',  screens:[[0,'payout']] },
 };
 
 /* Text helpers: every name comes from CONFIG */
-const PL = CONFIG.place, N = id => CONFIG.people[id].name, B = id => `<b>${N(id)}</b>`;
+const N = id => CONFIG.people[id].name, B = id => `<b>${N(id)}</b>`;
+const mark = key => CONFIG[key].replace(CONFIG.highlight[key], `<em>${CONFIG.highlight[key]}</em>`);
+const bare = url => url.replace(/^https?:\/\//,'').replace(/\/$/,'');
+CONFIG.team.forEach(m=>{ m.url = 'https://github.com/'+m.github; });
 const list = a => a.length>1 ? a.slice(0,-1).join(', ')+' and '+a[a.length-1] : a.join('');
-const HACK_SHORT = CONFIG.hackathon.replace(/\s*\d{4}$/,'');
 const FIRST_NAMES = list(CONFIG.team.map(m=>m.name.split(' ')[0]));
 
 /* Data. Real numbers from the netting engine. */
@@ -557,9 +590,10 @@ function timed(dur, chunks, lead=.4, tail=.6){
   return chunks.map(c=>{ const r=[+at.toFixed(1), c]; at += span*c.length/n; return r; });
 }
 const SUBS = {
-  S01: timed(9,  [`Every day, ${PL.banks} settle what they owe each other through ${PL.clearing}.`, `Market traders? They can't.`]),
-  S02: timed(11, [`In a market in ${PL.city}, everyone sells on credit,`, `and every debt sits in a paper notebook.`,
-                  `We are ${FIRST_NAMES}.`, `We built Alamino for the ${HACK_SHORT}.`]),
+  S00: timed(4,  [CONFIG.tagline], .8, .4),
+  S01: timed(7,  [`Banks clear what they owe each other, every single day.`, `Small businesses? They never could.`]),
+  S02: timed(11, [`Small businesses everywhere deliver now and get paid later.`, `Each one keeps its own notebook, so nobody sees the circle.`,
+                  `We are ${FIRST_NAMES}.`, `Meet five traders in one market.`]),
   S03: timed(23, [`So, all week, each trader puts their debts into Alamino.`, `${N('soa')} runs a restaurant, so she types hers on her desktop.`,
                   `${list(['fidy','rivo','lalao'].map(N))} type one sentence on their phone.`, `The AI drafts each debt, and the other side approves it.`,
                   `For the first time, the whole market is visible.`]),
@@ -572,15 +606,15 @@ const SUBS = {
                   `${N('lalao')} and ${N('fidy')} do the same.`, `Three payments, instead of nine debts to chase.`]),
   S08: timed(10, [`Then PayPal pays the traders who are owed.`, `${N('hery')} gets $${NET.hery}, ${N('rivo')} gets $${NET.rivo}.`,
                   `And everyone gets a plain statement of why.`]),
-  S09: timed(37, [`Here is how it works.`, `People stay in charge: they add the debts, and they approve them.`,
+  S09: timed(36, [`Here is how it works.`, `People stay in charge: they add the debts, and they approve them.`,
                   `The AI model reads photos and sentences, and explains the results.`, `But it never sets an amount.`,
                   `Every number comes from plain code:`, `the algorithm finds the circles and works out who pays what.`,
                   `And PayPal moves the money:`, `Checkout for the payments in, Payouts for the payments out.`,
                   `Each part does the one thing it does best.`]),
-  S10: timed(27, [`So, the numbers.`, `$${DEBT_TOTAL} of debt, settled with $${PAY_TOTAL}.`, `${CONFIG.PROOF[1].value} less cash moved.`,
-                  `Real payments in the PayPal sandbox.`,
+  S10: timed(26, [`So, the numbers.`, `$${DEBT_TOTAL} of debt, settled with $${PAY_TOTAL}.`, `${CONFIG.PROOF[1].value} less cash moved.`,
+                  `Every payment you saw went through PayPal.`,
                   `${CONFIG.PROOF[3].value} unit tests pass, and ${CONFIG.PROOF[4].value} end-to-end tests replay every journey.`]),
-  S11: timed(10, [`Alamino. Clearing for the market, with AI and PayPal.`, `The code is open on GitHub.`, `Thank you.`]),
+  S11: timed(10, [`Alamino. ${CONFIG.tagline.replace(/\. (\w)/, (m,c)=>', '+c.toLowerCase())}`, `Try it live: the link is on screen. Thank you.`]),
 };
 
 /* Run guard: every scene change bumps gen, so late timers and counters from the old scene stop */
@@ -709,22 +743,31 @@ ORDER.forEach(id=>{
 
 /* Fixed texts built from CONFIG */
 $('#live').innerHTML = `<i></i>Live, ${N('ops')}`;
-$('#titlecard .k').textContent = `${PL.city}, a market morning`;
-$('#titlecard h1').innerHTML = `${PL.banks} net their debts through ${PL.clearing}.<br>Market traders <em>can't</em>.`;
+$('#titlecard h1').innerHTML = mark('hookLine');
+$('#openp h1').innerHTML = mark('tagline');
+const GH = '<svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>';
+const GLOBE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>';
+const PEOPLE_COLS = CONFIG.team.map((m,i)=>`<div class="pcol" style="--i:${i}"><b>${m.name}</b><span>${GH}${bare(m.url)}</span></div>`).join('');
 $('#team .k').textContent = `Built for the ${CONFIG.hackathon}`;
-$('#team .names').innerHTML = CONFIG.team.map(m=>`<div>${m.name}</div>`).join('');
+$('#team .people').innerHTML = PEOPLE_COLS;
 $('#proof h2').innerHTML = `$${DEBT_TOTAL} of debt. Settled with <em>$${PAY_TOTAL}</em>.`;
 $('#tiles').innerHTML = CONFIG.PROOF.map(p=>`<div class="tile"><b>${p.value}</b><span>${p.label}</span></div>`).join('');
-$('#endp .repo').textContent = CONFIG.repo.replace(/^https?:\/\//,'');
-$('#endp .team').innerHTML = CONFIG.team.map(m=>`<div><b>${m.name}</b><span>@${m.github}</span></div>`).join('');
+$('#endp h2').innerHTML = mark('tagline');
+$('#l-demo').innerHTML = `${GLOBE}<b>Try it:</b> ${bare(CONFIG.demo)}`;
+$('#l-code').innerHTML = `${GH}<b>Code:</b> ${bare(CONFIG.repo)}`;
+$('#endp .people').innerHTML = PEOPLE_COLS;
 $('#endp .hk').textContent = CONFIG.hackathon;
 $('#desk').style.setProperty('--dc', PEOPLE.soa.c);
+const SKEL = '<div class="sk"><i class="shim"></i><i class="shim short"></i><i class="shim"></i></div>';
+$('#dmock').innerHTML = `<div class="dtop"><img src="../../public/alamino-logo.png" alt="Alamino"><span class="who">${N('soa')}</span></div>
+  <div class="dbody"><p class="skt">Add a debt</p><div class="dgrid">${SKEL}${SKEL}</div></div>`;
 
 /* Phone screens (mocks, used when a clip file is missing) */
 const PHOTO = '../test-photos/photo-1-rivo-hery-50.jpg';
 $('#shot img').alt = `Notebook page: ${N('rivo')} owes ${N('hery')} 50 dollars for rice`;
 const SCREENS = {
-  idle: () => `<div class="idle"><img src="../../public/alamino-logo.png" alt="Alamino"><p class="muted">Clearing for market traders</p></div>`,
+  idle: () => `<p class="skt">Home</p>${SKEL}${SKEL}`,
+  skel: (title) => `<p class="skt">${title}</p>${SKEL}${SKEL}`,
   camera: () => `<div class="cam"><div class="vf"></div>Point at the notebook page<div class="shutter"></div></div>`,
   reading: () => `<p class="lbl">Notebook photo</p><img class="thumb" src="${PHOTO}" alt=""><div class="ai"><span class="spin"></span>AI is reading the page</div><div class="shim"></div><div class="shim short"></div><div class="shim"></div>`,
   draft: () => `<p class="lbl">Notebook photo</p><img class="thumb" src="${PHOTO}" alt="">
@@ -739,7 +782,7 @@ const SCREENS = {
   pay: (id) => `<p class="lbl">After clearing</p>
     <div class="card center"><div class="muted">You pay into the clearing account</div><div class="amt">$${-NET[id]}.00</div>
     <div class="muted">All your debts and credits in this round are now one number.</div></div>
-    <div id="pact"><button class="btn paypal" id="pbtn">Pay with PayPal</button><p class="fine">PayPal sandbox</p></div>`,
+    <div id="pact"><button class="btn paypal" id="pbtn">Pay with PayPal</button></div>`,
   payout: () => `<div style="height:76px"></div><p class="lbl">Your statement</p>
     <div class="card"><div class="row"><span>Owed to you</span><b>$410.00</b></div><div class="row"><span>You owed</span><b>$120.00</b></div>
     <div class="row total"><span>You receive</span><b>$290.00</b></div></div>
@@ -793,7 +836,11 @@ function clipTick(){
   while (CLIP.ev.length && CLIP.ev[0][0]<=ct) CLIP.ev.shift()[1]();
   if (!v) return;
   if (playing && ct<CLIP.dur){ if (Math.abs(v.currentTime-ct)>.25) v.currentTime=ct; if (v.paused) v.play().catch(()=>{}); }
-  else if (!v.paused) v.pause();
+  else {
+    if (!v.paused) v.pause();
+    // Hold a real frame just before the end: an ended video can show its first frame again.
+    if (ct>=CLIP.dur && !CLIP.held){ CLIP.held=true; v.currentTime=Math.max(0, Math.min(CLIP.dur, v.duration||CLIP.dur)-0.06); }
+  }
 }
 
 /* Laptop helpers */
@@ -803,8 +850,9 @@ function count(id, from, to, ms, fmt = v=>'$'+Math.round(v)){
   $('#k-'+id).classList.add('hot'); later(ms+800, ()=>$('#k-'+id).classList.remove('hot'));
 }
 // One list per scene (S01 to S11). go() rebuilds the feed from the scenes before the current one.
+// One entry per scene, in scene order (S00 to S11).
 const FEED = [
-  [], [],
+  [], [], [],
   WEEK.flatMap((w,i)=>[[w.day,`${B(w.who)} added ${w.keys.length} debt${w.keys.length>1?'s':''} ${w.how}.`],
     [w.day,`${list(w.ok.map(B))} approved.${i===WEEK.length-1?` Total $${WEEK_TOTAL}.`:''}`]]),
   [['Sat',`${B('rivo')} added a debt from a photo. ${N('rivo')} owes ${N('hery')} $50. Waiting for ${N('hery')}.`]],
@@ -856,7 +904,6 @@ function bubble(id, text, desk){
   b.style.bottom = (ops ? 1080-448 : 1080-436)+'px';
   void b.offsetWidth; b.classList.add('on');
 }
-function badge(on){ $('#badge').classList.toggle('on', on); }
 function deskOn(on){ $('#phone').classList.toggle('gone', on); $('#desk').classList.toggle('on', on); }
 // 7 coins fly on an arc from a to b (cam coordinates). Web Animations API.
 function coins(a, b){
@@ -939,7 +986,7 @@ function archReset(){
   [DOT, ...NODES, ...TRAILS].forEach(e=>e.getAnimations().forEach(a=>a.cancel()));
   NODES.forEach(n=>n.className='st'); DOT.style.opacity=0;
 }
-function archSteps(){
+function archSteps(dur){ // cues written for 37 s, scaled to the segment length
   const st=[[3000,()=>lane(0)],[9000,()=>lane(1)],[14100,()=>{ $('#lock').classList.add('on'); sfx.approve(); }],[17000,()=>lane(2)],[25000,()=>lane(3)]];
   // First pass: the dot reaches each step with the voice. Second pass (30.6 to 35.4 s): faster, all steps glow.
   const A=[3,9,12.8,17,21,25,27.4,29,30];
@@ -947,7 +994,7 @@ function archSteps(){
   for (let k=1;k<9;k++) st.push([(A[k]-.9)*1000,()=>hop(k-1,900)], [A[k]*1000,()=>pop(k)]);
   st.push([30600,()=>{ ARCH.classList.add('all'); dotAt(0); pop(0); }]);
   for (let k=1;k<9;k++){ const at=30600+k*600; st.push([at-450,()=>hop(k-1,450)], [at,()=>pop(k)]); }
-  return st;
+  return st.map(([ms,f])=>[Math.round(ms*dur/37000), f]);
 }
 
 /* State: every scene sets it in full, so any scene can start cold */
@@ -981,16 +1028,16 @@ function state(s){
   document.querySelectorAll('.kpi').forEach(k=>k.classList.remove('hot'));
   const b=$('#lbtn'); b.textContent = s.btn==='payout' ? 'Send payouts' : 'Run clearing'; b.disabled = !!s.btnOff;
   const ph = s.phone || [ACT.active,'idle']; phone(ph[0], ph[1], ph[2]);
-  focus(s.focus||null); sub(null); bubble(null); badge(false);
+  focus(s.focus||null); sub(null); bubble(null);
   $('#titlecard').classList.toggle('on', !!s.title); document.body.classList.toggle('centred', !!s.title);
   $('#team').classList.remove('on');
   $('#shot').className=''; $('#shot').style.transform='';
   document.querySelectorAll('.coin').forEach(c=>c.remove());
   $('#full').classList.toggle('on', !!s.full); document.body.classList.toggle('full', !!s.full);
-  ['arch','proof','endp'].forEach(id=>$('#'+id).classList.toggle('on', s.full===(id==='endp'?'end':id)));
+  [['openp','open'],['arch','arch'],['proof','proof'],['endp','end']].forEach(([id,k])=>$('#'+id).classList.toggle('on', s.full===k));
+  $('#openp').classList.remove('rise','show');
   archReset();
   $('#proof').classList.remove('done'); $('#pnum').textContent='$'+DEBT_TOTAL; document.querySelectorAll('.tile').forEach(x=>x.classList.remove('on'));
-  $('#endp').classList.remove('on');
 }
 
 /* Scene helpers */
@@ -1006,19 +1053,18 @@ function circleSteps(i, T){
 }
 // S03: 4 turns. Soa uses the desktop, the others the phone. The next trader moves when the previous turn ends (0.8 s move).
 function weekSteps(dur){
-  // The AI badge waits for the desk to close, so it never covers the desk chip.
-  const st=[[0,()=>badge(!CLIPS[WEEK[0].clip].desk)]]; let T=0;
+  const st=[]; let T=0;
   WEEK.forEach((w,i)=>{
     const c=CLIPS[w.clip], desk=!!c.desk;
     if (i) st.push([T,()=>turn(w.who)]);
     if (desk) st.push([T+200,()=>deskOn(true)]);
     st.push([T+(desk?500:400),()=>bubble(w.who, w.say, desk)]);
-    const C = T+(desk?1000:800), S = C + c.saved*1000;
+    const C = T+(desk?1000:700), S = C + c.saved*1000;
     st.push([C,()=>clip(w.clip)],
-      [S,()=>{ w.keys.forEach(k=>setEdge(k,1)); panel('ledger'); push(FEED[2][2*i]); }],
-      [S+700,()=>{ const from=total(); w.keys.forEach(k=>setEdge(k,2)); panel('ledger'); approve(w.ok); count('total',from,total(),900); push(FEED[2][2*i+1]); }]);
+      [S,()=>{ w.keys.forEach(k=>setEdge(k,1)); panel('ledger'); push(FEED[3][2*i]); }],
+      [S+700,()=>{ const from=total(); w.keys.forEach(k=>setEdge(k,2)); panel('ledger'); approve(w.ok); count('total',from,total(),900); push(FEED[3][2*i+1]); }]);
     let end = Math.max(C + c.dur*1000, S+700);
-    if (desk){ st.push([end,()=>{ stopClip(); deskOn(false); bubble(null); badge(true); }]); end += 600; }
+    if (desk){ st.push([end,()=>{ stopClip(); deskOn(false); bubble(null); }]); end += 600; }
     T = end;
   });
   if (T > dur) console.warn(`S03: the turns need ${T} ms, the segment has ${dur} ms. Shorten the clips.`);
@@ -1032,7 +1078,7 @@ function payInSteps(dur){
     const c=CLIPS[name], at=T+(i?700:800), p=at+(c.paid ?? c.dur)*1000, s=(sum+=-NET[id]);
     if (i) st.push([T,()=>turn(id)]);
     st.push([i ? p-400 : 200,()=>bubble(id, say)], [at,()=>clip(name)], [p,()=>{ coins(PHONE_PT, BAR_PT); sfx.chime(); }],
-      [p+800,()=>{ paid(id); payin(s); push(FEED[6][i]); if(s===PAY_TOTAL) $('#lbtn').disabled=false; }]);
+      [p+800,()=>{ paid(id); payin(s); push(FEED[7][i]); if(s===PAY_TOTAL) $('#lbtn').disabled=false; }]);
     T = Math.max(at+c.dur*1000, p+800);
   });
   if (T > dur) console.warn(`S07: the pay-ins need ${T} ms, the segment has ${dur} ms. Shorten the clips.`);
@@ -1044,12 +1090,15 @@ const ALL = ['soa','lalao','fidy','hery','rivo'];
 const SAT_CLIP = 2600, CONFIRM_CLIP = 1000, PAYOUT_CLIP = 2500;
 // One scene per voice-over segment. Durations in ms, total 175 s.
 const SCENES = [
-  {key:'S01', label:'S01 Hook', dur:9000, step:'The problem', title:`${PL.banks} clear their debts every day`, body:'Market traders have no clearing house. Each debt waits for cash.',
+  {key:'S00', label:'S00 Opening', dur:4000, step:'Alamino', title:CONFIG.tagline, body:'Clearing for small businesses, with AI and PayPal.',
+   setup(){ state({phone:[null,'idle'], full:'open'}); $('#feed').innerHTML=''; },
+   steps:[[100,()=>$('#openp').classList.add('rise')], [300,()=>sfx.chime()], [1200,()=>$('#openp').classList.add('show')]]},
+  {key:'S01', label:'S01 Hook', dur:7000, step:'The problem', title:'Banks clear their debts every day', body:'Small businesses have no clearing house. Each debt waits for cash.',
    setup(){ state({phone:[null,'idle'], title:true}); $('#feed').innerHTML=''; },
    steps:[]},
-  {key:'S02', label:'S02 Context', dur:11000, step:'The market', title:'Five traders sell on credit', body:'Each debt lives in a paper notebook. Nobody can see the whole picture.',
+  {key:'S02', label:'S02 Context', dur:11000, step:'The market', title:'Five traders, five notebooks', body:'They deliver now and get paid later. Nobody sees the whole circle.',
    setup(){ state({phone:[null,'idle']}); },
-   steps:[[300,()=>focus('market')], [5200,()=>$('#team').classList.add('on')]]},
+   steps:[[300,()=>focus('market')], [6000,()=>$('#team').classList.add('on')]]},
   {key:'S03', label:'S03 The week', dur:23000, step:'The week', title:'Every trader puts debts into the app', body:'A desktop or a phone. A few words are enough. The other side approves each debt.',
    setup(){ state({active:'soa'}); },
    steps:weekSteps(23000)},
@@ -1059,14 +1108,14 @@ const SCENES = [
      [800,()=>{ focus('phone'); shotShow(); }],
      [1800,flash],
      [2000,shotFly],
-     [SAT_CLIP,()=>{ bubble(null); $('#shot').className='fly'; clip('rivoAdd'); badge(true); }],
-     [SAT_CLIP+CLIPS.rivoAdd.saved*1000,()=>{ setEdge('rivo>hery',1); panel('ledger'); push(FEED[3][0]); focus(null); }],
-     [SAT_CLIP+CLIPS.rivoAdd.dur*1000,()=>badge(false)]]},
+     [SAT_CLIP,()=>{ bubble(null); $('#shot').className='fly'; clip('rivoAdd'); }],
+     [SAT_CLIP+CLIPS.rivoAdd.saved*1000,()=>{ setEdge('rivo>hery',1); panel('ledger'); push(FEED[4][0]); focus(null); }],
+     ]},
   {key:'S05', label:'S05 Confirm', dur:7000, step:'Confirm', title:`${N('hery')} approves the debt`, body:'Both sides must agree before a debt counts in the round.',
    setup(){ state({active:'hery', edges:'proposed'}); },
    steps:[[300,()=>bubble('hery',`Yes, ${N('rivo')} owes me 50.`)],
      [CONFIRM_CLIP,()=>clip('heryConfirm')],
-     [CONFIRM_CLIP+2100,()=>{ setEdge('rivo>hery',2); count('total',WEEK_TOTAL,DEBT_TOTAL,900); panel('ledger'); push(FEED[4][0]); }],
+     [CONFIRM_CLIP+2100,()=>{ setEdge('rivo>hery',2); count('total',WEEK_TOTAL,DEBT_TOTAL,900); panel('ledger'); push(FEED[5][0]); }],
      [3800,()=>bubble(null)]]},
   {key:'S06', label:'S06 Clear', dur:13000, step:'Clear', title:`Circles of debt cancel $${CANCELLED[3]}`, body:'The clearing house runs a round. Plain code does every calculation, never the AI.',
    setup(){ state({ops:true, edges:'all'}); },
@@ -1076,10 +1125,10 @@ const SCENES = [
      [2000,()=>bubble(null)],
      [2200,()=>{ focus('market'); panel('circles'); }],
      ...circleSteps(0,2200), ...circleSteps(1,4600), ...circleSteps(2,7000),
-     [9400,()=>push(FEED[5][0])],
+     [9400,()=>push(FEED[6][0])],
      [9600,()=>{ mk.setAttribute('class','hub'); panel('plan'); count('move',0,PAY_TOTAL,1200); count('saved',0,67.7,1200,v=>v.toFixed(1)+'%');
        const b=$('#lbtn'); b.textContent='Send payouts'; b.disabled=true; }],
-     [10400,()=>push(FEED[5][1])]]},
+     [10400,()=>push(FEED[6][1])]]},
   {key:'S07', label:'S07 Pay in', dur:18000, step:'Pay in', title:'Three traders pay what they still owe', body:`${list(['soa','lalao','fidy'].map(N))} pay $${PAY_TOTAL} in total into the clearing account through PayPal.`,
    setup(){ state({...AFTER_CLEAR, active:'soa'}); },
    steps:payInSteps(18000)},
@@ -1088,17 +1137,17 @@ const SCENES = [
    steps:[[800,()=>press('#lbtn')],
      [1500,()=>turn('hery')],
      [PAYOUT_CLIP,()=>{ clip('heryStatement'); coins(LAPTOP_PT, PHONE_PT); }],
-     [PAYOUT_CLIP+900,()=>{ paid('hery'); paid('rivo'); push(FEED[7][0]); $('#lbtn').disabled=true; sfx.chime(); }],
+     [PAYOUT_CLIP+900,()=>{ paid('hery'); paid('rivo'); push(FEED[8][0]); $('#lbtn').disabled=true; sfx.chime(); }],
      [4000,()=>bubble('hery',`My $${NET.hery} is in PayPal.`)]]},
-  {key:'S09', label:'S09 Architecture', dur:37000, step:'How it works', title:'Four parts, one job each', body:'People decide. The AI reads and explains. Plain code counts. PayPal moves the money.',
+  {key:'S09', label:'S09 Architecture', dur:36000, step:'How it works', title:'Four parts, one job each', body:'People decide. The AI reads and explains. Plain code counts. PayPal moves the money.',
    setup(){ state({...AFTER_CLEAR, paid:ALL, payin:PAY_TOTAL, full:'arch'}); },
-   steps:archSteps()},
-  {key:'S10', label:'S10 Proof', dur:27000, step:'Proof', title:`$${DEBT_TOTAL} of debt settled with $${PAY_TOTAL}`, body:'Real PayPal sandbox calls. Every journey is tested.',
+   steps:archSteps(36000)},
+  {key:'S10', label:'S10 Proof', dur:26000, step:'Proof', title:`$${DEBT_TOTAL} of debt settled with $${PAY_TOTAL}`, body:'Real PayPal payments. Every journey is tested.',
    setup(){ state({...AFTER_CLEAR, paid:ALL, payin:PAY_TOTAL, full:'proof'}); },
    steps:[[2600,()=>anim(1500, k=>$('#pnum').textContent='$'+Math.round(DEBT_TOTAL-(DEBT_TOTAL-PAY_TOTAL)*k))],
      [4200,()=>{ $('#proof').classList.add('done'); sfx.chime(); }],
-     ...[5600,8000,11000,14000,17000].map((ms,i)=>[ms,()=>{ document.querySelectorAll('.tile')[i].classList.add('on'); sfx.approve(); }])]},
-  {key:'S11', label:'S11 End', dur:10000, step:'Alamino', title:'Clearing for the market', body:'With AI and PayPal. The code is open on GitHub.',
+     ...[5200,7400,10200,13200,16200].map((ms,i)=>[ms,()=>{ document.querySelectorAll('.tile')[i].classList.add('on'); sfx.approve(); }])]},
+  {key:'S11', label:'S11 End', dur:10000, step:'Alamino', title:CONFIG.tagline, body:'Try it live. The code is open on GitHub.',
    setup(){ state({...AFTER_CLEAR, paid:ALL, payin:PAY_TOTAL, full:'end'}); },
    steps:[[300,()=>$('#endp').classList.add('on')]]},
 ];
