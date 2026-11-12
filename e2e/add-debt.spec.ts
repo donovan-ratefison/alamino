@@ -38,6 +38,12 @@ test.describe("Add a debt", () => {
       .toEqual([{ debtorId: "rivo", creditorId: "hery", amountCents: 5000, debtorOk: true, creditorOk: false }]);
   });
 
+  test("the clearing house does not add debts", async ({ page }) => {
+    await viewAs(page, "house");
+    await expect(page.getByRole("main")).toContainText("The clearing house does not add or confirm debts. Choose a trader in View as.");
+    await expect(page.getByRole("textbox", { name: "Sentence", exact: true })).toHaveCount(0);
+  });
+
   test("the Try button fills the sentence and does not read it", async ({ page }) => {
     const captures: string[] = [];
     page.on("request", (r) => { if (r.url().includes("/api/capture")) captures.push(r.url()); });

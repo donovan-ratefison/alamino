@@ -20,11 +20,12 @@ function Beat({ value, label, href, now }: { value: ReactNode; label: string; hr
 
 const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
 
-// Market page "Today" row: three numbers. The hero shows what clearing would cancel and the cash it needs.
+// Market page "Today" row: three numbers on the debts the viewer sees (a trader sees only their own).
+// A trader sees what waits for them. The clearing house sees what waits for any trader.
 export function Rhythm({ debts }: { debts?: Debt[] }) {
-  const { traderId } = useApp();
+  const { traderId, isHouse } = useApp();
   const list = debts ?? [];
-  const waiting = list.filter((d) => waitingFor(d, traderId)).length;
+  const waiting = list.filter((d) => (isHouse ? d.status === "proposed" || d.status === "disputed" : waitingFor(d, traderId))).length;
   const ready = list.filter((d) => d.status === "confirmed").reduce((sum, d) => sum + d.remainingCents, 0);
 
   return (
@@ -32,7 +33,11 @@ export function Rhythm({ debts }: { debts?: Debt[] }) {
       <h2 id="today-title" className="eyebrow text-zinc-500">Today</h2>
       <div className="beats">
         <Beat value={debts ? list.filter((d) => isToday(d.createdAt)).length : "..."} label="added today" />
-        <Beat value={debts ? waiting : "..."} label="waiting for you" href="/confirm" now={waiting > 0} />
+        {isHouse ? (
+          <Beat value={debts ? waiting : "..."} label="waiting for approval" />
+        ) : (
+          <Beat value={debts ? waiting : "..."} label="waiting for you" href="/confirm" now={waiting > 0} />
+        )}
         <Beat value={debts ? <CountUp cents={ready} /> : "..."} label="ready to clear" href="#ledger" />
       </div>
     </section>

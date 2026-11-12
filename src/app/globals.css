@@ -333,3 +333,10 @@ input.capture-mini { width: 96px; }
   .demo-guide { font-size: 12px; line-height: 1.35; }
   .footer-bottom { border-top: 0; }
 }
+
+/* Privacy C1 */
+@media (max-width: 640px) {
+  /* The "Clearing house" option makes the select wider. On a phone the select shrinks to the space left in the header. */
+  .profile-control, .profile-field { min-width: 0; flex-shrink: 1; }
+  .profile-select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+}

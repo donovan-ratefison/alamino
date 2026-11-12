@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Edge, Round, TraderId } from "@/lib/types";
+import type { Cancellation, Edge, Round, TraderId } from "@/lib/types";
 import { formatUsd } from "./api";
 import { useApp } from "./app";
 import { Network } from "./network";
@@ -18,6 +18,11 @@ const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
 const pair = (a: TraderId, b: TraderId) => `${a}>${b}`;
 const dollars = (cents: number) => Math.round(cents / 100) * 100;
 const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+// The debts of a circle: [a, b, c] means a owes b, b owes c, c owes a.
+const ring = (path: TraderId[]) => path.map((id, i) => [id, path[(i + 1) % path.length]]);
+
+// Number of traders on a circle. A trader view hides the other traders of a circle of 3 or more.
+export const circleSize = (c: Cancellation) => (c.hiddenTraders === undefined ? c.path.length : c.hiddenTraders + 3);
 
 // One network of the round with a Before / After toggle. It rests on the final state.
 // "Replay clearing" plays each cancellation on the same network. The first visit of a round in a session plays it once.
@@ -29,6 +34,12 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
   const [running, setRunning] = useState(false);
   const { stats, cancellations, remaining } = round.result;
   const endCaption = `No circle left. ${formatUsd(stats.clearedByCirclesCents)} cancelled, no money moved.`;
+  // Trader view: only the viewer's debts count, and the private part of a circle is a dotted link.
+  const viewer = round.privacy?.viewer;
+  const mine = ([a, b]: TraderId[]) => !viewer || a === viewer || b === viewer;
+  const privateLinks = cancellations
+    .filter((c) => c.hiddenTraders !== undefined)
+    .map((c) => ({ from: c.path[1], to: c.path[2], hidden: c.hiddenTraders! }));
 
   async function replay() {
     setView("after");
@@ -46,11 +57,13 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
     await wait(700);
 
     for (const c of cancellations) {
-      const circle = [...c.path, c.path[0]].map(name).join(" → ");
-      show({ highlight: c.path, caption: `${circle}: ${formatUsd(c.amountCents)} off each debt` });
+      const caption = viewer
+        ? `A circle of ${circleSize(c)} traders: ${formatUsd(c.amountCents)} off each of your debts`
+        : `${[...c.path, c.path[0]].map(name).join(" → ")}: ${formatUsd(c.amountCents)} off each debt`;
+      show({ highlight: c.path, caption });
       await wait(1100);
-      c.path.forEach((id, i) => {
-        const key = pair(id, c.path[(i + 1) % c.path.length]);
+      ring(c.path).forEach(([a, b]) => {
+        const key = pair(a, b);
         const e = amounts.get(key);
         if (e) amounts.set(key, { ...e, amountCents: e.amountCents - c.amountCents });
       });
@@ -58,7 +71,7 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
 
       // Count both numbers over 0.9 s, in whole dollars, then set the exact cents.
       const from = { left: f.left, cancelled: f.cancelled };
-      const cut = c.amountCents * c.path.length;
+      const cut = c.amountCents * ring(c.path).filter(mine).length;
       await new Promise<void>((done) => {
         const t0 = performance.now();
         const tick = (t: number) => {
@@ -141,6 +154,7 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
           edges={edges}
           highlight={running ? frame?.highlight : before ? highlight : undefined}
           circles={before && !highlight ? cancellations.map((c) => c.path) : undefined}
+          privateLinks={running || before ? privateLinks : undefined}
           interactive={!running}
           label={running ? "Debts during the clearing replay" : before ? "Debts before the round" : "Debts after circles cancel"}
         />
@@ -153,7 +167,7 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
               ? endCaption
               : highlight
                 ? "The selected circle is in blue."
-                : "Green debts form circles. They cancel."}
+                : `Green debts form circles. They cancel.${privateLinks.length > 0 ? " A dotted line is a private part of a circle." : ""}`}
         </p>
         <div className="flex shrink-0 items-center gap-2">
           <div role="group" aria-label="Network view" className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 p-0.5">

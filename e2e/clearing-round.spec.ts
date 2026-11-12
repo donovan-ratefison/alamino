@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { addNinthDebt, latestRound, listTraders, resetDemo, startRound } from "./helpers";
+import { addNinthDebt, latestRound, listTraders, resetDemo, startRound, viewAs } from "./helpers";
 
 // One row of the settlement plan: the trader name and the amount, each as its own text.
 const planRow = (page: Page, name: string, amount: string) =>
@@ -16,6 +16,7 @@ test.describe("Clearing round", () => {
   test("Run clearing settles $990 of debt with $320", async ({ page, request }) => {
     await addNinthDebt(request);
     await page.goto("/");
+    await viewAs(page, "house");
     await page.getByRole("button", { name: /run clearing/i }).click();
 
     await expect(page).toHaveURL(/\/rounds\/(?!latest)[^/?#]+$/);
@@ -78,6 +79,28 @@ test.describe("Clearing round", () => {
       ["hery", 29000],
       ["rivo", 3000],
     ]);
+  });
+
+  test("as Soa, the round shows only Soa's numbers, not the market totals", async ({ page, request }) => {
+    const round = await startRound(request);
+    await page.goto(`/rounds/${round.id}`);
+    await viewAs(page, "soa");
+
+    const main = page.getByRole("main");
+    await expect(main.getByRole("heading", { level: 1 })).toHaveText("You settle $650 of debt with $170");
+    await expect(main).toContainText("You settle");
+    await expect(main).toContainText("2 other traders still to pay");
+    await expect(main).toContainText("The clearing house sends the payouts when everyone has paid.");
+    await expect(main.getByRole("button", { name: /send payouts/i })).toHaveCount(0);
+    await expect(main.getByRole("button", { name: /switch to/i })).toHaveCount(0);
+
+    // Circles name only their size. The plan holds only Soa's own payment.
+    await page.getByText("Circles and payment plan", { exact: true }).click();
+    await expect(main.getByRole("button", { name: /^A circle of \d+ traders/ }).first()).toBeVisible();
+    await expect(main).toContainText("Your payment");
+    await expect(main).not.toContainText("Settlement plan");
+    await expect(main).not.toContainText(/\d of 3 paid in/);
+    await expect(main).not.toContainText("$990");
   });
 
   test("the market offers to continue an open round, not to run a new one", async ({ page, request }) => {

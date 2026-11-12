@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Debt, TraderId } from "@/lib/types";
+import { HOUSE, type Debt, type TraderId, type Viewer } from "@/lib/types";
 
 export class ApiError extends Error {
   status: number;
@@ -9,11 +9,25 @@ export class ApiError extends Error {
   }
 }
 
+// The "view as" choice. The header selector writes it, every API call sends it.
+export const VIEWER_KEY = "alamino.trader";
+
+function viewer(): Viewer {
+  try {
+    return localStorage.getItem(VIEWER_KEY) ?? HOUSE;
+  } catch {
+    return HOUSE; // no localStorage: server render, or storage blocked
+  }
+}
+
 // GET when body is undefined, else POST with a JSON body. Throws the `{ error }` text.
+// Sends the current viewer in `x-alamino-viewer`: the server returns only what this viewer may see.
 export async function api<T>(path: string, body?: object): Promise<T> {
+  const headers: Record<string, string> = { "x-alamino-viewer": viewer() };
+  if (body !== undefined) headers["content-type"] = "application/json";
   const res = await fetch(path, {
     method: body === undefined ? "GET" : "POST",
-    headers: body === undefined ? undefined : { "content-type": "application/json" },
+    headers,
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: "no-store",
   });

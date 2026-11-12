@@ -5,15 +5,14 @@ import { GuideTip } from "./guide-tip";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PayPalButtons, PayPalScriptProvider, usePayPalScriptReducer, type PayPalButtonsComponentProps } from "@paypal/react-paypal-js";
-import type { Edge, PaymentStatus, Round, Settlement, TraderId } from "@/lib/types";
+import { HOUSE, type Edge, type PaymentStatus, type Round, type Settlement } from "@/lib/types";
 import { api, formatUsd, useApi } from "./api";
 import { useApp } from "./app";
-import { ClearingReplay } from "./clearing-replay";
+import { circleSize, ClearingReplay } from "./clearing-replay";
 import { CountUp } from "./count-up";
 import { TraderChip } from "./trader-chip";
 import { Badge, btn, Card, Empty, ErrorNote, Loading, PageHeader } from "./ui";
 
-const listFormat = new Intl.ListFormat("en", { type: "conjunction" });
 const sum = (edges: Edge[]) => edges.reduce((n, e) => n + e.amountCents, 0);
 
 const paypalOptions = { clientId: process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "", currency: "USD" };
@@ -112,10 +111,25 @@ function PayIn({ roundId, s, onPaid }: { roundId: string; s: Settlement; onPaid:
   );
 }
 
+// The trader's own headline: "You settle $650 of debt with $170".
+function traderTitle(r: Round, me: Settlement | undefined): string {
+  const { grossCents, cashMovedCents } = r.result.stats;
+  const done = r.status === "done";
+  if (grossCents === 0) return "You have no debt in this round";
+  const settle = `${done ? "You settled" : "You settle"} ${formatUsd(grossCents)} of debt`;
+  if (me?.direction === "pay_out") return `${settle} and ${done ? "received" : "receive"} ${formatUsd(cashMovedCents)}`;
+  return cashMovedCents === 0 ? `${settle} with no payment` : `${settle} with ${formatUsd(cashMovedCents)}`;
+}
+
 export function RoundView({ id }: { id: string }) {
-  const { traderId, setTraderId, name } = useApp();
+  const { traderId, setTraderId, name, isHouse } = useApp();
   const round = useApi<Round>(`/api/rounds/${id}`);
   const { set, reload } = round;
+  // The round was loaded for another viewer ("View as" changed): load it again before it shows.
+  const stale = !!round.data && (round.data.privacy?.viewer ?? HOUSE) !== traderId;
+  useEffect(() => {
+    if (stale) reload();
+  }, [stale, reload]);
   const [hover, setHover] = useState<number | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
@@ -124,7 +138,7 @@ export function RoundView({ id }: { id: string }) {
   const roundId = round.data?.id;
   const status = round.data?.status;
 
-  // Payouts are sent: ask the server every 3 s until PayPal confirms them.
+  // Payouts are sent: ask the server every 3 s until PayPal confirms them. The answer is the round as this viewer sees it.
   useEffect(() => {
     if (status !== "paying" || !roundId) return;
     const timer = setInterval(() => {
@@ -138,16 +152,22 @@ export function RoundView({ id }: { id: string }) {
       <div className="space-y-6">
         <GuideTip topic="payments" />
         <Empty title="No clearing round yet">
-          <Link href="/" className="font-medium text-accent underline">
-            Go to the market
-          </Link>{" "}
-          and run clearing.
+          {isHouse ? (
+            <>
+              <Link href="/" className="font-medium text-accent underline">
+                Go to the market
+              </Link>{" "}
+              and run clearing.
+            </>
+          ) : (
+            "The clearing house runs clearing. Your result shows here after it."
+          )}
         </Empty>
       </div>
     );
   }
   if (round.error) return <ErrorNote error={round.error} onRetry={reload} />;
-  if (!round.data) return <Loading />;
+  if (!round.data || stale) return <Loading />;
 
   const r = round.data;
   const { stats, cancellations } = r.result;
@@ -158,14 +178,14 @@ export function RoundView({ id }: { id: string }) {
   const canSendPayouts = allPaidIn && payOuts.some((s) => s.status === "none") && r.status !== "paying" && r.status !== "done";
   const active = hover ?? selected;
   const circle = (path: string[]) => [...path, path[0]].map(name).join(" → ");
-  const names = (ids: TraderId[]) => listFormat.format(ids.map(name));
+  const others = r.privacy?.otherPayments;
+  const othersLeft = others ? others.total - others.done : 0;
 
   // What the current trader owed and was owed before the round, and what is left to pay or receive.
   const me = r.settlements.find((s) => s.traderId === traderId);
   const owed = sum(r.debtsBefore.filter((e) => e.debtorId === traderId));
   const owedToMe = sum(r.debtsBefore.filter((e) => e.creditorId === traderId));
   const facts = `You owed ${formatUsd(owed)}. You were owed ${formatUsd(owedToMe)}.`;
-  const waiting = payIns.filter((s) => s.status !== "captured").map((s) => s.traderId);
 
   async function sendPayouts() {
     setSending(true);
@@ -198,8 +218,9 @@ export function RoundView({ id }: { id: string }) {
   };
 
   // The current trader's own part, for the finished round.
-  const myResult =
-    me?.direction === "pay_in"
+  const myResult = isHouse
+    ? "Round settled"
+    : me?.direction === "pay_in"
       ? `You paid ${formatUsd(me.amountCents)}`
       : me?.direction === "pay_out"
         ? `You received ${formatUsd(me.amountCents)}`
@@ -208,7 +229,11 @@ export function RoundView({ id }: { id: string }) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`${formatUsd(stats.grossCents)} of debt ${r.status === "done" ? "settled" : "to settle"} with ${formatUsd(stats.cashMovedCents)}`}
+        title={
+          isHouse
+            ? `${formatUsd(stats.grossCents)} of debt ${r.status === "done" ? "settled" : "to settle"} with ${formatUsd(stats.cashMovedCents)}`
+            : traderTitle(r, me)
+        }
       />
 
       {/* Phone: the replay first, above the fold, then the pay card, the details and the tip.
@@ -228,12 +253,14 @@ export function RoundView({ id }: { id: string }) {
                     Done
                   </p>
                   <p className="text-3xl font-medium leading-tight tracking-tight tabular-nums text-brand">{myResult}</p>
-                  <p className="text-sm text-zinc-600">
-                    {payIns.length} paid in, {payOuts.length} paid out
-                  </p>
+                  {isHouse && (
+                    <p className="text-sm text-zinc-600">
+                      {payIns.length} paid in, {payOuts.length} paid out
+                    </p>
+                  )}
                   <div className="replay-actions grid grid-cols-2 gap-2 pt-2">
-                    <Link href="/statement" className={btn.primary}>
-                      Read statement
+                    <Link href={isHouse ? "/finance" : "/statement"} className={btn.primary}>
+                      {isHouse ? "Open Finance" : "Read statement"}
                     </Link>
                     <Link href="/" className={btn.secondary}>
                       Market
@@ -242,7 +269,9 @@ export function RoundView({ id }: { id: string }) {
                 </div>
               ) : (
                 <>
-                  {me?.direction === "pay_in" ? (
+                  {isHouse ? (
+                    <p className="eyebrow text-zinc-500">Pay-ins</p>
+                  ) : me?.direction === "pay_in" ? (
                     <>
                       <div className="flex items-baseline justify-between gap-3">
                         <p className="eyebrow text-zinc-500">You pay once</p>
@@ -263,13 +292,7 @@ export function RoundView({ id }: { id: string }) {
                     <>
                       <p className="eyebrow text-zinc-500">You receive</p>
                       <CountUp cents={me.amountCents} className="block text-4xl font-medium leading-none tracking-tight tabular-nums text-brand" />
-                      {me.status === "none" ? (
-                        <p className="text-sm font-medium text-zinc-800">
-                          {waiting.length > 0
-                            ? `After ${names(waiting)} ${waiting.length === 1 ? "pays" : "pay"} in.`
-                            : "Every pay-in is paid. Your payout can start."}
-                        </p>
-                      ) : (
+                      {me.status !== "none" && (
                         <p role="status" className="flex flex-wrap items-center gap-2 text-sm text-zinc-700">
                           Your payout: <Badge tone={statusBadge[me.status].tone}>{statusBadge[me.status].text}</Badge>
                         </p>
@@ -285,7 +308,13 @@ export function RoundView({ id }: { id: string }) {
                     </>
                   )}
 
-                  {payIns.length > 0 && (
+                  {/* House: who paid in. Trader: only a count of the other pay-ins, no names. */}
+                  {!isHouse && !!others?.total && r.status !== "paying" && (
+                    <p className="text-sm text-zinc-600">
+                      {othersLeft > 0 ? `${othersLeft} other ${othersLeft === 1 ? "trader" : "traders"} still to pay` : "Every other trader has paid in."}
+                    </p>
+                  )}
+                  {isHouse && payIns.length > 0 && (
                     <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-600">
                       <ul className="flex gap-1.5">
                         {payIns.map((s) => {
@@ -331,6 +360,8 @@ export function RoundView({ id }: { id: string }) {
                     <p role="status" className="text-sm text-zinc-700">
                       Payouts sent. Waiting for PayPal to confirm them...
                     </p>
+                  ) : !isHouse ? (
+                    <p className="text-sm text-zinc-600">The clearing house sends the payouts when everyone has paid.</p>
                   ) : (
                     canSendPayouts && (
                       <button type="button" className={`${btn.primary} w-full sm:w-auto`} disabled={sending} onClick={sendPayouts}>
@@ -366,7 +397,16 @@ export function RoundView({ id }: { id: string }) {
                             active === i ? "border-accent bg-blue-50 text-zinc-900" : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
                           }`}
                         >
-                          {circle(c.path)}: <span className="font-semibold tabular-nums">{formatUsd(c.amountCents)}</span> cancelled
+                          {isHouse ? (
+                            <>
+                              {circle(c.path)}: <span className="font-semibold tabular-nums">{formatUsd(c.amountCents)}</span> cancelled
+                            </>
+                          ) : (
+                            <>
+                              A circle of {circleSize(c)} traders: <span className="font-semibold tabular-nums">{formatUsd(c.amountCents)}</span> off
+                              each of your debts
+                            </>
+                          )}
                         </button>
                       </li>
                     ))}
@@ -374,26 +414,36 @@ export function RoundView({ id }: { id: string }) {
                 )}
               </Card>
 
-              <Card title="Settlement plan">
-                <div className="grid gap-6 md:grid-cols-2">
-                  <div>
-                    <h3 className="text-sm font-semibold text-zinc-900">Pay in to the clearing account</h3>
-                    {payIns.length === 0 ? (
-                      <p className="mt-2 text-sm text-zinc-600">Nobody pays in.</p>
-                    ) : (
-                      <ul className="divide-y divide-zinc-200">{payIns.map(row)}</ul>
-                    )}
+              {!isHouse ? (
+                <Card title="Your payment">
+                  {me ? (
+                    <ul className="divide-y divide-zinc-200">{row(me)}</ul>
+                  ) : (
+                    <p className="text-sm text-zinc-600">You pay nothing and receive nothing in this round.</p>
+                  )}
+                </Card>
+              ) : (
+                <Card title="Settlement plan">
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div>
+                      <h3 className="text-sm font-semibold text-zinc-900">Pay in to the clearing account</h3>
+                      {payIns.length === 0 ? (
+                        <p className="mt-2 text-sm text-zinc-600">Nobody pays in.</p>
+                      ) : (
+                        <ul className="divide-y divide-zinc-200">{payIns.map(row)}</ul>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-zinc-900">Paid out by the clearing account</h3>
+                      {payOuts.length === 0 ? (
+                        <p className="mt-2 text-sm text-zinc-600">Nobody is paid out.</p>
+                      ) : (
+                        <ul className="divide-y divide-zinc-200">{payOuts.map(row)}</ul>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-zinc-900">Paid out by the clearing account</h3>
-                    {payOuts.length === 0 ? (
-                      <p className="mt-2 text-sm text-zinc-600">Nobody is paid out.</p>
-                    ) : (
-                      <ul className="divide-y divide-zinc-200">{payOuts.map(row)}</ul>
-                    )}
-                  </div>
-                </div>
-              </Card>
+                </Card>
+              )}
             </div>
           </details>
           <GuideTip topic="payments" />

@@ -8,7 +8,18 @@ test.describe("Statement", () => {
 
   test("shows an empty state when no round exists", async ({ page }) => {
     await page.goto("/statement");
+    await viewAs(page, "soa");
     await expect(page.getByRole("main")).toContainText(/no .*round/i);
+  });
+
+  test("the clearing house has no statement", async ({ page, request }) => {
+    await finishRound(request);
+    await page.goto("/statement");
+    await viewAs(page, "house");
+    const main = page.getByRole("main");
+    await expect(main).toContainText("Statements are personal. Choose a trader in View as.");
+    await expect(main.getByRole("link", { name: "Finance page" })).toHaveAttribute("href", "/finance");
+    await expect(main.getByRole("region", { name: "Receipt" })).toHaveCount(0);
   });
 
   test("shows each trader's result after a finished round", async ({ page, request }) => {

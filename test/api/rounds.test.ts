@@ -7,7 +7,6 @@ import { join } from "node:path";
 process.env.DATABASE_PATH = join(mkdtempSync(join(tmpdir(), "alamino-api-rounds-")), "test.db");
 
 const { reset } = await import("@/lib/seed");
-const { getDebt, insertDebt, newId } = await import("@/lib/db");
 const { NextRequest } = await import("next/server");
 
 const { POST: postDebt } = await import("@/app/api/debts/route");
@@ -45,9 +44,14 @@ beforeEach(() => {
   reset();
 });
 
+// No header: the viewer is the house (open in simulated mode). With a trader id: that trader.
+const house = () => new Request("http://localhost");
+const as = (viewer: string, init: RequestInit = {}) =>
+  new Request("http://localhost", { ...init, headers: { ...init.headers, "x-alamino-viewer": viewer } });
+
 test("GET /api/rounds/preview calculates clearing statistics without creating a round", async () => {
   await addNinthDebt();
-  const res = await previewRoute();
+  const res = await previewRoute(house());
   assert.equal(res.status, 200);
   const data = await res.json();
   assert.ok(data.stats);
@@ -58,7 +62,7 @@ test("GET /api/rounds/preview calculates clearing statistics without creating a 
 
 test("POST /api/rounds runs clearing and GET /api/rounds/[id] retrieves it", async () => {
   await addNinthDebt();
-  const res = await runRoundRoute();
+  const res = await runRoundRoute(house());
   assert.equal(res.status, 200);
   const round = await res.json();
   assert.equal(round.status, "cleared");
@@ -81,13 +85,13 @@ test("POST /api/rounds runs clearing and GET /api/rounds/[id] retrieves it", asy
   assert.equal(unknownRes.status, 404);
 
   // Running a second round while current is active -> 409
-  const conflictRes = await runRoundRoute();
+  const conflictRes = await runRoundRoute(house());
   assert.equal(conflictRes.status, 409);
 });
 
 test("GET /api/rounds/[id]/statement/[traderId] produces statements for traders", async () => {
   await addNinthDebt();
-  const runRes = await runRoundRoute();
+  const runRes = await runRoundRoute(house());
   const round = await runRes.json();
 
   // Plain statement for soa (who owes $170)
@@ -114,7 +118,7 @@ test("GET /api/rounds/[id]/statement/[traderId] produces statements for traders"
 
 test("Settlement lifecycle: pay-in orders, captures, payouts, and payout refresh", async () => {
   await addNinthDebt();
-  const runRes = await runRoundRoute();
+  const runRes = await runRoundRoute(house());
   const round = await runRes.json();
 
   // Pay-ins in this round: soa ($170), lalao ($140), fidy ($10)
@@ -170,4 +174,67 @@ test("Settlement lifecycle: pay-in orders, captures, payouts, and payout refresh
   assert.equal(refreshRes.status, 200);
   const doneRound = await refreshRes.json();
   assert.equal(doneRound.status, "done");
+});
+
+test("GET /api/rounds/preview as a trader returns only their numbers and action", async () => {
+  await addNinthDebt();
+  const data = await (await previewRoute(as("soa"))).json();
+  assert.deepEqual(data.stats, { grossCents: 65000, clearedByCirclesCents: data.stats.clearedByCirclesCents, remainingCents: 65000 - data.stats.clearedByCirclesCents, cashMovedCents: 17000, savedPct: 73.8 });
+  assert.equal(data.action, "pay_in");
+  assert.equal(data.amountCents, 17000);
+  assert.equal((await previewRoute(as("bema"))).status, 400);
+});
+
+test("A trader cannot run clearing or send payouts", async () => {
+  await addNinthDebt();
+  assert.equal((await runRoundRoute(as("soa"))).status, 403);
+  const round = await (await runRoundRoute(house())).json();
+  assert.equal((await createPayoutRoute(as("hery"), { params: Promise.resolve({ id: round.id }) })).status, 403);
+});
+
+test("A trader gets only their part of a round", async () => {
+  await addNinthDebt();
+  const round = await (await runRoundRoute(house())).json();
+  const res = await getRoundRoute(as("soa"), { params: Promise.resolve({ id: "latest" }) });
+  assert.equal(res.status, 200);
+  const mine = await res.json();
+  const touches = (e: { debtorId: string; creditorId: string }) => e.debtorId === "soa" || e.creditorId === "soa";
+  assert.equal(mine.id, round.id);
+  assert.ok(mine.debtsBefore.every(touches) && mine.result.remaining.every(touches));
+  assert.deepEqual(mine.settlements.map((s: { traderId: string }) => s.traderId), ["soa"]);
+  assert.equal(mine.result.stats.grossCents, 65000);
+  assert.deepEqual(mine.privacy, { viewer: "soa", otherPayments: { total: 2, done: 0 } });
+  for (const c of mine.result.cancellations) assert.equal(c.path[0], "soa");
+});
+
+test("Statements: another trader gets 403, and a circle never names the traders on it", async () => {
+  await addNinthDebt();
+  const round = await (await runRoundRoute(house())).json();
+  const url = `http://localhost/api/rounds/${round.id}/statement/soa?text=plain`;
+  const other = await getStatementRoute(new NextRequest(url, { headers: { "x-alamino-viewer": "hery" } }), {
+    params: Promise.resolve({ id: round.id, traderId: "soa" }),
+  });
+  assert.equal(other.status, 403);
+  const res = await getStatementRoute(new NextRequest(url, { headers: { "x-alamino-viewer": "soa" } }), {
+    params: Promise.resolve({ id: round.id, traderId: "soa" }),
+  });
+  assert.equal(res.status, 200);
+  const s = await res.json();
+  const reasons = s.lines.map((l: { reason: string }) => l.reason).join(" ");
+  assert.match(reasons, /circle of \d traders/);
+  for (const name of ["Hery", "Rivo", "Lalao", "Fidy"]) assert.ok(!reasons.includes(name));
+});
+
+test("Pay-in order and capture: only that trader or the house", async () => {
+  await addNinthDebt();
+  const round = await (await runRoundRoute(house())).json();
+  const params = { params: Promise.resolve({ id: round.id, traderId: "soa" }) };
+  assert.equal((await createOrderRoute(as("hery", { method: "POST" }), params)).status, 403);
+  const order = await createOrderRoute(as("soa", { method: "POST" }), { params: Promise.resolve({ id: round.id, traderId: "soa" }) });
+  assert.equal(order.status, 200);
+  const { orderId } = await order.json();
+  const body = { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderId }) };
+  assert.equal((await capturePayinRoute(as("lalao", body), { params: Promise.resolve({ id: round.id, traderId: "soa" }) })).status, 403);
+  const captured = await capturePayinRoute(as("soa", body), { params: Promise.resolve({ id: round.id, traderId: "soa" }) });
+  assert.equal((await captured.json()).status, "captured");
 });

@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createContext, Suspense, useContext, useSyncExternalStore, type ReactNode } from "react";
-import type { Debt, Trader, TraderId } from "@/lib/types";
-import { useApi, waitingFor } from "./api";
+import { HOUSE, type Debt, type Trader, type TraderId, type Viewer } from "@/lib/types";
+import { useApi, VIEWER_KEY, waitingFor } from "./api";
 import { Brand } from "./brand";
 import { Bell } from "./bell";
 import { MoreMenu } from "./more-menu";
@@ -19,10 +19,11 @@ export interface AppConfig {
 interface AppState {
   traders: Trader[];
   config?: AppConfig;
-  traderId: TraderId;
-  setTraderId: (id: TraderId) => void;
+  traderId: Viewer; // a trader id, or HOUSE for the clearing house
+  setTraderId: (v: Viewer) => void;
+  isHouse: boolean;
   name: (id: TraderId | null | undefined) => string;
-  debts: ReturnType<typeof useApi<Debt[]>>; // shared list: reload it after a change
+  debts: ReturnType<typeof useApi<Debt[]>>; // shared list, already filtered for the viewer: reload it after a change
   pendingCount: number;
   refreshPending: () => void;
 }
@@ -35,9 +36,7 @@ export function useApp(): AppState {
   return app;
 }
 
-// The "view as" trader lives in localStorage so it survives page changes and reloads.
-const KEY = "alamino.trader";
-const DEFAULT_TRADER = "soa";
+// The "view as" choice lives in localStorage so it survives page changes and reloads.
 const listeners = new Set<() => void>();
 
 function subscribe(cb: () => void) {
@@ -49,29 +48,31 @@ function subscribe(cb: () => void) {
   };
 }
 
-function setTraderId(id: TraderId) {
-  localStorage.setItem(KEY, id);
+function setTraderId(v: Viewer) {
+  localStorage.setItem(VIEWER_KEY, v);
   listeners.forEach((cb) => cb());
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const traderId = useSyncExternalStore(
     subscribe,
-    () => localStorage.getItem(KEY) ?? DEFAULT_TRADER,
-    () => DEFAULT_TRADER,
+    () => localStorage.getItem(VIEWER_KEY) ?? HOUSE,
+    () => HOUSE,
   );
   const traders = useApi<Trader[]>("/api/traders").data ?? [];
   const config = useApi<AppConfig>("/api/config").data;
-  const debts = useApi<Debt[]>("/api/debts");
+  // The route ignores the query. It changes the path, so the list loads again for a new viewer.
+  const debts = useApi<Debt[]>(`/api/debts?viewer=${traderId}`);
 
   const value: AppState = {
     traders,
     config,
     traderId,
     setTraderId,
-    name: (id) => traders.find((t) => t.id === id)?.name ?? id ?? "Unknown",
+    isHouse: traderId === HOUSE,
+    name: (id) => (id === HOUSE ? "Clearing house" : traders.find((t) => t.id === id)?.name ?? id ?? "Unknown"),
     debts,
-    pendingCount: (debts.data ?? []).filter((d) => waitingFor(d, traderId)).length,
+    pendingCount: (debts.data ?? []).filter((d) => waitingFor(d, traderId)).length, // always 0 for the house
     refreshPending: debts.reload,
   };
 
@@ -120,7 +121,7 @@ function Nav() {
 }
 
 export function Header() {
-  const { traders, traderId, name } = useApp();
+  const { traders, traderId, isHouse, name } = useApp();
   return (
     <header className="site-header">
       <div className="header-content">
@@ -142,7 +143,8 @@ export function Header() {
                 onChange={(e) => setTraderId(e.target.value)}
                 className="profile-select"
               >
-                {traders.length === 0 && <option value={traderId}>{traderId}</option>}
+                <option value={HOUSE}>Clearing house</option>
+                {traders.length === 0 && !isHouse && <option value={traderId}>{traderId}</option>}
                 {traders.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
@@ -153,7 +155,7 @@ export function Header() {
           </div>
           <TourTrigger />
           <MoreMenu />
-          <Bell />
+          {!isHouse && <Bell />}
         </div>
       </div>
     </header>

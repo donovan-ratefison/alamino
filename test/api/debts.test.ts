@@ -49,6 +49,17 @@ test("GET /api/debts lists debts and filters by status", async () => {
   assert.ok(badJson.error.includes("status must be one of"));
 });
 
+test("GET /api/debts as a trader returns only their debts, never a debt between two others", async () => {
+  const res = await getDebts(new NextRequest("http://localhost/api/debts", { headers: { "x-alamino-viewer": "soa" } }));
+  assert.equal(res.status, 200);
+  const debts: { debtorId: string; creditorId: string }[] = await res.json();
+  assert.equal(debts.length, 4);
+  assert.ok(debts.every((d) => d.debtorId === "soa" || d.creditorId === "soa"));
+
+  const unknown = await getDebts(new NextRequest("http://localhost/api/debts", { headers: { "x-alamino-viewer": "bema" } }));
+  assert.equal(unknown.status, 400);
+});
+
 test("POST /api/debts creates proposed debts with appropriate side approvals", async () => {
   // Created by debtor (rivo owes hery $50)
   const reqByDebtor = new Request("http://localhost/api/debts", {

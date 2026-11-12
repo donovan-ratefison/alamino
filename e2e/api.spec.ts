@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { api, finishRound, listDebts, listTraders, resetDemo } from "./helpers";
+import { api, listDebts, listTraders, resetDemo } from "./helpers";
 import type { Debt, Round, Trader } from "../src/lib/types";
 
 test.describe("API End-to-End Suite", () => {
@@ -133,6 +133,42 @@ test.describe("API End-to-End Suite", () => {
     // Refresh payout -> done
     const done = await api<Round>(request, `/api/rounds/${round.id}/payout/refresh`, {});
     expect(done.status).toBe("done");
+  });
+
+  test("privacy: a trader sees only their part and cannot act for the house", async ({ request }) => {
+    const as = (viewer: string) => ({ headers: { "x-alamino-viewer": viewer } });
+    const touchesSoa = (e: { debtorId: string; creditorId: string }) => e.debtorId === "soa" || e.creditorId === "soa";
+
+    // Soa does not get a debt between two other traders.
+    const debtsRes = await request.get("/api/debts", as("soa"));
+    expect(debtsRes.ok()).toBe(true);
+    const debts: Debt[] = await debtsRes.json();
+    expect(debts).toHaveLength(4);
+    expect(debts.every(touchesSoa)).toBe(true);
+    expect((await request.get("/api/debts", as("bema"))).status()).toBe(400);
+
+    // Soa's preview holds her own numbers, not the market totals.
+    const preview = await (await request.get("/api/rounds/preview", as("soa"))).json();
+    expect(preview.stats.grossCents).toBe(65000);
+    expect(preview.amountCents).toBe(17000);
+    expect(preview.action).toBe("pay_in");
+
+    // Soa cannot run clearing. The house can.
+    expect((await request.post("/api/rounds", { ...as("soa"), data: {} })).status()).toBe(403);
+    const round = await api<Round>(request, "/api/rounds", {});
+
+    // Soa gets only her part of the round.
+    const mine: Round = await (await request.get("/api/rounds/latest", as("soa"))).json();
+    expect(mine.id).toBe(round.id);
+    expect(mine.debtsBefore.every(touchesSoa)).toBe(true);
+    expect(mine.result.remaining.every(touchesSoa)).toBe(true);
+    expect(mine.settlements.map((s) => s.traderId)).toEqual(["soa"]);
+    expect(mine.privacy?.viewer).toBe("soa");
+
+    // Hery cannot read Soa's statement, or pay her pay-in.
+    expect((await request.get(`/api/rounds/${round.id}/statement/soa?text=plain`, as("hery"))).status()).toBe(403);
+    expect((await request.get(`/api/rounds/${round.id}/statement/soa?text=plain`, as("soa"))).ok()).toBe(true);
+    expect((await request.post(`/api/rounds/${round.id}/payin/soa/order`, { ...as("hery"), data: {} })).status()).toBe(403);
   });
 
   test("finance API returns session info, demo data and responds to questions", async ({ request }) => {

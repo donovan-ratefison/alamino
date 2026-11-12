@@ -6,7 +6,7 @@ import type { Debt, DebtDraft, TraderId } from "@/lib/types";
 import { api, toCents } from "@/components/api";
 import { useApp } from "@/components/app";
 import { DraftRow, problem, toDraft, type Draft } from "@/components/capture-drafts";
-import { Badge, btn, ErrorNote, field, label, PageHeader } from "@/components/ui";
+import { Badge, btn, Empty, ErrorNote, field, label, PageHeader } from "@/components/ui";
 import { CaptureGuide } from "@/components/capture-guide";
 
 // A real AI call takes 5 to 10 seconds. The last step stays until the answer.
@@ -25,7 +25,7 @@ async function readImage(file: File): Promise<{ imageBase64: string; mediaType: 
 }
 
 export default function AddPage() {
-  const { traderId, refreshPending } = useApp();
+  const { traderId, refreshPending, isHouse } = useApp();
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false); // phone: the sentence field is open
   const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
@@ -56,6 +56,15 @@ export default function AddPage() {
   if (engine && owner !== traderId) {
     clear();
     setChanged(true);
+  }
+
+  if (isHouse) {
+    return (
+      <div className="mx-auto max-w-6xl space-y-6">
+        <PageHeader title="Add a debt" />
+        <Empty title="The clearing house does not add or confirm debts. Choose a trader in View as." />
+      </div>
+    );
   }
 
   // The demo sentence. Hery cannot owe Hery, so Hery gets another trader.

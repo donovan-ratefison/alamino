@@ -169,7 +169,7 @@ function DebtItem({ debt, onChange }: { debt: Debt; onChange: () => void }) {
 
 export default function ConfirmPage() {
   // The shared list: an answer from the bell updates this page too.
-  const { traderId, refreshPending, debts } = useApp();
+  const { traderId, refreshPending, debts, isHouse } = useApp();
 
   const open = (debts.data ?? []).filter(
     (d) => (d.status === "proposed" || d.status === "disputed") && (d.debtorId === traderId || d.creditorId === traderId),
@@ -182,7 +182,9 @@ export default function ConfirmPage() {
   return (
     <div className="mx-auto max-w-[640px] space-y-8">
       <PageHeader title="Confirm debts">Both sides approve a debt before it enters clearing.</PageHeader>
-      {debts.error ? (
+      {isHouse ? (
+        <Empty title="The clearing house does not add or confirm debts. Choose a trader in View as." />
+      ) : debts.error ? (
         <ErrorNote error={debts.error} onRetry={debts.reload} />
       ) : debts.loading ? (
         <Loading />

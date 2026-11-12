@@ -1,15 +1,23 @@
 // Builds one trader's statement for a round. All numbers come from plain code.
 // The model only writes `summary` and each line's `reason`.
-import type { Debt, Round, Statement, Trader, TraderId } from "../types.ts";
+// A circle is named by its size only ("a circle of 3 traders"), never by the traders on it.
+import type { Cancellation, Debt, Round, Statement, Trader, TraderId } from "../types.ts";
 import { aiMode, askJson, isObject, usd } from "./model.ts";
 
 type Line = Statement["lines"][number];
 
 const cut = (l: Line) => l.beforeCents - l.afterCents;
 
-function lineReason(l: Line): string {
-  if (l.afterCents === 0) return `A circle cancelled all ${usd(cut(l))} of this debt. No money moved.`;
-  if (cut(l) > 0) return `A circle cancelled ${usd(cut(l))}. The other ${usd(l.afterCents)} is part of your net position.`;
+// A trader view of a round can hide traders on a circle: they still count.
+const circleSize = (c: Cancellation) => c.path.length + (c.hiddenTraders ?? 0);
+const circleText = (n: number) => `a circle of ${n} traders`;
+const onCircle = (c: Cancellation, from: TraderId, to: TraderId) =>
+  c.path.some((t, i) => t === from && c.path[(i + 1) % c.path.length] === to);
+
+function lineReason(l: Line, circles: Cancellation[]): string {
+  const by = circles.length === 1 ? `A circle of ${circleSize(circles[0])} traders` : "Circles";
+  if (l.afterCents === 0) return `${by} cancelled all ${usd(cut(l))} of this debt. No money moved.`;
+  if (cut(l) > 0) return `${by} cancelled ${usd(cut(l))}. The other ${usd(l.afterCents)} is part of your net position.`;
   return `This debt was not in a circle. All ${usd(l.afterCents)} is part of your net position.`;
 }
 
@@ -41,7 +49,8 @@ export function buildStatement(round: Round, traderId: TraderId, debts: Debt[], 
       afterCents: c.afterCents,
       reason: "",
     };
-    return [{ ...line, reason: lineReason(line) }];
+    const circles = round.result.cancellations.filter((x) => onCircle(x, d.debtorId, d.creditorId));
+    return [{ ...line, reason: lineReason(line, circles) }];
   });
   const netCents = round.result.positions.find((p) => p.traderId === traderId)?.netCents ?? 0;
   const action = netCents < 0 ? "pay_in" : netCents > 0 ? "receive" : "nothing";
@@ -117,7 +126,7 @@ export async function explainRound(round: Round, traderId: TraderId, debts: Debt
     })),
     circles: round.result.cancellations
       .filter((c) => c.path.includes(traderId))
-      .map((c) => ({ traders: c.path.map(name), cancelledFromEachDebt: usd(c.amountCents) })),
+      .map((c) => ({ circle: circleText(circleSize(c)), cancelledFromEachDebt: usd(c.amountCents) })),
     whatYouDoNow: { pay_in: `pay ${usd(-s.netCents)} into the clearing account`, receive: `receive ${usd(s.netCents)} from the clearing account`, nothing: "pay nothing and receive nothing" }[s.action],
   };
   try {
@@ -127,6 +136,7 @@ export async function explainRound(round: Round, traderId: TraderId, debts: Debt
         "The numbers are final and come from the clearing engine. Use only the dollar amounts given. Do not add, subtract or invent amounts.",
         "summary: two or three sentences. Say what the circles cancelled, what is left, and what the trader does now.",
         "reasons: one sentence for each debt, with the same debtId. Say why the debt changed or did not change.",
+        "Never name the other traders on a circle. Say \"a circle of N traders\" as given. You can name the other side of each of the trader's own debts.",
       ].join("\n"),
       [{ type: "text", text: JSON.stringify(facts, null, 2) }],
       "round_statement",

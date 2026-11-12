@@ -34,8 +34,9 @@ test.describe("Issues #5 & #6: One full clearing round with real sandbox payment
     await approveBtn.click();
     await expect(page.getByText("Nothing to confirm", { exact: true })).toBeVisible({ timeout: 15_000 });
 
-    // --- STEP 3: Market page shows 9 confirmed debts for $990 ---
+    // --- STEP 3: Market page shows 9 confirmed debts for $990 to the clearing house ---
     await page.goto("/");
+    await viewAs(page, "house");
     const main = page.getByRole("main");
     await expect(main).toContainText("$990");
     await page.screenshot({ path: "test-results/screenshots/issue-5-market-990.png", fullPage: true });
@@ -84,7 +85,9 @@ test.describe("Issues #5 & #6: One full clearing round with real sandbox payment
         .toBe("captured");
     }
 
-    // All pay-ins are now captured
+    // All pay-ins are now captured. Only the clearing house sends the payouts.
+    await expect(sendPayoutsBtn).toHaveCount(0);
+    await viewAs(page, "house");
     await page.screenshot({ path: "test-results/screenshots/issue-5-all-payins-captured.png" });
 
     // --- STEP 7: Send Payouts & Poll to Done (Issue #6, Point 3: polling) ---

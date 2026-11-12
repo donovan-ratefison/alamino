@@ -1,5 +1,6 @@
 import { financeError, requireAdmin, sameOrigin } from "@/lib/finance/auth";
 import { getRound, updateSettlement } from "@/lib/db";
+import { requireTraderOrHouse } from "@/lib/privacy";
 import { paypalMode } from "@/lib/paypal/client";
 import { captureMatches, captureOrder, toUsd } from "@/lib/paypal/payments";
 
@@ -8,8 +9,8 @@ const payIn = (round: ReturnType<typeof getRound>, traderId: string) =>
 
 // Captures an approved order and checks that PayPal took exactly the planned amount.
 export async function POST(req: Request, ctx: { params: Promise<{ id: string; traderId: string }> }) {
-  try { if (paypalMode() === "sandbox") { sameOrigin(req); requireAdmin(req); } } catch (e) { return financeError(e); }
   const { id, traderId } = await ctx.params;
+  try { requireTraderOrHouse(req, traderId); if (paypalMode() === "sandbox") { sameOrigin(req); requireAdmin(req); } } catch (e) { return financeError(e); }
   const body = (await req.json().catch(() => null)) as { orderId?: unknown } | null;
   const orderId = typeof body?.orderId === "string" ? body.orderId : "";
   if (!orderId) return Response.json({ error: "orderId is required." }, { status: 400 });

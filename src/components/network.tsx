@@ -28,7 +28,7 @@ function TraderNode({ data }: NodeProps<TraderNodeData>) {
 
 const nodeTypes = { trader: TraderNode };
 const RADIUS = 140;
-const COLOR = { on: "#0070e0", circle: "#13865b", base: "#8eafd4", dim: "#d4e4f5" };
+const COLOR = { on: "#0070e0", circle: "#13865b", base: "#8eafd4", dim: "#d4e4f5", private: "#8192ac" };
 // Arrowheads in screen pixels, so they do not grow with the stroke width.
 const ARROW = 30;
 
@@ -37,6 +37,10 @@ function side(dx: number, dy: number): Position {
   if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? Position.Right : Position.Left;
   return dy > 0 ? Position.Bottom : Position.Top;
 }
+
+// The aria label and screen reader text of a private link.
+const privateText = (hidden: number) =>
+  hidden === 0 ? "Private link" : `Private link through ${hidden} other ${hidden === 1 ? "trader" : "traders"}`;
 
 // "a>b" for each debt in each circle: [a, b, c] means a owes b, b owes c, c owes a.
 const ringKeys = (rings: TraderId[][] | undefined) => new Set(rings?.flatMap((r) => r.map((id, i) => `${id}>${r[(i + 1) % r.length]}`)));
@@ -48,6 +52,7 @@ export function Network({
   label,
   interactive = true,
   circles,
+  privateLinks,
 }: {
   traders: Trader[];
   edges: Edge[];
@@ -55,6 +60,8 @@ export function Network({
   label: string;
   interactive?: boolean; // hover or focus a trader to show only the debts of that trader
   circles?: TraderId[][]; // edges on these circles get a tint: they can cancel
+  // Trader view of a circle: the part between two other traders. A dotted grey line, no amount, no arrow.
+  privateLinks?: { from: TraderId; to: TraderId; hidden: number }[];
 }) {
   const [focus, setFocus] = useState<TraderId | null>(null);
   const active = interactive ? focus : null;
@@ -129,6 +136,22 @@ export function Network({
     };
   });
 
+  const links = (privateLinks ?? []).filter((l) => center.has(l.from) && center.has(l.to));
+  for (const l of links) {
+    const a = center.get(l.from)!;
+    const b = center.get(l.to)!;
+    flowEdges.push({
+      id: `private:${l.from}>${l.to}`,
+      source: l.from,
+      target: l.to,
+      sourceHandle: `s-${side(b.x - a.x, b.y - a.y)}`,
+      targetHandle: `t-${side(a.x - b.x, a.y - b.y)}`,
+      type: "straight",
+      ariaLabel: privateText(l.hidden),
+      style: { stroke: COLOR.private, strokeWidth: 1.5, strokeDasharray: "2 5", strokeLinecap: "round" },
+    });
+  }
+
   function name(id: TraderId) {
     return traders.find((t) => t.id === id)?.name ?? id;
   }
@@ -171,6 +194,9 @@ export function Network({
               {`${name(e.debtorId)} owes ${name(e.creditorId)} ${formatUsd(e.amountCents)}${ring.has(key) ? ", can cancel in a circle" : ""}`}
             </li>
           ))}
+        {links.map((l) => (
+          <li key={`private:${l.from}>${l.to}`}>{`${privateText(l.hidden)} between ${name(l.from)} and ${name(l.to)}`}</li>
+        ))}
       </ul>
     </div>
   );

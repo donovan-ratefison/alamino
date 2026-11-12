@@ -1,11 +1,12 @@
 import { financeError, requireAdmin, sameOrigin } from "@/lib/finance/auth";
 import { getRound, listTraders, setRoundStatus, updateSettlement } from "@/lib/db";
+import { requireHouse } from "@/lib/privacy";
 import { paypalMode } from "@/lib/paypal/client";
 import { createPayoutBatch } from "@/lib/paypal/payments";
 
-// Sends one payout batch for the round, only when every pay-in is captured.
+// Sends one payout batch for the round, only when every pay-in is captured. House only.
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  try { if (paypalMode() === "sandbox") { sameOrigin(req); requireAdmin(req); } } catch (e) { return financeError(e); }
+  try { requireHouse(req); if (paypalMode() === "sandbox") { sameOrigin(req); requireAdmin(req); } } catch (e) { return financeError(e); }
   const { id } = await ctx.params;
   const round = getRound(id);
   if (!round) return Response.json({ error: "Unknown round." }, { status: 404 });

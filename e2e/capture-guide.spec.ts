@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { CAPTURE_TOUR_STORAGE_KEY } from "../src/lib/onboarding";
+import { viewAs } from "./helpers";
 
 test.use({ storageState: { cookies: [], origins: [] }, reducedMotion: "reduce" });
 
@@ -10,6 +11,8 @@ for (const width of [1440, 375]) {
     const mutations: string[] = [];
     page.on("request", (r) => { if (!["GET", "HEAD"].includes(r.method()) && r.url().includes("/api/")) mutations.push(r.url()); });
     await page.goto("/add");
+    // The clearing house does not add debts: view as a trader.
+    await viewAs(page, "rivo");
     const popover = page.locator(".driver-popover");
     // The tour does not start by itself: it would cover the task.
     await expect(page.getByRole("button", { name: "How to add a debt" })).toBeVisible();

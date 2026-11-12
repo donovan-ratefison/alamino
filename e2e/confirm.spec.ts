@@ -12,6 +12,13 @@ test.describe("Confirm a debt", () => {
     debt = await proposeNinthDebt(request);
   });
 
+  test("the clearing house does not confirm debts", async ({ page }) => {
+    await page.goto("/confirm");
+    await viewAs(page, "house");
+    await expect(page.getByRole("main")).toContainText("The clearing house does not add or confirm debts. Choose a trader in View as.");
+    await expect(page.getByRole("button", { name: /approve/i })).toHaveCount(0);
+  });
+
   test("Hery approves the debt that Rivo added", async ({ page, request }) => {
     await page.goto("/confirm");
     await viewAs(page, "hery");
