@@ -18,9 +18,9 @@ curl -s localhost:3000/api/config
 ```
 
 Si `paypalMode` vaut `simulated`, stop : les clés ne sont pas prises en compte.
-- **Session admin obligatoire** : en mode sandbox, les routes payin/payout exigent
-  une session finance, sinon 401 « Sign in to access the PayPal Sandbox account
-  and AI tools ». Mettre `FINANCE_ADMIN_PASSWORD=` (≥ 16 caractères, jamais des
+- **Session admin obligatoire** : en mode sandbox, les routes rounds/payin/payout
+  exigent une session finance, sinon 401 « Sign in on the Finance page as the
+  clearing house operator. ». Mettre `FINANCE_ADMIN_PASSWORD=` (≥ 16 caractères, jamais des
   clés PayPal) dans `.env`, **redémarrer** `npm run dev`, puis page `/finance` →
   « Sign in ». Vérifier :
 

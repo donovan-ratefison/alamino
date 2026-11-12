@@ -2,23 +2,19 @@
 // Relative imports keep the `.ts` extension so `npm test` can load this file.
 
 import { HttpError, listTraders } from "./db.ts";
-import { authenticated, configured } from "./finance/auth.ts";
 import { clear } from "./netting.ts";
-import { paypalMode } from "./paypal/client.ts";
 import { HOUSE } from "./types.ts";
 import type { Cancellation, ClearingResult, ClearingStats, Debt, Edge, Round, Statement, Viewer } from "./types.ts";
 
 // Reads the `x-alamino-viewer` header. No header means the house.
-// The house view is open in simulated mode or without FINANCE_ADMIN_PASSWORD, like the sandbox payments rule.
-// Else it needs the Finance sign-in.
+// Every view is open to read: "View as" already shows every trader. In sandbox mode the
+// house actions (run clearing, pay-ins, payouts) need the Finance sign-in on their routes.
 export function viewerOf(req: Request): Viewer {
   const id = req.headers.get("x-alamino-viewer") || HOUSE;
   if (id !== HOUSE) {
     if (!listTraders().some((t) => t.id === id)) throw new HttpError(400, `Unknown viewer ${id}`);
     return id;
   }
-  if (paypalMode() === "sandbox" && configured() && !authenticated(req))
-    throw new HttpError(401, "Sign in on the Finance page to view the clearing house.");
   return HOUSE;
 }
 

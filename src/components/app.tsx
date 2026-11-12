@@ -121,9 +121,7 @@ function Nav() {
 }
 
 export function Header() {
-  const { traders, traderId, isHouse, name, debts } = useApp();
-  // In sandbox mode the clearing house view needs the finance sign-in. Say so instead of an empty market.
-  const locked = isHouse && debts.error?.status === 401;
+  const { traders, traderId, isHouse, name } = useApp();
   return (
     <header className="site-header">
       <div className="header-content">
@@ -160,12 +158,6 @@ export function Header() {
           {!isHouse && <Bell />}
         </div>
       </div>
-      {locked && (
-        <p role="alert" className="border-t border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-900">
-          The clearing house view needs the finance sign-in.{" "}
-          <Link href="/finance#sign-in" className="font-medium underline">Sign in on Finance</Link>, or choose a trader in View as.
-        </p>
-      )}
     </header>
   );
 }

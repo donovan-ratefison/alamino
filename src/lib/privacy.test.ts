@@ -119,15 +119,13 @@ test("viewerOf and the house access rule", () => {
   assert.doesNotThrow(() => requireTraderOrHouse(req("soa"), "soa"));
   assert.doesNotThrow(() => requireTraderOrHouse(req(), "soa"));
 
-  // Sandbox keys and an admin password: the house needs the Finance sign-in.
+  // Sandbox keys and an admin password: the house view stays open to read.
   const keys = { PAYPAL_CLIENT_ID: "id", PAYPAL_CLIENT_SECRET: "secret", FINANCE_ADMIN_PASSWORD: "a-password-of-16-chars" };
   const saved = Object.keys(keys).map((k) => [k, process.env[k]] as const);
   Object.assign(process.env, keys);
   try {
-    assert.throws(() => viewerOf(req()), status(401));
-    assert.equal(viewerOf(req("soa")), "soa");
-    delete process.env.FINANCE_ADMIN_PASSWORD;
     assert.equal(viewerOf(req()), "house");
+    assert.equal(viewerOf(req("soa")), "soa");
   } finally {
     for (const [k, v] of saved) if (v === undefined) delete process.env[k]; else process.env[k] = v;
   }
