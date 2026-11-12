@@ -13,6 +13,8 @@ test('workflow verifies the exact commit before a serialized main-only deploymen
   assert.equal(workflow.jobs.deploy.needs, 'verify');
   assert.equal(workflow.jobs.deploy.if, "github.ref == 'refs/heads/main'");
   assert.equal(workflow.jobs.deploy.concurrency['cancel-in-progress'], false);
+  for (const value of Object.values(workflow.jobs.verify.env)) assert.ok(!String(value).includes('${{ runner.'), 'runner context is unavailable in job-level env');
+  assert.ok(workflow.jobs.verify.steps.some(s => s.run?.includes('$RUNNER_TEMP') && s.run.includes('$GITHUB_ENV')));
   for (const job of Object.values(workflow.jobs)) {
     for (const step of job.steps.filter(s => s.uses)) assert.match(step.uses, /@[0-9a-f]{40}$/);
     const checkout = job.steps.find(s => s.uses?.startsWith('actions/checkout@'));

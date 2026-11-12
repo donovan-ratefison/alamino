@@ -14,7 +14,6 @@ jobs:
     timeout-minutes: 20
     env:
       CI: 'true'
-      DATABASE_PATH: ${{ runner.temp }}/alamino-ci/app.db
       AI_API_KEY: ''
       PAYPAL_CLIENT_ID: ''
       PAYPAL_CLIENT_SECRET: ''
@@ -28,6 +27,8 @@ jobs:
         with:
           node-version: '24.21.0'
           cache: npm
+      - name: Prepare isolated CI database
+        run: printf 'DATABASE_PATH=%s/alamino-ci/app.db\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
       - run: npm ci
       - name: Validate deployment files
         run: |
