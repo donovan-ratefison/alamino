@@ -1,6 +1,6 @@
 # Alamino logo
 
-Asset: `public/alamino-logo.png` (2172 × 724, transparent PNG).
+Asset: `public/alamino-logo.png` (640 × 213, transparent PNG). Replaced on 12 November 2026 by the final logo supplied by the team.
 Generated using the built-in imagegen tool. The header displays this project-owned asset.
 
 Style reference supplied by the user:
