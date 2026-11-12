@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Alamino Demo Stage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#0070e0; --brand:#003087; --ink:#052969; --soft:#eff6ff; --line:#dce5f2;
+  --muted:#5b6b86; --paid:#16a34a; --paypal:#ffc439;
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:#070d1a;overflow:hidden;font-family:Inter,system-ui,sans-serif;color:var(--ink)}
+button{font:inherit;cursor:pointer}
+
+/* Controls (outside the video frame) */
+#ctrl{position:fixed;inset:0 0 auto 0;height:52px;display:flex;align-items:center;gap:8px;padding:0 16px;background:#0b1428;border-bottom:1px solid #1b2a4a;z-index:10;overflow-x:auto}
+#ctrl button{border:1px solid #2a3b60;background:#12203d;color:#dbe7ff;border-radius:999px;padding:6px 14px;font-size:13px;white-space:nowrap}
+#ctrl button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+#ctrl .hint{color:#7f93b8;font-size:12px;margin-left:auto;white-space:nowrap}
+body.clean #ctrl{display:none}
+
+/* 1920 x 1080 frame, scaled to the window */
+#frame{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden;background:var(--soft)}
+#stage{position:absolute;inset:0 0 auto 0;height:700px;
+  background:radial-gradient(1100px 620px at 50% 25%,#0d4aa8 0%,#063585 45%,#041f55 100%)}
+#stage::after{content:"";position:absolute;inset:auto 0 0 0;height:120px;background:linear-gradient(transparent,rgba(2,12,40,.45))}
+#progress{position:absolute;left:0;top:0;height:4px;background:var(--paypal);z-index:6;width:0}
+
+/* Phone */
+#phone{position:absolute;left:330px;top:58px;width:300px;height:604px;border-radius:46px;border:10px solid var(--pc,#003087);
+  background:#fff;overflow:hidden;z-index:2;transition:border-color .6s,box-shadow .6s;
+  box-shadow:0 0 0 2px rgba(255,255,255,.15),0 40px 90px -20px var(--pc,#003087)}
+.notch{position:absolute;left:50%;top:6px;width:84px;height:20px;margin-left:-42px;background:#0b1220;border-radius:12px;z-index:3}
+.pstatus{height:30px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-size:11px;font-weight:600}
+.phead{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--pc,#003087);color:#fff;transition:background .6s}
+.phead b{font-size:17px;letter-spacing:-.01em}
+.phead .who{font-size:12px;background:rgba(255,255,255,.22);padding:4px 10px;border-radius:999px}
+#pscreen{position:absolute;left:0;right:0;top:86px;bottom:0;padding:16px}
+#pscreen.swap{animation:fadein .45s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);height:18px}
+.thumb{display:block;width:248px;height:165px;object-fit:cover;border-radius:12px;margin-bottom:12px}
+.card{border:1px solid var(--line);border-radius:16px;padding:12px 14px;background:#fff}
+.tag{font-size:11px;font-weight:600;color:var(--accent);background:var(--soft);border-radius:999px;padding:3px 9px;display:inline-block;margin-bottom:6px}
+.row{display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-bottom:1px solid #eef2f8}
+.row:last-child{border-bottom:0}
+.row span{color:var(--muted)}
+.row.total b{color:var(--paid);font-size:16px}
+.btn{display:block;width:100%;margin-top:12px;border:0;border-radius:999px;padding:12px;background:var(--pc,#003087);color:#fff;font-weight:600;font-size:15px;position:relative;overflow:hidden}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn.paypal{background:var(--paypal);color:#0b2a6f}
+.btn.press{animation:press .35s ease}
+.btn.press::after{content:"";position:absolute;left:50%;top:50%;width:20px;height:20px;margin:-10px;border-radius:50%;background:rgba(255,255,255,.6);animation:ripple .5s ease-out forwards}
+@keyframes press{50%{transform:scale(.95)}}
+@keyframes ripple{to{transform:scale(18);opacity:0}}
+.ok{margin-top:12px;border-radius:14px;padding:12px;background:#e8f7ee;color:#11632f;font-weight:600;font-size:14px;animation:fadein .4s ease}
+.amt{font-size:40px;font-weight:700;letter-spacing:-.02em;margin:4px 0}
+.muted{font-size:13px;color:var(--muted);line-height:1.4}
+.fine{font-size:11px;color:var(--muted);text-align:center;margin-top:8px}
+.center{text-align:center}
+.idle{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center}
+.idle img{width:190px}
+.cam{position:absolute;inset:0;background:#0b1220;color:#cbd5e1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;font-size:13px}
+.cam .vf{width:220px;height:150px;border:2px dashed rgba(255,255,255,.35);border-radius:12px}
+.cam .shutter{position:absolute;bottom:28px;width:62px;height:62px;border-radius:50%;border:5px solid #fff;background:rgba(255,255,255,.2)}
+.ai{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--accent);margin:4px 0 12px}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--soft);border-top-color:var(--accent);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.shim{height:12px;border-radius:6px;margin:8px 0;background:linear-gradient(90deg,#eef3fb 25%,#dbe7f8 50%,#eef3fb 75%);background-size:300% 100%;animation:shim 1.2s linear infinite}
+.shim.short{width:60%}
+@keyframes shim{from{background-position:100% 0}to{background-position:0 0}}
+.notif{border-radius:16px;background:#0b2a6f;color:#fff;padding:12px 14px;font-size:14px;margin-bottom:14px;animation:drop .6s cubic-bezier(.2,.9,.3,1.2)}
+.notif small{display:block;color:var(--paypal);font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:2px}
+@keyframes drop{from{transform:translateY(-40px);opacity:0}}
+
+/* Laptop */
+#laptop{position:absolute;left:720px;top:58px;width:940px;height:572px;border:14px solid #0f172a;border-radius:20px;background:#fff;overflow:hidden;z-index:2;
+  box-shadow:0 40px 90px -30px rgba(0,0,0,.7);transition:box-shadow .6s}
+#laptop.live{box-shadow:0 0 0 3px var(--accent),0 40px 100px -20px #3b9bff}
+#base{position:absolute;left:670px;top:628px;width:1040px;height:26px;border-radius:0 0 22px 22px;background:linear-gradient(#d5dde9,#97a6bd);z-index:2}
+#base::before{content:"";position:absolute;left:50%;top:0;width:150px;height:8px;margin-left:-75px;border-radius:0 0 10px 10px;background:#8494ad}
+.ltop{height:46px;display:flex;align-items:center;gap:14px;padding:0 18px;border-bottom:1px solid var(--line)}
+.ltop img{height:22px}
+.ltop .sep{width:1px;height:20px;background:var(--line)}
+.ltop .t{font-weight:600;font-size:14px}
+.ltop .live{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
+.ltop .live i{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.2)}
+.lbody{padding:14px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;height:78px}
+.kpi{border:1px solid var(--line);border-radius:14px;padding:10px 14px;transition:background .5s,border-color .5s}
+.kpi span{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.kpi b{display:block;font-size:28px;letter-spacing:-.02em;margin-top:4px}
+.kpi.hot{background:var(--soft);border-color:#9cc7f5}
+.lmain{display:grid;grid-template-columns:540px 1fr;gap:14px;margin-top:12px;height:378px}
+.box{border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.bhead{height:42px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;font-weight:600;font-size:13px;border-bottom:1px solid var(--line)}
+.lbtn{border:0;border-radius:999px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;padding:6px 14px;position:relative;overflow:hidden}
+.lbtn[disabled]{background:#c7d3e6;cursor:default}
+.lbtn.press{animation:press .35s ease}
+#graph{flex:1;width:100%;height:290px}
+.bfoot{height:42px;display:flex;align-items:center;gap:12px;padding:0 14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.bar{flex:1;height:8px;border-radius:4px;background:#e8eef7;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--paid);transition:width .9s ease}
+#feed{list-style:none;padding:6px 14px;overflow:hidden;flex:1}
+#feed li{display:grid;grid-template-columns:44px 1fr;gap:6px;font-size:12.5px;line-height:1.4;padding:9px 0;border-bottom:1px solid #eef2f8;animation:fadein .5s ease}
+#feed time{color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* Graph */
+.edge path{fill:none;stroke:#a3b1c6;stroke-width:2.2;marker-end:url(#m-grey);transition:stroke-dashoffset 1.1s ease,opacity .7s,stroke .4s}
+.edge text,.node text{font:600 13px Inter,system-ui,sans-serif;fill:var(--ink);paint-order:stroke;stroke:#fff;stroke-width:4px;text-anchor:middle}
+.edge path,.hubedge path{stroke-dasharray:1;stroke-dashoffset:0}
+.edge,.hubedge{transition:opacity .7s}
+#graph.drawing .edge{opacity:0}
+#graph.drawing .edge path{stroke-dashoffset:1}
+#graph .edge.new{opacity:0}
+#graph.proposed .edge.new{opacity:1}
+#graph.proposed .edge.new path{stroke:var(--accent);stroke-dasharray:.03 .02;marker-end:url(#m-blue)}
+#graph.confirmed .edge.new{opacity:1}
+#graph.pulse .edge path{stroke:var(--accent);marker-end:url(#m-blue);animation:pulse .7s ease-in-out infinite alternate}
+@keyframes pulse{to{stroke-width:4.5}}
+#graph.hub .edge{opacity:.07}
+.hubedge,.hubnode{opacity:0}
+#graph.hub .hubedge,#graph.hub .hubnode{opacity:1}
+#graph.hub.drawing .hubedge path{stroke-dashoffset:1}
+.hubedge path{fill:none;stroke:var(--accent);stroke-width:3;marker-end:url(#m-blue);transition:stroke-dashoffset 1s ease,stroke .5s}
+.hubedge text{font:700 13px Inter,system-ui,sans-serif;fill:var(--accent);paint-order:stroke;stroke:#fff;stroke-width:4px;text-anchor:middle;transition:fill .5s}
+.hubedge.paid path{stroke:var(--paid);marker-end:url(#m-green)}
+.hubedge.paid text{fill:var(--paid)}
+.node text{fill:#fff;stroke:none;font-size:12px}
+.hubnode rect{fill:var(--brand)}
+.hubnode text{font:600 12px Inter,system-ui,sans-serif;fill:#fff;text-anchor:middle}
+
+/* Photo capture overlay */
+#shot{position:absolute;left:510px;top:60px;width:900px;height:600px;z-index:5;opacity:0;transform-origin:0 0;transform:scale(.94);pointer-events:none;
+  transition:opacity .5s,transform .5s ease}
+#shot img{width:100%;height:100%;object-fit:cover;border-radius:22px;box-shadow:0 40px 120px rgba(0,0,0,.6)}
+#shot .vf{position:absolute;inset:40px;border:0}
+#shot .vf i{position:absolute;width:56px;height:56px;border:4px solid #fff}
+#shot .vf i:nth-child(1){left:0;top:0;border-right:0;border-bottom:0}
+#shot .vf i:nth-child(2){right:0;top:0;border-left:0;border-bottom:0}
+#shot .vf i:nth-child(3){left:0;bottom:0;border-right:0;border-top:0}
+#shot .vf i:nth-child(4){right:0;bottom:0;border-left:0;border-top:0}
+#shot.show{opacity:1;transform:none}
+#shot.fly{transition:transform .75s cubic-bezier(.6,0,.3,1),opacity .3s .7s}
+#shot.fly .vf{display:none}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;z-index:7;pointer-events:none}
+#flash.on{animation:flash .45s ease-out}
+@keyframes flash{0%{opacity:.95}100%{opacity:0}}
+
+/* Title and end cards */
+.card-over{position:absolute;inset:0 0 auto 0;height:700px;z-index:6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center;color:#fff;
+  background:radial-gradient(900px 500px at 50% 45%,#0a3f9a,#031a45);opacity:0;pointer-events:none;transition:opacity .8s}
+.card-over.on{opacity:1}
+.card-over .k{font-size:22px;color:#9cc7f5;letter-spacing:.02em}
+.card-over h1{font-size:76px;font-weight:600;letter-spacing:-.03em;line-height:1.05;max-width:1300px}
+.card-over h1 em{font-style:normal;color:var(--paypal)}
+.card-over p{font-size:26px;color:#cfe0fb;max-width:1100px}
+.card-over .stats{display:flex;gap:56px;margin-top:10px}
+.card-over .stats div{font-size:18px;color:#9cc7f5}
+.card-over .stats b{display:block;font-size:46px;color:#fff;letter-spacing:-.02em}
+
+/* Cast */
+#cast{position:absolute;inset:700px 0 0 0;z-index:3;background:var(--soft);border-top:1px solid var(--line)}
+#caption{position:absolute;left:40px;top:28px;width:520px;height:320px;display:flex;flex-direction:column}
+#caption img{height:30px;align-self:flex-start;margin-bottom:22px}
+#caption .step{font-size:15px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.1em}
+#caption h2{font-size:38px;font-weight:600;letter-spacing:-.02em;line-height:1.12;margin:10px 0 12px}
+#caption p{font-size:19px;line-height:1.45;color:var(--muted)}
+#caption.swap > *:not(img){animation:fadein .5s ease both}
+#dots{display:flex;gap:8px;margin-top:auto}
+#dots i{width:30px;height:5px;border-radius:3px;background:#c9d8ee;transition:background .4s}
+#dots i.on{background:var(--accent)}
+.pcard{position:absolute;top:28px;width:198px;height:322px;border-radius:20px;background:#fff;border:1px solid var(--line);padding:140px 14px 12px;transition:border-color .4s,box-shadow .4s}
+.pcard.act{border-color:var(--c);box-shadow:0 0 0 3px color-mix(in srgb,var(--c) 25%,transparent)}
+.pcard .slot{position:absolute;left:50%;top:22px;width:96px;height:96px;margin-left:-48px;border-radius:50%;border:2px dashed var(--c);opacity:0;transition:opacity .4s;
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--c);text-align:center}
+.pcard.away .slot{opacity:1}
+.pcard h3{font-size:21px;font-weight:700;display:flex;align-items:center;gap:8px}
+.pcard h3 i{width:10px;height:10px;border-radius:50%;background:var(--c)}
+.pcard .biz{font-size:13px;color:var(--muted);margin-top:2px}
+.pcard .rel{font-size:12.5px;line-height:1.45;margin-top:10px;color:var(--ink)}
+.pcard .rel span{color:var(--muted)}
+.pcard .rel .new{display:none;color:var(--accent);font-weight:600}
+body.newrel .pcard .rel .new{display:inline}
+.chip{position:absolute;left:14px;right:14px;bottom:12px;border-radius:999px;padding:6px 10px;font-size:12.5px;font-weight:700;text-align:center;opacity:0;transform:translateY(6px);transition:opacity .5s,transform .5s,background .4s,color .4s}
+body.chips .chip{opacity:1;transform:none}
+.chip.in{background:#fff4dc;color:#8a5a00}
+.chip.out{background:#e8f7ee;color:#11632f}
+.chip.done{background:#11632f;color:#fff}
+.chip.ops{background:var(--soft);color:var(--brand)}
+
+/* Characters */
+.fig{position:absolute;left:0;top:0;width:120px;height:140px;transform-origin:60px 140px;z-index:4;
+  transition:transform 1s cubic-bezier(.65,0,.35,1)}
+.fig svg{width:100%;height:100%;overflow:visible}
+.fig.act svg{animation:bob 1.8s ease-in-out infinite}
+body.party .fig svg{animation:bob .9s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(-4px)}}
+</style>
+</head>
+<body>
+<div id="ctrl"></div>
+
+<div id="frame">
+  <div id="stage">
+    <div id="progress"></div>
+    <div id="phone">
+      <div class="notch"></div>
+      <div class="pstatus"><span>08:12</span><span>4G</span></div>
+      <div class="phead"><b>Alamino</b><span class="who" id="pwho">Market</span></div>
+      <div id="pscreen"></div>
+    </div>
+
+    <div id="laptop">
+      <div class="ltop">
+        <img src="../../public/alamino-logo.png" alt="Alamino">
+        <span class="sep"></span><span class="t">Clearing house</span>
+        <span class="live"><i></i>Live, Finance desk</span>
+      </div>
+      <div class="lbody">
+        <div class="kpis">
+          <div class="kpi" id="k-total"><span>Total debts</span><b>$940</b></div>
+          <div class="kpi" id="k-cancel"><span>Cancelled, no cash</span><b>$0</b></div>
+          <div class="kpi" id="k-move"><span>Cash to move</span><b>-</b></div>
+          <div class="kpi" id="k-saved"><span>Cash saved</span><b>-</b></div>
+        </div>
+        <div class="lmain">
+          <div class="box">
+            <div class="bhead"><span id="gtitle">Debt network</span><button class="lbtn" id="lbtn">Run clearing</button></div>
+            <svg id="graph" viewBox="0 0 540 360" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <marker id="m-grey" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#a3b1c6"/></marker>
+                <marker id="m-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#0070e0"/></marker>
+                <marker id="m-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#16a34a"/></marker>
+              </defs>
+            </svg>
+            <div class="bfoot"><span>Pay-ins captured</span><div class="bar"><i id="pbar"></i></div><b id="ptext">$0 of $320</b></div>
+          </div>
+          <div class="box">
+            <div class="bhead"><span>Live activity</span></div>
+            <ul id="feed"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="base"></div>
+
+    <div id="shot"><img src="../test-photos/photo-1-rivo-hery-50.jpg" alt="Notebook page: Rivo owes Hery 50 dollars for rice"><div class="vf"><i></i><i></i><i></i><i></i></div></div>
+    <div id="flash"></div>
+
+    <div class="card-over" id="titlecard">
+      <div class="k">Antananarivo, a market morning</div>
+      <h1>Banks net their debts through BFM.<br>Market traders <em>can't</em>.</h1>
+      <p>Alamino brings clearing to the market.</p>
+    </div>
+    <div class="card-over" id="endcard">
+      <h1>$990 of debt.<br>Settled with <em>$320</em>.</h1>
+      <div class="stats">
+        <div><b>$570</b>cancelled in circles</div>
+        <div><b>67.7%</b>less cash moved</div>
+        <div><b>5</b>traders, one round</div>
+      </div>
+      <p>AI reads the notebooks. Plain code counts. PayPal moves the cash.</p>
+    </div>
+  </div>
+
+  <div id="cast">
+    <div id="caption"><img src="../../public/alamino-logo.png" alt="Alamino"><div class="step"></div><h2></h2><p></p><div id="dots"></div></div>
+  </div>
+</div>
+
+<script>
+const PEOPLE = {
+  hery:  {name:'Hery',  biz:'Rice wholesale', c:'#d97706', skin:'#8d5524', hair:'short', hc:'#1f1a17'},
+  soa:   {name:'Soa',   biz:'Restaurant',     c:'#e11d48', skin:'#c68642', hair:'bun',   hc:'#2b1d16'},
+  rivo:  {name:'Rivo',  biz:'Butcher',        c:'#0d9488', skin:'#a0663d', hair:'cap',   hc:'#0f3d3a', apron:true},
+  lalao: {name:'Lalao', biz:'Vegetables',     c:'#4d7c0f', skin:'#b5793f', hair:'long',  hc:'#3a2418'},
+  fidy:  {name:'Fidy',  biz:'Delivery',       c:'#7c3aed', skin:'#7a4a2a', hair:'curly', hc:'#16110e', stripe:true},
+  ops:   {name:'Finance desk', biz:'Clearing house', c:'#003087', skin:'#9c6b3f', hair:'short', hc:'#2a2a2a', glasses:true},
+};
+const ORDER = ['hery','soa','rivo','lalao','fidy','ops'];
+// [debtor, creditor, dollars, added live]
+const DEBTS = [['soa','hery',300],['hery','fidy',120],['fidy','soa',90],['lalao','soa',150],['soa','rivo',110],
+  ['rivo','lalao',70],['fidy','rivo',40],['lalao','hery',60],['rivo','hery',50,true]];
+const NET = {soa:-170, lalao:-140, fidy:-10, hery:290, rivo:30};
+const POS = {hery:[270,45], fidy:[465,140], soa:[395,318], rivo:[145,318], lalao:[75,140], hub:[270,190]};
+const BRAND = '#003087';
+const $ = s => document.querySelector(s);
+
+/* Characters */
+function figSVG(p){
+  const hc = p.hc;
+  const back = p.hair==='long' ? `<path d="M29 60C25 28 44 20 60 20s35 8 31 40l5 44H24z" fill="${hc}"/>` : '';
+  const top = {
+    short:`<path d="M34 54C32 32 45 26 60 26s28 6 26 28c-6-10-15-14-26-14s-20 4-26 14z" fill="${hc}"/>`,
+    bun:`<circle cx="60" cy="23" r="11" fill="${hc}"/><path d="M34 54C32 33 45 27 60 27s28 6 26 27c-5-11-15-16-26-16s-21 5-26 16z" fill="${hc}"/>`,
+    long:`<path d="M35 52C37 33 47 28 60 28s24 5 25 24c-8-9-16-12-25-12s-17 3-25 12z" fill="${hc}"/>`,
+    cap:`<path d="M34 50C34 31 46 25 60 25s26 6 26 25z" fill="${hc}"/><path d="M62 45h34a4 4 0 0 1 0 8H62z" fill="${hc}"/>`,
+    curly:[[38,48],[45,37],[57,32],[70,33],[80,41],[85,52],[35,58]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="9" fill="${hc}"/>`).join(''),
+  }[p.hair];
+  return `<svg viewBox="0 0 120 140" aria-hidden="true">${back}
+    <path d="M10 140c0-30 21-46 50-46s50 16 50 46z" fill="${p.c}"/>
+    <rect x="52" y="74" width="16" height="22" rx="6" fill="${p.skin}"/>
+    <path d="M49 95l11 11 11-11z" fill="${p.skin}"/>
+    ${p.apron?'<path d="M43 108h34v32H43z" fill="#f8fafc"/><path d="M45 108l-7-13M75 108l7-13" stroke="#f8fafc" stroke-width="3"/>':''}
+    ${p.stripe?'<path d="M14 126h92" stroke="#fde047" stroke-width="5"/>':''}
+    <circle cx="60" cy="56" r="25" fill="${p.skin}"/>
+    <circle cx="51" cy="58" r="2.6" fill="#1e1b18"/><circle cx="69" cy="58" r="2.6" fill="#1e1b18"/>
+    <path d="M52 68q8 6 16 0" stroke="#1e1b18" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    ${top}
+    ${p.glasses?'<g fill="none" stroke="#0f172a" stroke-width="2"><circle cx="51" cy="58" r="7"/><circle cx="69" cy="58" r="7"/><path d="M58 58h4"/></g>':''}
+  </svg>`;
+}
+
+function rel(id){
+  if (id==='ops') return '<span>Holds the clearing account.</span><br>Runs the round. Sends payouts.';
+  // The debt added live sits in a hidden .new span, comma included
+  const list = (side, other) => DEBTS.filter(d=>d[side]===id)
+    .map((d,i)=>{ const t=(i?', ':'')+PEOPLE[d[other]].name+' $'+d[2]; return d[3]?`<b class="new">${t}</b>`:`<b>${t}</b>`; }).join('');
+  return `<span>Owes</span> ${list(0,1)}<br><span>Owed by</span> ${list(1,0)}`;
+}
+
+const cast = $('#cast'), frame = $('#frame');
+const HOME = {};
+ORDER.forEach((id,i)=>{
+  const p = PEOPLE[id], left = 600 + i*213;
+  const card = document.createElement('div');
+  card.className = 'pcard'; card.id = 'card-'+id; card.style.left = left+'px'; card.style.setProperty('--c', p.c);
+  const chip = id==='ops' ? '<div class="chip ops">Clearing account</div>'
+    : `<div class="chip ${NET[id]<0?'in':'out'}">${NET[id]<0?'Pays in $'+(-NET[id]):'Receives $'+NET[id]}</div>`;
+  card.innerHTML = `<div class="slot">${id==='ops'?'At the laptop':'At the phone'}</div><h3><i></i>${p.name}</h3><div class="biz">${p.biz}</div><div class="rel">${rel(id)}</div>${chip}`;
+  cast.appendChild(card);
+  const fig = document.createElement('div');
+  fig.className = 'fig'; fig.id = 'fig-'+id; fig.innerHTML = figSVG(p);
+  frame.appendChild(fig);
+  HOME[id] = [left+99, 700+28+132, .9];
+});
+const SPOT = {trader:[170,700,1.9], ops:[1800,700,1.7]};
+function place(id, [x,y,s]){ $('#fig-'+id).style.transform = `translate(${x-60}px,${y-140}px) scale(${s})`; }
+
+/* Graph */
+const NS = 'http://www.w3.org/2000/svg', graph = $('#graph');
+function curve(a, b, off, hubEnd, hubStart){
+  const [ax,ay]=a, [bx,by]=b, dx=bx-ax, dy=by-ay, L=Math.hypot(dx,dy), ux=dx/L, uy=dy/L;
+  const cut = hub => hub ? Math.min(66/Math.abs(ux||1e-6), 24/Math.abs(uy||1e-6))+6 : 32;
+  const sx=ax+ux*cut(hubStart), sy=ay+uy*cut(hubStart), ex=bx-ux*(cut(hubEnd)+4), ey=by-uy*(cut(hubEnd)+4);
+  const mx=(sx+ex)/2-uy*off, my=(sy+ey)/2+ux*off;
+  return {d:`M${sx} ${sy}Q${mx} ${my} ${ex} ${ey}`, lx:.25*sx+.5*mx+.25*ex, ly:.25*sy+.5*my+.25*ey};
+}
+function el(tag, attrs, parent=graph){ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); parent.appendChild(e); return e; }
+DEBTS.forEach(([a,b,v,isNew],i)=>{
+  const g = el('g',{class:'edge'+(isNew?' new':''), style:`transition-delay:${i*90}ms`});
+  const c = curve(POS[a],POS[b],22);
+  el('path',{d:c.d,pathLength:1,style:`transition-delay:${i*90}ms`},g);
+  el('text',{x:c.lx,y:c.ly+4},g).textContent='$'+v;
+});
+Object.entries(NET).forEach(([id,v],i)=>{
+  const g = el('g',{class:'hubedge',id:'h-'+id});
+  const c = v<0 ? curve(POS[id],POS.hub,0,true,false) : curve(POS.hub,POS[id],0,false,true);
+  el('path',{d:c.d,pathLength:1,style:`transition-delay:${300+i*150}ms`},g);
+  el('text',{x:c.lx+(c.lx<270?-18:18),y:c.ly+4},g).textContent='$'+Math.abs(v);
+});
+const hubG = el('g',{class:'hubnode'});
+el('rect',{x:POS.hub[0]-66,y:POS.hub[1]-24,width:132,height:48,rx:24},hubG);
+el('text',{x:POS.hub[0],y:POS.hub[1]+4},hubG).textContent='Clearing account';
+Object.keys(NET).forEach(id=>{
+  const g = el('g',{class:'node'});
+  el('circle',{cx:POS[id][0],cy:POS[id][1],r:28,fill:PEOPLE[id].c},g);
+  el('text',{x:POS[id][0],y:POS[id][1]+4},g).textContent=PEOPLE[id].name;
+});
+
+/* Phone screens */
+const PHOTO = '../test-photos/photo-1-rivo-hery-50.jpg';
+const SCREENS = {
+  idle: () => `<div class="idle"><img src="../../public/alamino-logo.png" alt="Alamino"><p class="muted">Clearing for market traders</p></div>`,
+  camera: () => `<div class="cam"><div class="vf"></div>Point at the notebook page<div class="shutter"></div></div>`,
+  reading: () => `<p class="lbl">Notebook photo</p><img class="thumb" id="pthumb" src="${PHOTO}" alt=""><div class="ai"><span class="spin"></span>AI is reading the page</div><div class="shim"></div><div class="shim short"></div><div class="shim"></div>`,
+  draft: () => `<p class="lbl">Notebook photo</p><img class="thumb" src="${PHOTO}" alt="">
+    <div class="card"><span class="tag">AI draft. Check it before you save.</span>
+    <div class="row"><span>Debtor</span><b>Rivo</b></div><div class="row"><span>Creditor</span><b>Hery</b></div>
+    <div class="row"><span>Amount</span><b>$50.00</b></div><div class="row"><span>Note</span><b>rice</b></div></div>
+    <div id="pact"><button class="btn" id="pbtn">Save</button></div>`,
+  confirm: () => `<p class="lbl">Waiting for you</p>
+    <div class="card"><div class="muted">Rivo says</div><div class="amt" style="font-size:22px">Rivo owes Hery</div><div class="amt">$50.00</div>
+    <div class="muted">Note: rice. Source: notebook photo.</div><img class="thumb" style="width:100%;height:110px;margin:10px 0 0" src="${PHOTO}" alt=""></div>
+    <div id="pact"><button class="btn" id="pbtn">Approve</button><button class="btn ghost">Different amount</button></div>`,
+  pay: (id) => `<p class="lbl">After clearing</p>
+    <div class="card center"><div class="muted">You pay into the clearing account</div><div class="amt">$${-NET[id]}.00</div>
+    <div class="muted">All your debts and credits in this round are now one number.</div></div>
+    <div id="pact"><button class="btn paypal" id="pbtn">Pay with PayPal</button><p class="fine">PayPal sandbox</p></div>`,
+  payout: () => `<div class="notif"><small>PayPal</small>You received $290.00</div><p class="lbl">Your statement</p>
+    <div class="card"><div class="row"><span>Owed to you</span><b>$410.00</b></div><div class="row"><span>You owed</span><b>$120.00</b></div>
+    <div class="row total"><span>You receive</span><b>$290.00</b></div></div>
+    <p class="muted" style="margin-top:12px">Circles cancelled part of these debts with no cash. PayPal paid you the rest.</p>`,
+};
+function phone(who, screen, arg){
+  const p = who ? PEOPLE[who] : null;
+  $('#phone').style.setProperty('--pc', p ? p.c : BRAND);
+  $('#pwho').textContent = p ? 'Viewing as '+p.name : 'Market';
+  const s = $('#pscreen'); s.innerHTML = SCREENS[screen](arg);
+  s.classList.remove('swap'); void s.offsetWidth; s.classList.add('swap');
+}
+function press(sel, after){ const b=$(sel); if(!b) return; b.classList.remove('press'); void b.offsetWidth; b.classList.add('press'); if(after) setTimeout(after, 350); }
+function ok(text){ $('#pact').innerHTML = `<div class="ok">${text}</div>`; }
+
+/* Laptop helpers */
+const kpi = (id, v) => $('#k-'+id+' b').textContent = v;
+function count(id, from, to, ms, fmt = v=>'$'+Math.round(v)){
+  const t0 = performance.now();
+  (function f(now){ const k=Math.min(1,(now-t0)/ms); kpi(id, fmt(from+(to-from)*(1-Math.pow(1-k,3)))); if(k<1) requestAnimationFrame(f); })(t0);
+  $('#k-'+id).classList.add('hot'); setTimeout(()=>$('#k-'+id).classList.remove('hot'), ms+800);
+}
+const FEED = [
+  [['08:00','8 confirmed debts loaded. Total $940.']],
+  [['08:12','<b>Rivo</b> added a debt from a photo. Rivo owes Hery $50. Waiting for Hery.']],
+  [['08:14','<b>Hery</b> approved. The debt is confirmed. Total $990.']],
+  [['08:30','Clearing round 1. Circles cancelled $570. No cash moved.'],['08:30','Net plan: 3 pay-ins, 2 payouts, $320 in total.']],
+  [['08:41','<b>Soa</b> paid $170 through PayPal.'],['08:44','<b>Lalao</b> paid $140 through PayPal.'],['08:47','<b>Fidy</b> paid $10. All pay-ins captured.']],
+  [['08:50','Payout batch sent. Hery $290, Rivo $30. Round settled.']],
+  [],
+];
+function push([t,txt]){ const li=document.createElement('li'); li.innerHTML=`<time>${t}</time><span>${txt}</span>`; $('#feed').prepend(li); }
+function payin(v){ $('#pbar').style.width = (v/320*100)+'%'; $('#ptext').textContent = `$${v} of $320`; }
+function paid(id){ $('#h-'+id).classList.add('paid'); const c=$('#card-'+id+' .chip'); c.classList.add('done'); c.textContent = NET[id]<0 ? 'Paid $'+(-NET[id]) : 'Received $'+NET[id]; }
+
+/* State: every scene sets it in full, so any scene can start cold */
+function state(s){
+  ORDER.forEach(id=>{
+    const on = id===s.active || (id==='ops' && !!s.ops);
+    place(id, on ? (id==='ops'?SPOT.ops:SPOT.trader) : HOME[id]);
+    $('#fig-'+id).classList.toggle('act', on);
+    $('#card-'+id).classList.toggle('act', on);
+    $('#card-'+id).classList.toggle('away', on);
+  });
+  $('#laptop').classList.toggle('live', !!s.ops);
+  graph.setAttribute('class', s.mode || '');
+  document.body.classList.toggle('newrel', !!s.newRel);
+  document.body.classList.toggle('chips', !!s.chips);
+  document.body.classList.toggle('party', !!s.party);
+  document.querySelectorAll('.hubedge').forEach(e=>e.classList.remove('paid'));
+  ORDER.forEach(id=>{ const c=$('#card-'+id+' .chip'); if(id!=='ops'){ c.classList.remove('done'); c.textContent = NET[id]<0?'Pays in $'+(-NET[id]):'Receives $'+NET[id]; } });
+  (s.paid||[]).forEach(paid);
+  payin(s.payin||0);
+  kpi('total','$'+(s.total||940)); kpi('cancel','$'+(s.cancel||0)); kpi('move', s.move?'$'+s.move:'-'); kpi('saved', s.saved||'-');
+  const b = $('#lbtn'); b.textContent = s.btn==='payout' ? 'Send payouts' : 'Run clearing'; b.disabled = !!s.btnOff;
+  $('#gtitle').textContent = s.mode && s.mode.includes('hub') ? 'Net plan, round 1' : 'Debt network';
+  phone(s.phone[0], s.phone[1], s.phone[2]);
+  $('#titlecard').classList.toggle('on', !!s.title);
+  $('#endcard').classList.toggle('on', !!s.end);
+  $('#shot').className = '';
+  $('#shot').style.transform = '';
+}
+
+/* Photo: show it big, take it, fly it into the phone */
+function shotShow(){ $('#shot').className='show'; }
+function shotTake(){
+  const f=$('#flash'); f.classList.remove('on'); void f.offsetWidth; f.classList.add('on');
+  setTimeout(()=>{
+    phone('rivo','reading'); const th=$('#pthumb'); th.style.visibility='hidden';
+    const s = frame.getBoundingClientRect().width/1920, fr=frame.getBoundingClientRect(), r=th.getBoundingClientRect();
+    const x=(r.left-fr.left)/s, y=(r.top-fr.top)/s, k=(r.width/s)/900;
+    const shot=$('#shot'); shot.className='show fly';
+    shot.style.transform = `translate(${x-510}px,${y-60}px) scale(${k})`;
+    setTimeout(()=>{ th.style.visibility='visible'; shot.className='fly'; }, 760);
+  }, 250);
+}
+
+const AFTER_CLEAR = {total:990, cancel:570, move:320, saved:'67.7%', chips:true, newRel:true, btn:'payout', btnOff:true};
+const SCENES = [
+  {label:'Intro', dur:9000, step:'The market', title:'Five traders. $940 of debts.', body:'Each debt lives in a paper notebook. Nobody can pay everyone at once.',
+   setup(){ state({phone:[null,'idle'], title:true, mode:'drawing'}); $('#feed').innerHTML=''; },
+   steps:[[2800,()=>$('#titlecard').classList.remove('on')],[3400,()=>graph.setAttribute('class','')],[5000,()=>push(FEED[0][0])]]},
+  {label:'1. Add', dur:10500, step:'Step 1, Add', title:'Rivo photographs a notebook page', body:'The AI reads the page and drafts the debt. Rivo checks it and saves.',
+   setup(){ state({active:'rivo', phone:['rivo','camera']}); },
+   steps:[[1300,shotShow],[2900,shotTake],[5400,()=>phone('rivo','draft')],[7600,()=>press('#pbtn',()=>{ ok('Saved. Hery must confirm.'); graph.setAttribute('class','proposed'); document.body.classList.add('newrel'); push(FEED[1][0]); })]]},
+  {label:'2. Confirm', dur:7500, step:'Step 2, Confirm', title:'Hery approves the debt', body:'Both sides must agree before a debt counts in the round.',
+   setup(){ state({active:'hery', phone:['hery','confirm'], mode:'proposed', newRel:true}); },
+   steps:[[3200,()=>press('#pbtn',()=>{ ok('Confirmed by both sides.'); graph.setAttribute('class','confirmed'); count('total',940,990,900); push(FEED[2][0]); })]]},
+  {label:'3. Clear', dur:9500, step:'Step 3, Clear', title:'The clearing house runs a round', body:'Circles of debt cancel $570 with no cash. Plain code does every calculation, never the AI.',
+   setup(){ state({ops:true, phone:[null,'idle'], mode:'confirmed', total:990, newRel:true}); },
+   steps:[[1200,()=>press('#lbtn')],[1500,()=>{ graph.setAttribute('class','confirmed pulse'); count('cancel',0,570,2200); }],
+     [4000,()=>{ graph.setAttribute('class','hub drawing'); requestAnimationFrame(()=>requestAnimationFrame(()=>graph.setAttribute('class','hub'))); $('#gtitle').textContent='Net plan, round 1';
+       count('move',0,320,1200); count('saved',0,67.7,1200,v=>v.toFixed(1)+'%'); document.body.classList.add('chips'); $('#lbtn').textContent='Send payouts'; $('#lbtn').disabled=true; push(FEED[3][0]); }],
+     [5200,()=>push(FEED[3][1])]]},
+  {label:'4. Pay in', dur:12000, step:'Step 4, Pay in', title:'Three traders pay what they still owe', body:'Soa, Lalao and Fidy pay $320 in total into the clearing account through PayPal.',
+   setup(){ state({...AFTER_CLEAR, active:'soa', phone:['soa','pay','soa'], mode:'hub'}); },
+   steps:[[1900,()=>press('#pbtn',()=>{ ok('Payment captured.'); paid('soa'); payin(170); push(FEED[4][0]); })],
+     [3700,()=>state({...AFTER_CLEAR, active:'lalao', phone:['lalao','pay','lalao'], mode:'hub', paid:['soa'], payin:170})],
+     [5600,()=>press('#pbtn',()=>{ ok('Payment captured.'); paid('lalao'); payin(310); push(FEED[4][1]); })],
+     [7400,()=>state({...AFTER_CLEAR, active:'fidy', phone:['fidy','pay','fidy'], mode:'hub', paid:['soa','lalao'], payin:310})],
+     [9300,()=>press('#pbtn',()=>{ ok('Payment captured.'); paid('fidy'); payin(320); push(FEED[4][2]); $('#lbtn').disabled=false; })]]},
+  {label:'5. Pay out', dur:9000, step:'Step 5, Pay out', title:'PayPal pays the traders who are owed', body:'Hery gets $290 and Rivo gets $30. Each trader gets a plain statement.',
+   setup(){ state({...AFTER_CLEAR, btnOff:false, ops:true, phone:[null,'idle'], mode:'hub', paid:['soa','lalao','fidy'], payin:320}); },
+   steps:[[1300,()=>press('#lbtn')],[1700,()=>{ paid('hery'); paid('rivo'); push(FEED[5][0]); $('#lbtn').disabled=true; }],
+     [3000,()=>{ state({...AFTER_CLEAR, active:'hery', phone:['hery','payout'], mode:'hub', paid:['soa','lalao','fidy','hery','rivo'], payin:320}); }]]},
+  {label:'Result', dur:8000, step:'Result', title:'$990 of debt settled with $320', body:'AI reads the notebooks. Plain code counts. PayPal moves the cash.',
+   setup(){ state({...AFTER_CLEAR, phone:[null,'idle'], mode:'hub', paid:['soa','lalao','fidy','hery','rivo'], payin:320, end:true, party:true}); },
+   steps:[]},
+];
+
+/* Timeline */
+let cur=0, t=0, fired=0, playing=true, last=performance.now();
+const ctrl = $('#ctrl');
+ctrl.innerHTML = `<button id="play">Pause</button>` + SCENES.map((s,i)=>`<button data-i="${i}">${s.label}</button>`).join('') + `<span class="hint">Space: play or pause. Arrows: scenes. H: hide this bar for recording.</span>`;
+$('#dots').innerHTML = SCENES.map(()=>'<i></i>').join('');
+function go(i){
+  cur=(i+SCENES.length)%SCENES.length; t=0; fired=0;
+  const s=SCENES[cur];
+  // Rebuild the feed for the scenes before this one
+  if (cur>0){ $('#feed').innerHTML=''; FEED.slice(0,cur).flat().forEach(push); }
+  s.setup();
+  const cap=$('#caption'); cap.querySelector('.step').textContent=s.step; cap.querySelector('h2').textContent=s.title; cap.querySelector('p').textContent=s.body;
+  cap.classList.remove('swap'); void cap.offsetWidth; cap.classList.add('swap');
+  document.querySelectorAll('#dots i').forEach((d,k)=>d.classList.toggle('on',k<=cur));
+  ctrl.querySelectorAll('[data-i]').forEach(b=>b.classList.toggle('on',+b.dataset.i===cur));
+}
+function tick(now){
+  const dt=now-last; last=now;
+  if(playing){
+    t+=dt; const s=SCENES[cur];
+    while(fired<s.steps.length && s.steps[fired][0]<=t) s.steps[fired++][1]();
+    if(t>=s.dur){ if(cur===SCENES.length-1){ playing=false; $('#play').textContent='Play'; } else go(cur+1); }
+  }
+  const total=SCENES.reduce((a,s)=>a+s.dur,0), done=SCENES.slice(0,cur).reduce((a,s)=>a+s.dur,0)+Math.min(t,SCENES[cur].dur);
+  $('#progress').style.width=(done/total*100)+'%';
+  requestAnimationFrame(tick);
+}
+function toggle(){ if(!playing && cur===SCENES.length-1 && t>=SCENES[cur].dur) go(0); playing=!playing; $('#play').textContent=playing?'Pause':'Play'; }
+ctrl.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; if(b.id==='play') toggle(); else { go(+b.dataset.i); playing=true; $('#play').textContent='Pause'; } });
+addEventListener('keydown',e=>{
+  if(e.key===' '){ e.preventDefault(); toggle(); }
+  if(e.key==='ArrowRight') go(cur+1);
+  if(e.key==='ArrowLeft') go(cur-1);
+  if(e.key==='h'||e.key==='H'){ document.body.classList.toggle('clean'); fit(); }
+});
+function fit(){
+  const top = document.body.classList.contains('clean') ? 0 : 52;
+  const s = Math.min(innerWidth/1920, (innerHeight-top)/1080);
+  frame.style.transform = `translate(${(innerWidth-1920*s)/2}px,${top+(innerHeight-top-1080*s)/2}px) scale(${s})`;
+}
+addEventListener('resize',fit); fit();
+const q = new URLSearchParams(location.search);
+if (q.has('clean')) { document.body.classList.add('clean'); fit(); }
+go(+(q.get('scene')||0));
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
