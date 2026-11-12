@@ -100,10 +100,13 @@ if [[ "$MODE" == deploy ]]; then
   git -C "$ROOT" archive "$SHA" | tar -x -C "$target"
   [[ ! -e "$target/.env.local" && ! -L "$target/.env.local" && ! -e "$target/data" && ! -L "$target/data" ]] || die 'Persistent paths must not be tracked in Git.'
   ln -s -- "$ROOT/.env.local" "$target/.env.local"
-  ln -s -- "$ROOT/data" "$target/data"
   [[ -f "$target/deploy/ecosystem.config.cjs" && -f "$target/src/app/api/health/route.ts" ]] || die 'Commit does not contain the deployment configuration and health route.'
+  # Tailwind scans the build tree. Attach persistent data only after compilation;
+  # database access during the build already uses the absolute DATABASE_PATH.
   (trap - ERR; cd "$target"; npm ci --include=dev; DATABASE_PATH="$ROOT/data/app.db" npm run build)
   [[ -s "$target/.next/BUILD_ID" ]] || die 'Build output is missing.'
+  [[ ! -e "$target/data" && ! -L "$target/data" ]] || die 'Build unexpectedly created a persistent data path.'
+  ln -s -- "$ROOT/data" "$target/data"
   printf '%s\n' "$SHA" >"$target/.deploy-sha"
   backup="$ROOT/data/backups/pre-$SHA-$(date -u +%Y%m%dT%H%M%SZ)-$$.db"
   # Online SQLite backup includes committed WAL contents; copying app.db alone is unsafe.

@@ -22,7 +22,7 @@ function fixture() {
   fs.writeFileSync(path.join(directory, 'active'), posix(root));
   const scripts = {
     node: 'if [[ "$1" == --version ]]; then echo v24.21.0; else exec "$FAKE_REAL_NODE" "$@"; fi',
-    npm: 'echo "$*" >> "$FAKE_LOG"\nif [[ "$1" == run && "$2" == build ]]; then [[ "${FAKE_BUILD_SUCCESS:-0}" == 1 ]] || exit 1; mkdir -p .next; echo new-build >.next/BUILD_ID; fi',
+    npm: 'echo "$*" >> "$FAKE_LOG"\nif [[ "$1" == run && "$2" == build ]]; then [[ "${FAKE_BUILD_SUCCESS:-0}" == 1 ]] || exit 1; [[ ! -e data && ! -L data ]] || exit 1; mkdir -p .next; echo new-build >.next/BUILD_ID; fi',
     pm2: `
 case "$1" in
   jlist) if [[ -s "$FAKE_ACTIVE" ]]; then echo '[{"name":"alamino"},{"name":"other-app"}]'; else echo '[{"name":"other-app"}]'; fi; exit 0;;
@@ -88,6 +88,7 @@ test('activation replaces the old PM2 working directory and manual rollback rest
   assert.equal(deployed.status, 0, deployed.stderr + deployed.stdout);
   const current = path.join(f.root, '.deploy/current');
   const release = fs.realpathSync(current);
+  assert.equal(fs.realpathSync(path.join(release, 'data')), fs.realpathSync(path.join(f.root, 'data')));
   assert.equal(fs.readFileSync(f.active, 'utf8'), posix(release));
   assert.equal(fs.readFileSync(path.join(release, '.deploy-sha'), 'utf8').trim(), 'a'.repeat(40));
   assert.equal(fs.realpathSync(path.join(f.root, '.deploy/previous')), fs.realpathSync(f.root));
