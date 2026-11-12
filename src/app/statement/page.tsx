@@ -16,9 +16,9 @@ const actionText = { pay_in: "You pay", receive: "You receive", nothing: "Nothin
 const dateFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
 export default function StatementPage() {
-  const { traderId, traders, name, config } = useApp();
-  // The plain-code statement comes at once. The model text follows in the background.
-  const statement = useApi<Statement>(`/api/rounds/latest/statement/${traderId}?text=plain`);
+  const { traderId, traders, name, config, isHouse } = useApp();
+  // The plain-code statement comes at once. The model text follows in the background. The house has no statement.
+  const statement = useApi<Statement>(isHouse ? null : `/api/rounds/latest/statement/${traderId}?text=plain`);
   const plain = statement.data;
   const withModel = !!plain && config?.aiMode === "model";
   const [ai, setAi] = useState<{ for: Statement; s: Statement | null } | null>(null);
@@ -42,6 +42,21 @@ export default function StatementPage() {
   const round = useApi<Round>(plain ? `/api/rounds/${plain.roundId}` : null).data;
   const idOf = (counterparty: string) => traders.find((t) => t.name === counterparty)?.id ?? counterparty;
 
+  if (isHouse) {
+    return (
+      <div className="mx-auto max-w-4xl space-y-6">
+        <PageHeader title="Statement" />
+        <Empty title="Statements are personal. Choose a trader in View as.">
+          The clearing house sees the money in and out on the{" "}
+          <Link href="/finance" className="font-medium text-accent underline">
+            Finance page
+          </Link>
+          .
+        </Empty>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       {!s || statement.error ? (
@@ -49,10 +64,7 @@ export default function StatementPage() {
           <PageHeader title={`Statement for ${name(traderId)}`} />
           {statement.error?.status === 404 ? (
             <Empty title="No clearing round yet">
-              <Link href="/" className="font-medium text-accent underline">
-                Go to the market
-              </Link>{" "}
-              and run clearing.
+              The clearing house runs clearing. Your result shows here after it.
             </Empty>
           ) : statement.error ? (
             <ErrorNote error={statement.error} onRetry={statement.reload} />

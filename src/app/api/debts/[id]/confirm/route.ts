@@ -1,4 +1,5 @@
 import { confirmDebt, errorResponse, HttpError } from "@/lib/db";
+import { requireTraderOrHouse } from "@/lib/privacy";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -8,6 +9,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (typeof traderId !== "string" || typeof ok !== "boolean") {
       throw new HttpError(400, "Body must be { traderId: string, ok: boolean, counterAmountCents?: number }");
     }
+    requireTraderOrHouse(req, traderId);
     return Response.json(confirmDebt(id, traderId, ok, counterAmountCents ?? undefined));
   } catch (e) {
     return errorResponse(e);

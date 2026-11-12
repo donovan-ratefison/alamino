@@ -2,17 +2,18 @@
 
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
-import type { TraderId } from "@/lib/types";
+import { HOUSE, type Viewer } from "@/lib/types";
 import { useApp } from "./app";
 import { NavIcon } from "./nav-icon";
 import { btn } from "./ui";
 
-const STEPS: { text: string; href: string; trader?: TraderId }[] = [
-  { text: 'Add a debt as Rivo. Type "I owe Hery 50 for rice".', href: "/add", trader: "rivo" },
-  { text: "Approve it as Hery.", href: "/confirm", trader: "hery" },
-  { text: "Run clearing on the market.", href: "/" },
-  { text: "Pay in as Soa, Lalao and Fidy. Send payouts.", href: "/rounds/latest", trader: "soa" },
-  { text: "Read the statement.", href: "/statement" },
+// Each step sets the viewer: the demo shows both roles.
+const STEPS: { text: string; href: string; viewer: Viewer }[] = [
+  { text: "As the clearing house, see the whole market.", href: "/", viewer: HOUSE },
+  { text: 'As Rivo, add: "I owe Hery 50 for rice".', href: "/add", viewer: "rivo" },
+  { text: "As Hery, approve it.", href: "/confirm", viewer: "hery" },
+  { text: "As the clearing house, run clearing.", href: "/", viewer: HOUSE },
+  { text: "As Soa, pay in and read your statement.", href: "/rounds/latest", viewer: "soa" },
 ];
 
 // Guide state: "hidden", a step number "1" to "5", or null for a visitor who has not chosen yet.
@@ -69,7 +70,7 @@ export function DemoGuide() {
               </span>{" "}
               {step.text}
             </p>
-            <Link href={step.href} aria-label={`Go to step ${n}`} className="shrink-0 px-1 py-1.5 font-medium text-accent underline" onClick={() => step.trader && setTraderId(step.trader)}>
+            <Link href={step.href} aria-label={`Go to step ${n}`} className="shrink-0 px-1 py-1.5 font-medium text-accent underline" onClick={() => setTraderId(step.viewer)}>
               Go
             </Link>
             <div className="flex gap-1">

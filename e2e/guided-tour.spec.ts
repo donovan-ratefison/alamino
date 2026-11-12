@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { ONBOARDING_STORAGE_KEY } from "../src/lib/onboarding";
+import { viewAs } from "./helpers";
 
 test.use({ storageState: { cookies: [], origins: [] }, reducedMotion: "reduce" });
 
@@ -39,7 +40,7 @@ test("a skipped tour stays dismissed after reload and can be replayed from Help"
   await popover.getByRole("button", { name: "Skip tour" }).click();
   expect(await page.evaluate((key) => localStorage.getItem(key), ONBOARDING_STORAGE_KEY)).toBe("dismissed");
   await page.reload();
-  await expect(page.getByRole("heading", { name: /Less to pay/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Settle up with the whole market." })).toBeVisible();
   // Wait beyond the first-visit delay to ensure a reload does not reopen the tour.
   await page.waitForTimeout(1000);
   await expect(popover).toBeHidden();
@@ -74,6 +75,8 @@ test("phone visitors get five labelled icons, an Add tour on request and replay 
     await expect(link).toBeVisible();
     await expect(link.locator("svg")).toHaveAttribute("aria-hidden", "true");
   }
+  // The clearing house does not add debts: a trader does.
+  await viewAs(page, "soa");
   await nav.getByRole("link", { name: "Add a debt" }).click();
   await expect(nav.getByRole("link", { name: "Add a debt" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("button", { name: "How to add a debt" })).toBeVisible();

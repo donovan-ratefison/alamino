@@ -10,6 +10,7 @@ test.describe("Settle a round with simulated PayPal", () => {
   test("three pay-ins, then payouts, finish the round", async ({ page, request }) => {
     test.setTimeout(90_000);
     await page.goto("/rounds/latest");
+    await viewAs(page, "house");
     const sendPayouts = page.getByRole("button", { name: /payout/i });
     const main = page.getByRole("main");
     await expect(main).toContainText("0 of 3 paid in");
@@ -22,12 +23,15 @@ test.describe("Settle a round with simulated PayPal", () => {
     ]) {
       await expect(sendPayouts).toHaveCount(0);
       await viewAs(page, traderId);
+      // A trader sees a count of the other pay-ins, never the names, and never the payout button.
+      if (traderId === "soa") await expect(main).toContainText("2 other traders still to pay");
       await page.getByRole("button", { name: new RegExp(`pay.*${amount}(?!\\d)`, "i") }).click();
       await expect
         .poll(async () => (await latestRound(request)).settlements.find((s) => s.traderId === traderId)?.status)
         .toBe("captured");
     }
 
+    await viewAs(page, "house");
     await expect(main).toContainText("3 of 3 paid in");
     await expect(sendPayouts).toBeVisible();
     await sendPayouts.click();
@@ -37,8 +41,13 @@ test.describe("Settle a round with simulated PayPal", () => {
     for (const s of round.settlements) expect(["captured", "confirmed"]).toContain(s.status);
     await expect(main).toContainText(/done/i);
     await expect(main).not.toContainText(/\d of 3 paid in/);
-    // The first card is the final state: counts from the settlements and a link to the statement.
+    // The first card is the final state. The house sees the counts and a link to Finance.
     await expect(main).toContainText("3 paid in, 2 paid out");
+    await expect(main.getByRole("link", { name: "Open Finance" })).toHaveAttribute("href", "/finance");
+    // A trader sees their own result and a link to their statement.
+    await viewAs(page, "soa");
+    await expect(main).toContainText("You paid $170");
+    await expect(main.getByRole("heading", { level: 1 })).toHaveText(/^You settled .* with \$170$/);
     await expect(main.getByRole("link", { name: "Read statement" })).toHaveAttribute("href", "/statement");
 
     const debts = await listDebts(request);

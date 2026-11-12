@@ -1,12 +1,13 @@
 import { financeError, requireAdmin, sameOrigin } from "@/lib/finance/auth";
 import { getRound, updateSettlement } from "@/lib/db";
+import { requireTraderOrHouse } from "@/lib/privacy";
 import { paypalMode } from "@/lib/paypal/client";
 import { createOrder } from "@/lib/paypal/payments";
 
 // Creates the PayPal order for one pay-in. The amount comes from the round, never from the browser.
 export async function POST(req: Request, ctx: { params: Promise<{ id: string; traderId: string }> }) {
-  try { if (paypalMode() === "sandbox") { sameOrigin(req); requireAdmin(req); } } catch (e) { return financeError(e); }
   const { id, traderId } = await ctx.params;
+  try { requireTraderOrHouse(req, traderId); if (paypalMode() === "sandbox") { sameOrigin(req); requireAdmin(req); } } catch (e) { return financeError(e); }
   const s = getRound(id)?.settlements.find((x) => x.traderId === traderId && x.direction === "pay_in");
   if (!s) return Response.json({ error: "Unknown round, or this trader has no pay-in." }, { status: 404 });
   if (s.status === "captured") return Response.json({ error: "This pay-in is already captured." }, { status: 409 });

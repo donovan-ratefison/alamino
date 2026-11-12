@@ -82,7 +82,7 @@ export function MoreMenu() {
       {open && (
         <div id="more-panel" className="bell-panel more-panel">
           <div className="grid">
-            <TourTrigger menu onStart={() => setOpen(false)} />
+            <TourTrigger menu onStart={() => { setOpen(false); button.current?.focus(); }} />
             <button
               type="button"
               className="nav-link w-full"

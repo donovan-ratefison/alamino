@@ -63,7 +63,7 @@ Configure these locally or in the hosting service; never commit secrets:
 | `PAYPAL_CLIENT_SECRET` | Sandbox REST app secret, server side only. |
 | `NEXT_PUBLIC_PAYPAL_CLIENT_ID` | Same Sandbox app identifier, for the existing Checkout button. |
 | `PAYPAL_BASE_URL` | Must be `https://api-m.sandbox.paypal.com` for Finance. |
-| `AI_API_KEY` | Server-side key for the configured OpenAI-compatible provider (Meta Model API by default). |
+| `AI_API_KEY` | Server-side key for the configured OpenAI-compatible provider. |
 | `AI_BASE_URL` | Provider endpoint, default `https://api.meta.ai/v1`. |
 | `AI_MODEL` | Provider model, default `muse-spark-1.3`; must support strict structured output. |
 | `AI_DAILY_CALLS` | Maximum model calls per UTC day across the server process; default 300. |

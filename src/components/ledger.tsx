@@ -28,24 +28,10 @@ function status(d: Debt, name: (id: string) => string): [string, Tone] {
   }
 }
 
-// The All / Mine switch. The market page puts it in the ledger card heading.
-export function LedgerFilter({ mine, onChange }: { mine: boolean; onChange: (mine: boolean) => void }) {
-  return (
-    <div className="ledger-filter" role="group" aria-label="Show debts">
-      <button type="button" aria-pressed={!mine} onClick={() => onChange(false)}>
-        All
-      </button>
-      <button type="button" aria-pressed={mine} onClick={() => onChange(true)}>
-        Mine
-      </button>
-    </div>
-  );
-}
-
 // Under 640 px the CSS shows each row as a 2 x 2 grid: debt and amount, note and status.
-export function Ledger({ debts, mine }: { debts: Debt[]; mine: boolean }) {
-  const { traderId, name } = useApp();
-  const rows = mine ? debts.filter((d) => d.debtorId === traderId || d.creditorId === traderId) : debts;
+// The server filters the list: a trader gets only their own debts, the clearing house gets all.
+export function Ledger({ debts }: { debts: Debt[] }) {
+  const { name } = useApp();
 
   if (debts.length === 0) {
     return (
@@ -56,8 +42,6 @@ export function Ledger({ debts, mine }: { debts: Debt[]; mine: boolean }) {
       </Empty>
     );
   }
-
-  if (rows.length === 0) return <p className="py-6 text-center text-sm text-zinc-600">No debt with {name(traderId)}.</p>;
 
   return (
     <div className="overflow-x-auto">
@@ -71,7 +55,7 @@ export function Ledger({ debts, mine }: { debts: Debt[]; mine: boolean }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((d) => {
+          {debts.map((d) => {
             const [text, tone] = status(d, name);
             return (
               <tr key={d.id} data-status={d.status}>

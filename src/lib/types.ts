@@ -4,6 +4,12 @@
 
 export type TraderId = string;
 
+// Who looks at the data. A trader sees only the debts where they are a side.
+// "house" is the clearing house operator: it sees the whole market and the totals.
+// The client sends it in the `x-alamino-viewer` header. Without the header, the viewer is "house".
+export type Viewer = TraderId | "house";
+export const HOUSE = "house";
+
 export interface Trader {
   id: TraderId;
   name: string; // "Hery"
@@ -67,6 +73,10 @@ export interface Edge {
 export interface Cancellation {
   path: TraderId[]; // [a, b, c] means a owes b, b owes c, c owes a
   amountCents: number; // amount removed from every debt on the circle
+  // Trader view only, for a circle of 3 or more. The path is then [viewer, next, prev]: the viewer owes next,
+  // prev owes the viewer. The part from next to prev is private (no edge, no amount), with hiddenTraders
+  // other traders on it (0 when next owes prev directly). A circle of 2 keeps its path.
+  hiddenTraders?: number;
 }
 
 export interface Position {
@@ -112,6 +122,13 @@ export interface Settlement {
   paypalPayoutBatchId?: string; // pay-outs, needed to poll the batch
 }
 
+// Trader view of a round: debtsBefore, result, settlements and debtChanges hold only what touches the viewer.
+// result.stats are the viewer's own numbers (gross = their debts, cashMoved = what they pay or receive).
+export interface RoundPrivacy {
+  viewer: Viewer;
+  otherPayments: { total: number; done: number }; // pay-ins of the other traders, without names
+}
+
 export interface Round {
   id: string;
   status: RoundStatus;
@@ -120,6 +137,7 @@ export interface Round {
   result: ClearingResult;
   settlements: Settlement[];
   debtChanges: DebtChange[]; // what the round did to each debt, for statements
+  privacy?: RoundPrivacy; // set only on a trader view
 }
 
 export interface DebtChange {

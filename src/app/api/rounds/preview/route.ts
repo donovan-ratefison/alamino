@@ -1,15 +1,15 @@
 import { connection } from "next/server";
 import { errorResponse, listDebts } from "@/lib/db";
-import { clear } from "@/lib/netting";
+import { previewFor, viewerOf } from "@/lib/privacy";
 
-// What a clearing round would do now. Saves nothing. clear() sums debts per pair, like runRound.
-export async function GET() {
+// What a clearing round would do now. Saves nothing.
+// House: market stats. Trader: own stats, plus what they would pay in or receive.
+export async function GET(req: Request) {
   await connection();
   try {
-    const debts = listDebts("confirmed");
-    if (debts.length === 0) return Response.json({ stats: null });
-    const { stats } = clear(debts.map((d) => ({ debtorId: d.debtorId, creditorId: d.creditorId, amountCents: d.remainingCents })));
-    return Response.json({ stats });
+    const viewer = viewerOf(req);
+    const edges = listDebts("confirmed").map((d) => ({ debtorId: d.debtorId, creditorId: d.creditorId, amountCents: d.remainingCents }));
+    return Response.json(previewFor(edges, viewer));
   } catch (e) {
     return errorResponse(e);
   }

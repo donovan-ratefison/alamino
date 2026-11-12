@@ -24,7 +24,7 @@
 }
 
 :root { color-scheme: light; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; scroll-padding-top: 80px; }
 body { background: #fff; color: #052969; -webkit-font-smoothing: antialiased; }
 ::selection { color: #003087; background: #cfe7ff; }
 button:not(:disabled), select { cursor: pointer; }
@@ -42,7 +42,7 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 .display-title { font-size: clamp(44px, 6.6vw, 88px); font-weight: 500; line-height: 1.01; letter-spacing: -.055em; }
 .section-title { font-size: clamp(30px, 3.3vw, 44px); font-weight: 500; line-height: 1.1; letter-spacing: -.035em; }
 .muted { color: #5f718c; }
-.site-header { background: #fff; border-bottom: 1px solid #e2eaf5; }
+.site-header { position: sticky; top: 0; z-index: 40; background: #fff; border-bottom: 1px solid #e2eaf5; }
 .header-content { display: flex; align-items: center; gap: 20px; max-width: 1248px; padding: 14px 24px; margin-inline: auto; }
 .header-actions { display: flex; flex-shrink: 0; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; margin-left: auto; }
 .brand-logo { width: 154px; height: auto; display: block; }
@@ -143,9 +143,14 @@ a.beat:hover { background: #e2efff; }
 .hero-network :focus-visible { outline-color: #0070e0; }
 .hero-network .network-shell { height: 380px; border: 0; background: white; }
 .market-section { padding-top: 48px; }
-.network-shell { height: 380px; overflow: hidden; border: 1px solid #dfebfa; border-radius: 16px; background: #f6faff; }
-.network-node { display: flex; height: 40px; width: 104px; align-items: center; justify-content: center; gap: 8px; padding-inline: 6px 10px; border: 1px solid #c6dcf7; border-radius: 9999px; background: white; font-size: 13px; font-weight: 600; color: #003087; transition: border-color .2s, box-shadow .2s; }
-.network-node-active { border-color: #0070e0; box-shadow: inset 0 0 0 1px #0070e0; }
+.network-shell { position: relative; height: 380px; overflow: hidden; border: 1px solid #dfebfa; border-radius: 16px; background: #f6faff; }
+.network-node { position: relative; display: flex; border-radius: 9999px; transition: opacity .6s, box-shadow .2s; }
+.network-node-active { box-shadow: 0 0 0 2px white, 0 0 0 4px #0070e0; }
+.network-node-faded { opacity: .35; }
+.network-name { position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 13px; font-weight: 600; line-height: 16px; color: #003087; }
+.network-name-above { top: auto; bottom: calc(100% + 4px); }
+.network-amount { position: absolute; top: 0; left: 0; padding: 1px 8px; border: 1px solid #dce5f2; border-radius: 9999px; background: white; font-size: 12px; font-weight: 600; line-height: 18px; white-space: nowrap; font-variant-numeric: tabular-nums; pointer-events: none; transition: opacity .6s, color .3s; }
+.network-defs { position: absolute; width: 0; height: 0; }
 .ledger-filter { display: inline-flex; width: fit-content; gap: 2px; padding: 3px; border: 1px solid #dce5f2; border-radius: 9999px; background: #eff6ff; }
 .ledger-filter button { min-height: 36px; padding: 6px 18px; border-radius: 9999px; color: #4b607e; font-size: 13px; font-weight: 500; }
 .ledger-filter button[aria-pressed="true"] { background: white; color: #003087; font-weight: 600; box-shadow: 0 1px 2px #05296926; }
@@ -332,4 +337,11 @@ input.capture-mini { width: 96px; }
 @media (max-width: 640px) {
   .demo-guide { font-size: 12px; line-height: 1.35; }
   .footer-bottom { border-top: 0; }
+}
+
+/* Privacy C1 */
+@media (max-width: 640px) {
+  /* The "Clearing house" option makes the select wider. On a phone the select shrinks to the space left in the header. */
+  .profile-control, .profile-field { min-width: 0; flex-shrink: 1; }
+  .profile-select { width: 100%; min-width: 0; text-overflow: ellipsis; }
 }

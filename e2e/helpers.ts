@@ -50,11 +50,12 @@ export async function finishRound(request: APIRequestContext): Promise<Round> {
   return done;
 }
 
-// Picks the current trader in the header "View as" select, as a user does.
+// Picks the viewer in the header "View as" select, as a user does: a trader id, or "house" for the clearing house.
+// Without a choice, the app shows the clearing house.
 export async function viewAs(page: Page, traderId: string): Promise<void> {
   const select = page.getByLabel(/view as/i);
-  // Wait for the trader list: before it loads, the select has one placeholder option.
-  await expect.poll(() => select.locator("option").count()).toBeGreaterThanOrEqual(5);
+  // Wait for the trader list: before it loads, the select has only "Clearing house" and a placeholder.
+  await expect.poll(() => select.locator("option").count()).toBeGreaterThanOrEqual(6);
   await select.selectOption(traderId);
   await expect(select).toHaveValue(traderId);
 }
