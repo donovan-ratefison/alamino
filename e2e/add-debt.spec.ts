@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { listDebts, listTraders, resetDemo, viewAs } from "./helpers";
+import { listDebts, listTraders, openSentenceField, resetDemo, viewAs } from "./helpers";
 
 // A 1 x 1 PNG: enough for the photo path. Without an AI key the fallback cannot read it.
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
@@ -9,6 +9,7 @@ test.describe("Add a debt", () => {
     await resetDemo(request);
     await page.goto("/add");
     await viewAs(page, "rivo");
+    await openSentenceField(page);
   });
 
   test("Rivo adds 'I owe Hery 50 for rice' and the debt waits for Hery", async ({ page, request }) => {
@@ -94,6 +95,8 @@ test.describe("Add a debt", () => {
     expect((await listTraders(request)).find((t) => t.id === "rivo")?.aliases).toContain("Zaza");
 
     await page.getByRole("button", { name: "Read again" }).click();
+    // "Read again" closes the sentence field on a phone: open it again.
+    await openSentenceField(page);
     await page.getByRole("textbox").fill("I owe Zaza 20");
     await page.getByRole("button", { name: /read/i }).click();
     await expect(page.getByText("You owe Rivo", { exact: true })).toBeVisible();

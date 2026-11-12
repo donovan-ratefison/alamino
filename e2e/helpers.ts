@@ -59,3 +59,12 @@ export async function viewAs(page: Page, traderId: string): Promise<void> {
   await select.selectOption(traderId);
   await expect(select).toHaveValue(traderId);
 }
+
+// On a phone the camera comes first: the sentence field opens on demand, behind the
+// "Type a sentence" button. On a laptop the form is open from the start.
+export async function openSentenceField(page: Page): Promise<void> {
+  if ((page.viewportSize()?.width ?? 1280) < 640) {
+    await page.getByRole("button", { name: "Type a sentence" }).click();
+    await expect(page.getByRole("textbox")).toBeVisible();
+  }
+}

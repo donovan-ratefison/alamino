@@ -16,7 +16,11 @@
     "test:e2e:issues": "playwright test e2e/issue-*.spec.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:issues:ui": "playwright test e2e/issue-*.spec.ts --ui",
-    "test:e2e:headed": "playwright test e2e/issue-*.spec.ts --headed"
+    "test:e2e:headed": "playwright test e2e/issue-*.spec.ts --headed",
+    "test:e2e:issue-8": "playwright test e2e/issue-8-demo-path-phone-laptop.spec.ts",
+    "test:e2e:issue-8:ui": "playwright test e2e/issue-8-demo-path-phone-laptop.spec.ts --ui",
+    "test:e2e:mobile": "playwright test --project=mobile",
+    "test:e2e:mobile:ui": "playwright test --project=mobile --ui"
   },
   "dependencies": {
     "@paypal/react-paypal-js": "^10.6.1",

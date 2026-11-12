@@ -74,6 +74,10 @@ test.describe("AI Finance Dashboard", () => {
   });
 
   test("navigates between Market and AI Finance from the header navigation", async ({ page }) => {
+    test.skip(
+      (page.viewportSize()?.width ?? 1280) < 640,
+      "on a phone the header nav is hidden: the bottom bar and the More menu take over",
+    );
     await page.goto("/");
     const nav = page.getByRole("navigation", { name: "Main" });
     await nav.getByRole("link", { name: "AI Finance" }).click();
