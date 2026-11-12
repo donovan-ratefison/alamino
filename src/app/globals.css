@@ -24,7 +24,7 @@
 }
 
 :root { color-scheme: light; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; scroll-padding-top: 80px; }
 body { background: #fff; color: #052969; -webkit-font-smoothing: antialiased; }
 ::selection { color: #003087; background: #cfe7ff; }
 button:not(:disabled), select { cursor: pointer; }
@@ -42,7 +42,7 @@ button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
 .display-title { font-size: clamp(44px, 6.6vw, 88px); font-weight: 500; line-height: 1.01; letter-spacing: -.055em; }
 .section-title { font-size: clamp(30px, 3.3vw, 44px); font-weight: 500; line-height: 1.1; letter-spacing: -.035em; }
 .muted { color: #5f718c; }
-.site-header { background: #fff; border-bottom: 1px solid #e2eaf5; }
+.site-header { position: sticky; top: 0; z-index: 40; background: #fff; border-bottom: 1px solid #e2eaf5; }
 .header-content { display: flex; align-items: center; gap: 20px; max-width: 1248px; padding: 14px 24px; margin-inline: auto; }
 .header-actions { display: flex; flex-shrink: 0; align-items: center; justify-content: flex-end; gap: 12px; min-width: 0; margin-left: auto; }
 .brand-logo { width: 154px; height: auto; display: block; }
