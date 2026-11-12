@@ -174,13 +174,15 @@ body.clean #ctrl{display:none}
 .coin{position:absolute;left:0;top:0;width:30px;height:30px;border-radius:50%;background:var(--paypal);border:2px solid #e0a800;color:#7a5200;
   font:700 16px/26px Inter,system-ui,sans-serif;text-align:center;z-index:9;pointer-events:none;box-shadow:0 4px 10px rgba(0,0,0,.25)}
 /* Fixed over the laptop (x 590 to 1690), so it never covers the phone or the people */
-#sub{position:absolute;left:590px;right:230px;margin:0 auto;width:max-content;top:590px;z-index:20;max-width:1100px;padding:11px 26px;border-radius:999px;background:rgba(5,15,40,.88);color:#fff;
+#sub{position:absolute;left:590px;right:230px;margin:0 auto;width:max-content;top:590px;z-index:40;max-width:1100px;padding:11px 26px;border-radius:999px;background:rgba(5,15,40,.88);color:#fff;
   font-size:25px;font-weight:500;line-height:1.3;text-align:center;opacity:0;transition:opacity .4s}
 #sub.on{opacity:1}
 
 /* Title and end cards */
 .card-over{position:absolute;inset:0 0 auto 0;height:660px;z-index:8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center;color:#fff;
   background:radial-gradient(900px 500px at 50% 45%,#0a3f9a,#031a45);opacity:0;pointer-events:none;transition:opacity .8s}
+/* The hook card covers the whole frame: the bottom band stays hidden until the market appears. */
+#titlecard{height:1080px;z-index:30}
 .card-over.on{opacity:1}
 .card-over .k{font-size:22px;color:#9cc7f5;letter-spacing:.02em}
 .card-over h1{font-size:64px;font-weight:600;letter-spacing:-.03em;line-height:1.08;max-width:1500px}
@@ -620,39 +622,11 @@ const BRAND = '#003087';
 const $ = s => document.querySelector(s);
 const cam = $('#cam'), frame = $('#frame');
 
-/* Subtitles: variant A of the voice-over, in chunks of about 80 characters or less.
-   timed() spreads the chunks over the segment in proportion to their length. Result: [second from scene start, text]. */
-function timed(dur, chunks, lead=.4, tail=.6){
-  const n = chunks.reduce((a,c)=>a+c.length,0), span = dur-lead-tail; let at = lead;
-  return chunks.map(c=>{ const r=[+at.toFixed(1), c]; at += span*c.length/n; return r; });
-}
-const SUBS = {
-  S00: timed(4,  [`Alamino. ${CONFIG.tagline}`], .6, .4),
-  S01: timed(7,  [`Banks clear what they owe each other, every single day.`, `Small businesses? They never could.`]),
-  S02: timed(5,  [`We are ${FIRST_NAMES}.`, `We built Alamino for small businesses.`], .3, .3),
-  S03: timed(6,  [`They deliver now and get paid later.`, `Each one keeps a notebook, so nobody sees the circle.`], .3, .3),
-  S04: timed(3,  [`Meet five traders in one market.`], .2, .2),
-  S05: timed(27, [`All week, each trader puts their debts into Alamino.`, `${N('soa')} runs a restaurant, so she types hers at her desk.`,
-                  `${N('fidy')} types one sentence on his phone.`, `The AI drafts each debt, and the other side approves it.`,
-                  `${N('rivo')} and ${N('lalao')} do the same.`, `Now the whole market is visible.`]),
-  S06: timed(10, [`Saturday. ${N('rivo')} finds one more note, scribbled in French.`, `He takes a photo. The AI reads the handwriting and drafts the debt.`,
-                  `${N('rivo')} checks it, and saves.`]),
-  S07: timed(7,  [`${N('hery')} gets a notification.`, `Yes, ${N('rivo')} owes him 50. One tap, and it counts.`]),
-  S08: timed(13, [`Now the clearing house runs the round.`, `It finds circles: I owe you, you owe him, he owes me.`,
-                  `$${CANCELLED[3]} of debt just cancel out. No money moves.`]),
-  S09: timed(18, [`What is left is one number per trader.`, `${N('soa')} pays $${-NET.soa} with PayPal, and her whole week is settled.`,
-                  `${N('lalao')} and ${N('fidy')} do the same.`, `Three payments, instead of nine debts to chase.`]),
-  S10: timed(10, [`Then PayPal pays the traders who are owed.`, `${N('hery')} gets $${NET.hery}, ${N('rivo')} gets $${NET.rivo}.`,
-                  `And everyone gets a plain statement of why.`]),
-  S11: timed(33, [`Here is how it works.`, `People stay in charge: they add the debts, and they approve them.`,
-                  `The AI model reads photos and sentences, and explains the results.`, `But it never sets an amount.`,
-                  `Every number comes from plain code:`, `the algorithm finds the circles and works out who pays what.`,
-                  `And PayPal moves the money:`, `Checkout for the payments in, Payouts for the payments out.`]),
-  S12: timed(22, [`So, the numbers.`, `$${DEBT_TOTAL} of debt, settled with $${PAY_TOTAL}.`, `${CONFIG.PROOF[1].value} less cash moved.`,
-                  `Nine debts, settled with five PayPal transfers.`,
-                  `And the AI never wrote a single amount: every number comes from plain code.`]),
-  S13: timed(10, [`Alamino. ${CONFIG.tagline.replace(/\. (\w)/, (m,c)=>', '+c.toLowerCase())}`, `Try it live: the link is on screen. Thank you.`]),
-};
+// Voice-over timing (generated from the recorded voice, see alamino-docs/demo-video). d: scene ms. p: [start, end] ms of each
+// spoken phrase from the scene start. t: the subtitle of each phrase, word for word as spoken (so CONFIG renames do not apply).
+const VO = {"S00":{"d":3000,"p":[],"t":[]},"S01":{"d":8227,"p":[[300,3896],[4646,7627]],"t":["Banks clear what they owe each other, every single day.","Small businesses? They never could."]},"S02":{"d":6413,"p":[[350,2975],[3375,5913]],"t":["We are Donovan, Tendry and Tokiarivelo.","We built Alamino for small businesses."]},"S03":{"d":7531,"p":[[250,4250],[4600,7081]],"t":["Small businesses help each other: deliver today, pay at the end of the week.","But every debt hides in a different notebook."]},"S04":{"d":3000,"p":[[150,2487]],"t":["Meet five traders in one market."]},"S05":{"d":28029,"p":[[200,3306],[3700,7065],[8760,10943],[11830,15965],[20390,22140],[25300,27329]],"t":["All week, each trader puts their debts into Alamino.","Soa runs a restaurant, so she types hers at her desk.","Fidy types one sentence on his phone.","The AI drafts each debt, and the other side approves it.","Rivo and Lalao do the same.","Now the whole market is visible."]},"S06":{"d":13233,"p":[[400,1063],[1413,4808],[5158,6417],[6767,9998],[10398,12533]],"t":["Saturday.","Rivo finds one more note, scribbled in French.","He takes a photo.","The AI reads the handwriting and drafts the debt.","Rivo checks it, and saves."]},"S07":{"d":7283,"p":[[500,2048],[2448,5188],[5588,6483]],"t":["Hery checks his phone.","Yes, he remembers those bags of rice.","He approves."]},"S08":{"d":16356,"p":[[400,2313],[2663,4808],[5158,9629],[9979,15556]],"t":["This is the moment we love.","The clearing house looks for circles:","Fidy owes Rivo, Rivo owes Hery, Hery owes Fidy.","Three circles, and $570 simply cancel out."]},"S09":{"d":18200,"p":[[350,3273],[3623,9277],[9677,11696],[14000,17587]],"t":["What is left is one number per trader.","Soa pays $170 with PayPal, and her whole week is settled.","Lalao and Fidy do the same.","Three payments, instead of nine debts to chase."]},"S10":{"d":12800,"p":[[350,3177],[3527,7700],[8100,12100]],"t":["Then PayPal pays the traders who are owed.","Hery gets $290, Rivo gets $30.","And everyone gets a plain statement of why."]},"S11":{"d":27306,"p":[[400,1708],[2058,5731],[6081,10302],[10652,12200],[12550,15060],[15410,19429],[19779,21356],[21706,26033]],"t":["Here is how it works.","People stay in charge: they add the debts, and they approve them.","The AI model reads photos and sentences, and explains the results.","But it never sets an amount.","Every number comes from plain code:","the algorithm finds the circles and works out who pays what.","And PayPal moves the money:","Checkout for the payments in, Payouts for the payments out."]},"S12":{"d":18560,"p":[[400,2371],[2771,5108],[5508,8142],[8692,11038],[11438,15054],[15454,17560]],"t":["Let's look at what really happened.","$990 of debt.","$320 actually moved.","Two thirds of the cash, saved.","Nine debts, five PayPal transfers.","And not one amount came from the AI."]},"S13":{"d":7987,"p":[[600,4148],[4548,6087]],"t":["What banks do every day, small businesses can do now.","This is Alamino. Thank you."]}};
+/* Subtitles: one per spoken phrase, shown at the phrase start. They hide after the phrase when a long pause follows. */
+const SUBS = Object.fromEntries(Object.entries(VO).map(([k,v])=>[k, v.t.map((x,i)=>[v.p[i][0]/1000, x])]));
 
 /* Run guard: every scene change bumps gen, so late timers and counters from the old scene stop */
 let gen = 0;
@@ -844,7 +818,7 @@ for (const n in CLIPS){
   VIDS[n]=v;
 }
 let CLIP = null;
-function clip(name){
+function clip(name, delay=0){
   stopClip();
   const c=CLIPS[name], m=MOCK[name], v=VIDS[name], live = !v.error && v.readyState>=2, desk=!!c.desk;
   if (!desk) phone(m.who, live ? 'idle' : m.screens[0][1], m.screens[0][2]);
@@ -860,7 +834,7 @@ function clip(name){
   if (c.toast) ev.push([c.toast[0],()=>{ $('#ptoast').textContent=c.toast[1]; $('#ptoast').className='on'; }]);
   if (c.notif) ev.push([c.notif[0],()=>{ $('#pnotif').innerHTML=`<small>${c.notif[1]}</small>${c.notif[2]}`; $('#pnotif').className='on'; sfx.chime(); }]);
   ev.sort((a,b)=>a[0]-b[0]);
-  CLIP = {at:t, dur:c.dur, video: live ? v : null, ev};
+  CLIP = {at:t+delay, dur:c.dur, video: live ? v : null, ev};
 }
 function stopClip(){
   if (CLIP && CLIP.video){ CLIP.video.pause(); CLIP.video.currentTime=0; CLIP.video.classList.remove('on'); }
@@ -873,6 +847,7 @@ function clipTick(){
   while (CLIP.ev.length && CLIP.ev[0][0]<=ct) CLIP.ev.shift()[1]();
   if (CLIP.tick) CLIP.tick(ct);
   if (!v) return;
+  if (ct<0){ if (!v.paused) v.pause(); return; }   // preroll: hold the first frame
   if (playing && ct<CLIP.dur){ if (Math.abs(v.currentTime-ct)>.25) v.currentTime=ct; if (v.paused) v.play().catch(()=>{}); }
   else {
     if (!v.paused) v.pause();
@@ -1117,9 +1092,10 @@ function state(s){
   document.querySelectorAll('.kpi').forEach(k=>k.classList.remove('hot'));
   const b=$('#lbtn'); b.textContent = s.btn==='payout' ? 'Send payouts' : 'Run clearing'; b.disabled = !!s.btnOff;
   const ph = s.phone || [ACT.active,'idle'];
-  if (s.swap) phoneSwap(ph[0], ph[1], ph[2]); else { $('#phone').classList.remove('out'); phone(ph[0], ph[1], ph[2]); }
+  // The phone belongs to a trader: with no trader at the stage, it stays out of the frame.
+  if (s.swap) phoneSwap(ph[0], ph[1], ph[2]); else { $('#phone').classList.toggle('out', !ACT.active); phone(ph[0], ph[1], ph[2]); }
   focus(s.focus||null); bubble(null);
-  subPlace(s.full ? 'full' : s.title ? 'centred' : '');
+  subPlace(s.full || s.title ? 'full' : '');
   $('#titlecard').classList.toggle('on', !!s.title);
   $('#shot').className=''; $('#shot').style.transform='';
   document.querySelectorAll('.coin').forEach(c=>c.remove());
@@ -1132,7 +1108,8 @@ function state(s){
 }
 
 /* Scene helpers */
-const subSteps = key => SUBS[key].map(([s,text])=>[s*1000, ()=>sub(text)]);
+const subSteps = key => VO[key].p.flatMap(([a,b],i)=>{ const next=VO[key].p[i+1];
+  return [[a, ()=>sub(VO[key].t[i])], ...(!next || next[0]-b > 900 ? [[b+350, ()=>sub(null)]] : [])]; });
 function circleSteps(i, T){
   const c=CIRCLES[i], keys=c.path.map((a,k)=>a+'>'+c.path[(k+1)%3]);
   return [
@@ -1150,7 +1127,7 @@ function weekSteps(dur){
     const c=CLIPS[w.clip], desk=!!c.desk;
     if (i) st.push([T,()=>turn(w.who)]);
     if (desk) st.push([T,()=>deskOn(true)]);
-    const C = T+(desk?1000:700), S = C + c.saved*1000, A = S + (c.short?1000:1200);
+    const C = T+(desk?1000:700), S = C + c.saved*1000, A = S + (c.short?700:900);
     st.push([C,()=>{ clip(w.clip); card(w); }],
       [S,()=>{ w.keys.forEach(k=>setEdge(k,1)); panel('ledger'); push(FEED[5][2*i]); }],
       [A,()=>{ const from=total(); w.keys.forEach(k=>setEdge(k,2)); panel('ledger'); approve(w.ok); count('total',from,total(),900); push(FEED[5][2*i+1]); }]);
@@ -1162,91 +1139,99 @@ function weekSteps(dur){
   if (T > dur) console.warn(`S05: the turns need ${T} ms, the segment has ${dur} ms. Shorten the clips.`);
   return st;
 }
-// S09: 3 pay-ins. Coins, the green hub arrow, the Paid row and the pay-in bar follow the clip's paid time.
-function payInSteps(dur){
-  const st=[], turns=[['soa','soaPay',`One payment of $${-NET.soa} and I am done.`],['lalao','lalaoPay',`$${-NET.lalao}, paid.`],['fidy','fidyPay',`$${-NET.fidy}, paid.`]];
-  let T=0, sum=0;
+// S09: 3 pay-ins. Soa's payment lands at the end of her phrase; Lalao and Fidy follow. Coins, the green hub arrow,
+// the Paid row and the pay-in bar follow the clip's paid time.
+function payInSteps(){
+  const v=VO.S09.p, st=[], turns=[['soa','soaPay',`One payment of $${-NET.soa} and I am done.`],['lalao','lalaoPay',`$${-NET.lalao}, paid.`],['fidy','fidyPay',`$${-NET.fidy}, paid.`]];
+  let T=0, sum=0, p=v[1][1]-300;
   turns.forEach(([id,name,say],i)=>{
-    const c=CLIPS[name], at=T+(i?700:800), p=at+(c.paid ?? c.dur)*1000, s=(sum+=-NET[id]);
-    if (i) st.push([T,()=>turn(id)]);
+    const c=CLIPS[name], s=(sum+=-NET[id]);
+    if (i){ T=p+(i===1?1100:900); p=T+700+c.paid*1000; st.push([T,()=>turn(id)]); }
+    const at=p-c.paid*1000;
     st.push([i ? p-400 : 200,()=>bubble(id, say)], [at,()=>clip(name)], [p,()=>{ coins(PHONE_PT, BAR_PT); sfx.chime(); }],
       [p+800,()=>{ paid(id); payin(s); push(FEED[9][i]); if(s===PAY_TOTAL) $('#lbtn').disabled=false; }]);
-    T = Math.max(at+c.dur*1000, p+800);
   });
-  if (T > dur) console.warn(`S09: the pay-ins need ${T} ms, the segment has ${dur} ms. Shorten the clips.`);
   return st;
 }
+function notify(title, text){ $('#pnotif').innerHTML=`<small>${title}</small>${text}`; $('#pnotif').className='on'; sfx.chime(); }
 
 const AFTER_CLEAR = {cancel:CANCELLED[3], move:PAY_TOTAL, saved:'67.7%', edges:'hub', panel:'plan', btn:'payout', btnOff:true};
 const ALL = ['soa','lalao','fidy','hery','rivo'];
-const SAT_CLIP = 2600, CONFIRM_CLIP = 1000, PAYOUT_CLIP = 2500;
+const V = k => VO[k].p;
 // One scene per voice-over segment. Durations in ms, total 175 s.
 const SCENES = [
-  {key:'S00', label:'S00 Opening', dur:4000, step:'Alamino', title:CONFIG.tagline, body:'Clearing for small businesses, with AI and PayPal.',
+  {key:'S00', label:'S00 Opening', dur:VO.S00.d, step:'Alamino', title:CONFIG.tagline, body:'Clearing for small businesses, with AI and PayPal.',
    setup(){ state({phone:[null,'idle'], full:'open'}); $('#feed').innerHTML=''; },
    steps:[[100,()=>$('#openp').classList.add('rise')], [300,()=>sfx.chime()], [1200,()=>$('#openp').classList.add('show')]]},
-  {key:'S01', label:'S01 Hook', dur:7000, step:'The problem', title:'Banks clear their debts every day', body:'Small businesses have no clearing house. Each debt waits for cash.',
-   setup(){ state({phone:[null,'idle'], title:true}); },
+  {key:'S01', label:'S01 Hook', dur:VO.S01.d, step:'The problem', title:'Banks clear their debts every day', body:'Small businesses have no clearing house. Each debt waits for cash.',
+   setup(){ state({phone:[null,'idle'], title:true, market:'hidden'}); },
    steps:[]},
-  {key:'S02', label:'S02 Team', dur:5000, step:'The team', title:'Built for small businesses', body:`${FIRST_NAMES}, for the ${CONFIG.hackathon}.`,
+  {key:'S02', label:'S02 Team', dur:VO.S02.d, step:'The team', title:'Built for small businesses', body:`${FIRST_NAMES}, for the ${CONFIG.hackathon}.`,
    setup(){ state({phone:[null,'idle'], full:'team'}); },
    steps:[[300,()=>$('#teamp').classList.add('show')]]},
-  {key:'S03', label:'S03 Problem', dur:6000, step:'The problem', title:'Five businesses, five notebooks', body:'They deliver now and get paid later. Nobody sees the whole circle.',
+  {key:'S03', label:'S03 Problem', dur:VO.S03.d, step:'The problem', title:'Five businesses, five notebooks', body:'They deliver now and get paid later. Nobody sees the whole circle.',
    setup(){ state({phone:[null,'idle'], market:'hidden'}); },
    steps:[]},
-  {key:'S04', label:'S04 Market', dur:3000, step:'The market', title:'Meet five traders',
+  {key:'S04', label:'S04 Market', dur:VO.S04.d, step:'The market', title:'Meet five traders',
    body:(s=>s[0].toUpperCase()+s.slice(1)+'.')(list(TRADERS.map(id=>'a '+CONFIG.people[id].job.toLowerCase()))),
    setup(){ state({phone:[null,'idle'], market:'draw', focus:'market'}); },
    steps:[]},
-  {key:'S05', label:'S05 The week', dur:27000, step:'The week', title:'Every trader puts debts into the app', body:'A desktop or a phone. A few words are enough. The other side approves each debt.',
+  {key:'S05', label:'S05 The week', dur:VO.S05.d, step:'The week', title:'Every trader puts debts into the app', body:'A desktop or a phone. A few words are enough. The other side approves each debt.',
    setup(){ state({active:'soa'}); },
-   steps:weekSteps(27000)},
-  {key:'S06', label:'S06 Saturday', dur:10000, step:'Saturday', title:`${N('rivo')} finds one more note`, body:`The AI reads the photo and drafts the debt. ${N('rivo')} checks it and saves.`,
+   steps:weekSteps(VO.S05.d)},
+  {key:'S06', label:'S06 Saturday', dur:VO.S06.d, step:'Saturday', title:`${N('rivo')} finds one more note`, body:`The AI reads the photo and drafts the debt. ${N('rivo')} checks it and saves.`,
    setup(){ state({active:'rivo', phone:['rivo','camera'], edges:'week', swap:true}); },
-   steps:[[200,()=>bubble('rivo',`I owe ${N('hery')} 50 for rice.`)],
-     [800,()=>{ focus('phone'); shotShow(); }],
-     [1800,flash],
-     [2000,shotFly],
-     [SAT_CLIP,()=>{ bubble(null); $('#shot').className='fly'; clip('rivoAdd'); }],
-     [SAT_CLIP+CLIPS.rivoAdd.saved*1000,()=>{ setEdge('rivo>hery',1); panel('ledger'); push(FEED[6][0]); focus(null); }],
-     ]},
-  {key:'S07', label:'S07 Confirm', dur:7000, step:'Confirm', title:`${N('hery')} approves the debt`, body:'Both sides must agree before a debt counts in the round.',
+   // "and saves" is 1.4 s into the last phrase: the Save tap of the clip (3.46 s) lands on it.
+   steps:(v=>{ const C=v[4][0]+1400-3460; return [[v[0][0],()=>bubble('rivo',`I owe ${N('hery')} 50 for rice.`)],
+     [v[1][0]-50,()=>{ focus('phone'); shotShow(); }],
+     [v[2][1]-200,flash],
+     [v[2][1]+100,shotFly],
+     [C,()=>{ bubble(null); $('#shot').className='fly'; clip('rivoAdd'); }],
+     [C+CLIPS.rivoAdd.saved*1000,()=>{ setEdge('rivo>hery',1); panel('ledger'); push(FEED[6][0]); focus(null); }]]; })(V('S06'))},
+  {key:'S07', label:'S07 Confirm', dur:VO.S07.d, step:'Confirm', title:`${N('hery')} approves the debt`, body:'Both sides must agree before a debt counts in the round.',
    setup(){ state({active:'hery', edges:'proposed', swap:true}); },
-   steps:[[300,()=>bubble('hery',`Yes, ${N('rivo')} owes me 50.`)],
-     [CONFIRM_CLIP,()=>clip('heryConfirm')],
-     [CONFIRM_CLIP+2100,()=>{ setEdge('rivo>hery',2); count('total',WEEK_TOTAL,DEBT_TOTAL,900); panel('ledger'); push(FEED[7][0]); }],
-     [3800,()=>bubble(null)]]},
-  {key:'S08', label:'S08 Clear', dur:13000, step:'Clear', title:`Circles of debt cancel $${CANCELLED[3]}`, body:'The clearing house runs a round. Plain code does every calculation, never the AI.',
+   // The Approve tap of the clip (2.2 s) lands on "He approves". Until then the clip holds its first frame.
+   steps:(v=>[[v[1][0],()=>bubble('hery',`Yes, ${N('rivo')} owes me 50.`)],
+     [900,()=>clip('heryConfirm', v[2][0]+100-2200-900)],
+     [v[2][0]+200,()=>{ setEdge('rivo>hery',2); count('total',WEEK_TOTAL,DEBT_TOTAL,900); panel('ledger'); push(FEED[7][0]); }],
+     [v[2][1],()=>bubble(null)]])(V('S07'))},
+  {key:'S08', label:'S08 Clear', dur:VO.S08.d, step:'Clear', title:`Circles of debt cancel $${CANCELLED[3]}`, body:'The clearing house runs a round. Plain code does every calculation, never the AI.',
    setup(){ state({ops:true, edges:'all'}); },
-   steps:[[200,()=>bubble('ops','Time to clear the market.')],
+   // Circle 1 lights while the voice names it (Fidy, Rivo, Hery). Circles 2 and 3 and the hub follow "Three circles".
+   steps:(v=>[[200,()=>bubble('ops','Time to clear the market.')],
      [500,()=>focus('laptop')],
-     [1000,()=>press('#lbtn')],
-     [2000,()=>bubble(null)],
-     [2200,()=>{ focus('market'); panel('circles'); }],
-     ...circleSteps(0,2200), ...circleSteps(1,4600), ...circleSteps(2,7000),
-     [9400,()=>push(FEED[8][0])],
-     [9600,()=>{ mk.setAttribute('class','hub'); panel('plan'); count('move',0,PAY_TOTAL,1200); count('saved',0,67.7,1200,v=>v.toFixed(1)+'%');
+     [v[1][0]+300,()=>press('#lbtn')],
+     [v[1][0]+300,()=>bubble(null)],
+     [v[1][1]-100,()=>{ focus('market'); panel('circles'); }],
+     ...circleSteps(0,v[2][0]), ...circleSteps(1,v[3][0]), ...circleSteps(2,v[3][0]+1900),
+     [v[3][0]+3700,()=>push(FEED[8][0])],
+     [v[3][0]+3900,()=>{ mk.setAttribute('class','hub'); panel('plan'); count('move',0,PAY_TOTAL,1200); count('saved',0,67.7,1200,v=>v.toFixed(1)+'%');
        const b=$('#lbtn'); b.textContent='Send payouts'; b.disabled=true; }],
-     [10400,()=>push(FEED[8][1])]]},
-  {key:'S09', label:'S09 Pay in', dur:18000, step:'Pay in', title:'Three traders pay what they still owe', body:`${list(['soa','lalao','fidy'].map(N))} pay $${PAY_TOTAL} in total into the clearing account through PayPal.`,
+     [v[3][0]+4700,()=>push(FEED[8][1])]])(V('S08'))},
+  {key:'S09', label:'S09 Pay in', dur:VO.S09.d, step:'Pay in', title:'Three traders pay what they still owe', body:`${list(['soa','lalao','fidy'].map(N))} pay $${PAY_TOTAL} in total into the clearing account through PayPal.`,
    setup(){ state({...AFTER_CLEAR, active:'soa', swap:true}); },
-   steps:payInSteps(18000)},
-  {key:'S10', label:'S10 Pay out', dur:10000, step:'Pay out', title:'PayPal pays the traders who are owed', body:`${N('hery')} gets $${NET.hery} and ${N('rivo')} gets $${NET.rivo}. Each trader gets a plain statement.`,
+   steps:payInSteps()},
+  {key:'S10', label:'S10 Pay out', dur:VO.S10.d, step:'Pay out', title:'PayPal pays the traders who are owed', body:`${N('hery')} gets $${NET.hery} and ${N('rivo')} gets $${NET.rivo}. Each trader gets a plain statement.`,
    setup(){ state({...AFTER_CLEAR, btnOff:false, ops:true, paid:['soa','lalao','fidy'], payin:PAY_TOTAL}); },
-   steps:[[800,()=>press('#lbtn')],
-     [1500,()=>turn('hery')],
-     [PAYOUT_CLIP,()=>{ clip('heryStatement'); coins(LAPTOP_PT, PHONE_PT); }],
-     [PAYOUT_CLIP+900,()=>{ paid('hery'); paid('rivo'); push(FEED[10][0]); $('#lbtn').disabled=true; sfx.chime(); }],
-     [4000,()=>bubble('hery',`My $${NET.hery} is in PayPal.`)]]},
-  {key:'S11', label:'S11 Architecture', dur:33000, step:'How it works', title:'Four parts, one job each', body:'People decide. The AI reads and explains. Plain code counts. PayPal moves the money.',
+   // The statement holds its top ("You receive $290") while the voice names the payouts, then scrolls on "a plain statement".
+   steps:(v=>[[900,()=>press('#lbtn')],
+     [v[0][1]-700,()=>turn('hery')],
+     [v[0][1]+300,()=>clip('heryStatement', v[2][0]-1400-(v[0][1]+300))],
+     [v[1][0],()=>coins(LAPTOP_PT, PHONE_PT)],
+     [v[1][0]+700,()=>notify('PayPal',`You received $${NET.hery}.00`)],
+     [v[1][0]+900,()=>{ paid('hery'); push(FEED[10][0]); $('#lbtn').disabled=true; }],
+     [v[1][0]+2950,()=>{ paid('rivo'); sfx.approve(); }],
+     [v[1][1]+200,()=>bubble('hery',`My $${NET.hery} is in PayPal.`)]])(V('S10'))},
+  {key:'S11', label:'S11 Architecture', dur:VO.S11.d, step:'How it works', title:'Four parts, one job each', body:'People decide. The AI reads and explains. Plain code counts. PayPal moves the money.',
    setup(){ state({...AFTER_CLEAR, paid:ALL, payin:PAY_TOTAL, full:'arch'}); },
    steps:archSteps()},
-  {key:'S12', label:'S12 Proof', dur:22000, step:'Proof', title:`$${DEBT_TOTAL} of debt settled with $${PAY_TOTAL}`, body:'Real PayPal payments. Every journey is tested.',
+  {key:'S12', label:'S12 Proof', dur:VO.S12.d, step:'Proof', title:`$${DEBT_TOTAL} of debt settled with $${PAY_TOTAL}`, body:'Real PayPal payments. Every journey is tested.',
    setup(){ state({...AFTER_CLEAR, paid:ALL, payin:PAY_TOTAL, full:'proof'}); },
-   steps:[[2300,()=>anim(1500, k=>$('#pnum').textContent='$'+Math.round(DEBT_TOTAL-(DEBT_TOTAL-PAY_TOTAL)*k))],
-     [3900,()=>{ $('#proof').classList.add('done'); sfx.chime(); }],
-     ...CONFIG.PROOF.map((_,i)=>[5000+i*2500,()=>{ document.querySelectorAll('.tile')[i].classList.add('on'); sfx.approve(); }])]},
-  {key:'S13', label:'S13 End', dur:10000, step:'Alamino', title:CONFIG.tagline, body:'Try it live. The code is open on GitHub.',
+   // $990 shows on "$990 of debt", counts down on "$320 actually moved"; each tile lands on its phrase.
+   steps:(v=>[[v[2][0],()=>anim(1500, k=>$('#pnum').textContent='$'+Math.round(DEBT_TOTAL-(DEBT_TOTAL-PAY_TOTAL)*k))],
+     [v[2][1]-200,()=>{ $('#proof').classList.add('done'); sfx.chime(); }],
+     ...[v[2][1]+350, v[3][0]+300, v[4][0]+200, v[5][0]+600].map((ms,i)=>[ms,()=>{ document.querySelectorAll('.tile')[i].classList.add('on'); sfx.approve(); }])])(V('S12'))},
+  {key:'S13', label:'S13 End', dur:VO.S13.d, step:'Alamino', title:CONFIG.tagline, body:'Try it live. The code is open on GitHub.',
    setup(){ state({...AFTER_CLEAR, paid:ALL, payin:PAY_TOTAL, full:'end'}); },
    steps:[[300,()=>$('#endp').classList.add('on')]]},
 ];
@@ -1259,7 +1244,7 @@ ctrl.innerHTML = `<button id="play">Pause</button><button id="snd" class="on">So
   `<span class="hint">Click once to start the sound. Space: play or pause. Arrows: scenes. H: hide this bar for recording.</span>`;
 $('#dots').innerHTML = SCENES.map(()=>'<i></i>').join('');
 function go(i){
-  gen++;
+  gen++; REC.scenes.push([i, Date.now()]);
   cur=(i+SCENES.length)%SCENES.length; t=0; fired=0;
   const s=SCENES[cur];
   // Rebuild the feed for the scenes before this one
@@ -1277,7 +1262,7 @@ function tick(now){
     t+=dt; const s=SCENES[cur];
     while(fired<s.steps.length && s.steps[fired][0]<=t) s.steps[fired++][1]();
     // The last scene holds its end state: no loop.
-    if(t>=s.dur){ if(cur===SCENES.length-1) setPlaying(false); else go(cur+1); }
+    if(t>=s.dur){ if(cur===SCENES.length-1) setPlaying(false); else { const over=t-s.dur; go(cur+1); t=over; } }
   }
   clipTick(); pad();
   const total=SCENES.reduce((a,s)=>a+s.dur,0), done=SCENES.slice(0,cur).reduce((a,s)=>a+s.dur,0)+Math.min(t,SCENES[cur].dur);
@@ -1304,6 +1289,11 @@ function fit(){
 }
 addEventListener('resize',fit); fit();
 const q = new URLSearchParams(location.search);
+// ?rec: the page waits for window.__start() (the recorder calls it when the clips are loaded) and logs the sound effects.
+const REC = {scenes:[], sfx:[], t0:0};
+window.__rec = REC;
+Object.keys(sfx).forEach(k=>{ const f=sfx[k]; sfx[k]=(...a)=>{ REC.sfx.push([Date.now(), k, a[0]??0]); return f(...a); }; });
+if (q.has('rec')) { playing=false; window.__start=()=>{ REC.scenes.length=0; REC.sfx.length=0; REC.t0=Date.now(); go(0); last=performance.now(); playing=true; }; }
 if (q.has('clean')) { document.body.classList.add('clean'); fit(); }
 // First placement without transitions, so figures do not fly in from the corner
 frame.classList.add('notrans');
