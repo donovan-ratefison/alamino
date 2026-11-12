@@ -4,6 +4,24 @@ import { viewAs } from "./helpers";
 
 test.use({ storageState: { cookies: [], origins: [] }, reducedMotion: "reduce" });
 
+test("a slow trader list on Add never starts the global welcome tour", async ({ page }) => {
+  await page.clock.install();
+  let release!: () => void;
+  let requested!: () => void;
+  const pending = new Promise<void>((resolve) => { release = resolve; });
+  const arrived = new Promise<void>((resolve) => { requested = resolve; });
+  await page.route("**/api/traders", async (route) => { requested(); await pending; await route.continue(); });
+  try {
+    await page.goto("/add");
+    await arrived;
+    await page.clock.runFor(1200);
+    await expect(page.locator(".driver-popover")).toBeHidden();
+  } finally { release(); }
+  await viewAs(page, "rivo");
+  await expect(page.getByRole("button", { name: "How to add a debt" })).toBeVisible();
+  await expect(page.locator(".driver-popover")).toBeHidden();
+});
+
 for (const width of [1440, 375]) {
   test(`Add opens its six-step tour from the help button at ${width}px without creating a debt`, async ({ page, request }) => {
     await page.setViewportSize({ width, height: 900 });

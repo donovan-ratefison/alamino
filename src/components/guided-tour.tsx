@@ -122,8 +122,11 @@ export function GuidedTourProvider({ children }: { children: ReactNode }) {
     let seen = seenInSession.current.has(ONBOARDING_STORAGE_KEY);
     try { seen ||= localStorage.getItem(ONBOARDING_STORAGE_KEY) !== null; } catch { /* The guide also works without storage. */ }
     const timer = !seen ? window.setTimeout(() => {
-      // Pages marked with data-page-tour (Add) keep their task visible: their tour opens from a help button.
-      if (!document.querySelector("[data-page-tour]") && !seenInSession.current.has(ONBOARDING_STORAGE_KEY)) void startTour();
+      // Add can still be loading its profile before its page marker is mounted.
+      // Recheck after the lazy import as well, in case navigation happens meanwhile.
+      const canAutoStart = () => window.location.pathname.replace(/\/+$/, "") !== "/add"
+        && !document.querySelector("[data-page-tour]") && !seenInSession.current.has(ONBOARDING_STORAGE_KEY);
+      if (canAutoStart()) void startTour({ canStart: canAutoStart });
     }, 600) : undefined;
     return () => {
       mounted.current = false;

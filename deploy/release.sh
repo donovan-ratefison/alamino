@@ -22,7 +22,7 @@ die() { printf 'Deployment error: %s\n' "$*" >&2; exit 1; }
 [[ $(id -un) == debian || ${ALAMINO_TEST_MODE:-0} == 1 ]] || die 'Run as debian, not root.'
 for tool in git curl flock sqlite3 node npm pm2; do command -v "$tool" >/dev/null || die "Missing prerequisite: $tool"; done
 [[ $(node --version) == v24.21.0 || ${ALAMINO_TEST_MODE:-0} == 1 ]] || die 'Expected Node v24.21.0.'
-mkdir -p "$RELEASES" "$ROOT/data/backups"
+mkdir -p "$RELEASES" "$STATE/logs" "$ROOT/data/backups"
 exec 9>"$STATE/deploy.lock"
 flock -n 9 || die 'Another deployment or rollback is running.'
 
@@ -127,5 +127,6 @@ activate "$target"
 health "$target"
 pm2 save 9>&-
 point previous "$old"
+if [[ -L "$STATE/operations" && -f "$target/deploy/ops.sh" && -f "$target/deploy/ops.cjs" ]]; then point operations "$target"; fi
 switched=0
 printf 'Alamino %s successful. Active version: %s\n' "$MODE" "$target"

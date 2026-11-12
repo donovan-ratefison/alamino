@@ -70,7 +70,7 @@ Configure these locally or in the hosting service; never commit secrets:
 | `NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY` | Browser licence key for Studio; this is not an API credential. |
 | `DATABASE_PATH` | SQLite database location; use persistent storage for saved reports/history. |
 
-Restart after changing environment variables. Open **Settings** on `/finance`,
+Restart after changing server environment variables. Rebuild and redeploy after changing any `NEXT_PUBLIC_` variable, including the Checkout client ID or Studio licence. Open **Settings** on `/finance`,
 sign in using **Admin sign-in**, then select **PayPal Sandbox account**. Enable the reporting scope
 `https://uri.paypal.com/services/reporting/search/read` on the Sandbox app where
 available, as well as Payouts for the existing settlement flow. Create the five

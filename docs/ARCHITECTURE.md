@@ -25,12 +25,12 @@ Deadline: Thursday 12 November, 23:00 Antananarivo time (12:00 PST).
 | Piece | Choice |
 |---|---|
 | App | Next.js (App Router), TypeScript |
-| Database | SQLite via `better-sqlite3`, reseeded on start and by the reset button |
+| Database | Persistent SQLite via `better-sqlite3`; seeded when empty or explicitly reset for the demo |
 | AI | One multimodal model, called only from `src/lib/ai/` |
 | PayPal | Orders v2 (pay-in) and Payouts (pay-out), sandbox |
 | Debt network view | React Flow |
 | Ledger table | AG Grid |
-| Hosting | Render, one web service |
+| Hosting | Debian VPS, Nginx HTTPS proxy, one Alamino PM2 process on 127.0.0.1:3100 |
 
 ## 4. Folder structure
 

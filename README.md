@@ -46,24 +46,26 @@ In the demo market, **$990 of debt is settled by moving $320**, a cash saving of
 
 ## Try it in 2 minutes
 
+**Hosted demo: [alamino.live-preprod.site](https://alamino.live-preprod.site).** No account is needed for the labelled simulated payment flow. The hosted demo currently uses AI fallback; photo understanding with a model requires an AI key. For real Sandbox payments, follow the [Finance setup](docs/FINANCE.md), use sandbox accounts and sign in as the operator. Never use real PayPal credentials to try this demo.
+
 No keys needed. Without PayPal keys, payments run in labelled simulated mode. Without an AI key, capture and statements use a labelled plain-code fallback.
 
 ```sh
 git clone https://github.com/donovan-ratefison/alamino.git && cd alamino
-npm install
+npm ci
 cp .env.example .env.local
 npm run dev
 ```
 
-Open http://localhost:3000. The app seeds five traders and nine debts on first start. Node 22.13 or later.
+Open http://localhost:3000. The app seeds five traders and eight confirmed debts when the database is empty. Adding and confirming the $50 debt below produces the nine-debt, $990 example. Node 22.13 or later; CI and the VPS use Node 24.21.0, also pinned in [.nvmrc](.nvmrc).
 
 **Tour in 5 minutes, with no keys:**
 
 1. **See the market** on `/` as Rivo (use the "View as" switcher in the header).
 2. **Add a debt** on `/add`: type "I owe Hery 50 for rice", click Read, save.
 3. **Approve it**: switch to Hery, approve on `/confirm`.
-4. **Clear it**: back on `/`, click Run clearing. Watch the circles cancel.
-5. **Settle it**: follow the pay-in buttons, then read `/statement`.
+4. **Clear it**: switch to **Clearing house**, return to `/` and click Run clearing. Watch the circles cancel.
+5. **Settle it**: switch to Soa, Lalao and Fidy to make each simulated pay-in. Switch back to **Clearing house** to send payouts, then select a trader and read `/statement`.
 
 The first visit also opens a short guided tour. The reset button on the market screen replays the demo from the start.
 
@@ -199,7 +201,7 @@ Without `AI_API_KEY`, capture and statements use a plain-code fallback and the U
 | Piece | Choice |
 |---|---|
 | App | Next.js 16 (App Router), TypeScript, Tailwind CSS |
-| Database | SQLite via `better-sqlite3`, reseeded on start and by the reset button |
+| Database | Persistent SQLite via `better-sqlite3`; seeded only when empty, or explicitly reset for the demo |
 | AI | One multimodal LLM, called only from `src/lib/ai/` |
 | PayPal | Orders v2 (pay-in) and Payouts (pay-out), sandbox |
 | Debt network view | React Flow |
@@ -269,16 +271,16 @@ Copy `.env.example` to `.env.local`. Never commit real keys: the repo is public.
 | `AI_REASONING_EFFORT` | `minimal`, `low`, `medium` or `high` | No, default `minimal` |
 | `AI_DAILY_CALLS` | Max model calls per UTC day | No, default `300` |
 | `DATABASE_PATH` | SQLite file, default `./data/app.db` | No, has a default |
-| `FINANCE_ADMIN_PASSWORD` | Password (16+ chars) for Sandbox data and live AI on `/finance` | Only for `/finance` admin |
+| `FINANCE_ADMIN_PASSWORD` | Operator password (16+ chars) for Sandbox payments, account data and live finance AI | Required for real Sandbox actions and Finance admin |
 | `NEXT_PUBLIC_AG_STUDIO_LICENSE_KEY` | Browser licence key for AG Studio | No, else trial watermark |
 
-Restart after changing environment variables.
+Restart after changing server environment variables. Changes to any `NEXT_PUBLIC_` variable also require a new build: these values are included in the browser bundle. On the VPS, update the private `.env.local` and rerun the main deployment workflow to rebuild with the new public configuration.
 
 ## AI tools used to build this project
 
 - **LLM (OpenAI-compatible AI model)**: the AI model the app itself calls for capture, mismatch resolution, statements and the finance assistant.
 - **Image generation**: the [logo](public/alamino-logo.png) and the six [guide illustrations](public/illustrations/alamino-guide.webp) were generated with an image tool from written prompts, then optimised to WebP. The guide prompts are kept in the onboarding docs.
-- **Coding assistant**: <!-- TODO(Tokiarivelo): name the coding assistant(s) used and what each did: scaffolding, netting engine, PayPal wiring, tests, docs. -->
+- **Codex**: assisted implementation, automated tests, deployment troubleshooting, VPS operations scripts and documentation.
 
 The screenshots and clips in this README are not generated: they are recorded from the running app with Playwright, then framed and converted to WebP and GIF.
 
@@ -296,6 +298,8 @@ npm run e2e         # Playwright journeys on a production build, no keys, own da
 ## Docs
 
 - [Automatic VPS deployment, SSH secrets and rollback](docs/DEPLOYMENT.md)
+- [Operations: monitoring, scheduled backups, restore checks, retention and logs](docs/OPERATIONS.md)
+- [Devpost submission text and team review checklist](docs/DEVPOST.md)
 - [First-visit tour, illustrated guides and navigation](docs/ONBOARDING.md)
 - [AI Finance Dashboard: setup, Sandbox, AG Studio and validation](docs/FINANCE.md)
 - [Architecture](docs/ARCHITECTURE.md)

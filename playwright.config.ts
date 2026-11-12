@@ -10,10 +10,13 @@ export default defineConfig({
   testDir: "e2e",
   workers: 1, // one database: the tests run in series and reset the demo first
   retries: 0,
-  reporter: [["list"]],
+  forbidOnly: !!process.env.CI,
+  globalTimeout: 15 * 60_000,
+  expect: { timeout: 15_000 },
+  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : [["list"]],
   use: {
     baseURL: `http://localhost:${PORT}`,
-    channel: "chrome",
+    channel: process.env.CI ? undefined : "chrome",
     trace: "retain-on-failure",
     // Existing journeys model a returning visitor. Tour tests use a fresh browser.
     storageState: { cookies: [], origins: [{ origin: `http://localhost:${PORT}`, localStorage: [{ name: ONBOARDING_STORAGE_KEY, value: "completed" }, { name: CAPTURE_TOUR_STORAGE_KEY, value: "completed" }] }] },

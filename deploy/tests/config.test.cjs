@@ -8,9 +8,10 @@ const root = path.resolve(__dirname, '../..');
 test('workflow verifies the exact commit before a serialized main-only deployment', () => {
   const workflow = yaml.load(fs.readFileSync(path.join(root, '.github/workflows/deploy.yml'), 'utf8'));
   assert.deepEqual(workflow.on.push.branches, ['main']);
+  assert.deepEqual(workflow.on.pull_request.branches, ['main']);
   assert.ok(Object.hasOwn(workflow.on, 'workflow_dispatch'));
   assert.equal(workflow.permissions.contents, 'read');
-  assert.equal(workflow.jobs.deploy.needs, 'verify');
+  assert.deepEqual(workflow.jobs.deploy.needs, ['verify', 'browser']);
   assert.equal(workflow.jobs.deploy.if, "github.ref == 'refs/heads/main'");
   assert.equal(workflow.jobs.deploy.concurrency['cancel-in-progress'], false);
   for (const value of Object.values(workflow.jobs.verify.env)) assert.ok(!String(value).includes('${{ runner.'), 'runner context is unavailable in job-level env');
@@ -23,6 +24,11 @@ test('workflow verifies the exact commit before a serialized main-only deploymen
   }
   const commands = workflow.jobs.verify.steps.map(s => s.run || '').join('\n');
   for (const command of ['npm ci', 'npm test', 'npm run typecheck', 'npm run lint', 'npm run build']) assert.ok(commands.includes(command));
+  const browser = workflow.jobs.browser.steps.map(s => s.run || '').join('\n');
+  assert.ok(browser.includes('playwright install --with-deps chromium'));
+  assert.ok(browser.includes('npm run e2e'));
+  assert.equal(workflow.jobs.browser.env.PAYPAL_CLIENT_SECRET, '');
+  assert.equal(workflow.jobs.browser.env.AI_API_KEY, '');
 });
 
 test('PM2 targets only alamino, loopback 3100 and the persistent database', () => {
@@ -34,6 +40,18 @@ test('PM2 targets only alamino, loopback 3100 and the persistent database', () =
   assert.deepEqual(apps[0].args, ['start', '--hostname', '127.0.0.1', '--port', '3100']);
   assert.equal(apps[0].env.DATABASE_PATH, '/home/debian/alamino/data/app.db');
   assert.equal(apps[0].cwd, root);
+  assert.equal(apps[0].merge_logs, true);
+  assert.equal(apps[0].out_file, '/home/debian/alamino/.deploy/logs/alamino-out.log');
+});
+
+test('external monitoring is scheduled and needs no SSH or application secrets', () => {
+  const text = fs.readFileSync(path.join(root, '.github/workflows/monitor.yml'), 'utf8');
+  const workflow = yaml.load(text);
+  assert.ok(workflow.on.schedule.length);
+  assert.ok(Object.hasOwn(workflow.on, 'workflow_dispatch'));
+  assert.equal(workflow.permissions.contents, 'read');
+  assert.ok(!text.includes('secrets.'));
+  assert.ok(workflow.jobs.health.steps.some(s => s.run === 'node deploy/ops.cjs public-health'));
 });
 
 test('SSH identity is pinned; deployment has rollback and online backup safeguards', () => {

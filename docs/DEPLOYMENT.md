@@ -1,10 +1,10 @@
 # Automatic VPS deployment
 
-Status: the repository contains the implementation; adding files locally does not activate GitHub Actions. Activation requires these files on `main`, SSH secrets, and the VPS prerequisites below. No live deployment is implied by local checks.
+The VPS pipeline was activated and verified on 12 November 2026: [successful deployment](https://github.com/donovan-ratefison/alamino/actions/runs/43223488670), followed by matching health responses locally and through HTTPS. Subsequent changes still need a successful Actions run; local edits alone never deploy. See [operations](OPERATIONS.md) for monitoring, scheduled backups, retention and recovery checks.
 
 ## What runs
 
-`.github/workflows/deploy.yml` runs for pushes to `main` and manual dispatches. CI uses Node **24.21.0**, runs `npm ci`, deployment contract/syntax checks, `npm test`, typecheck, lint and build. No PayPal or AI secrets are supplied to CI. A separate deployment job requires successful CI and `refs/heads/main`; a manual dispatch on another branch never deploys.
+`.github/workflows/deploy.yml` runs for pull requests targeting `main`, pushes to `main` and manual dispatches. CI uses Node **24.21.0**, runs `npm ci`, deployment/operations checks, `npm test`, typecheck, lint and build. A separate browser job runs desktop and mobile Playwright journeys with an isolated database. No PayPal or AI secrets are supplied to these jobs. Deployment requires both jobs to succeed and `refs/heads/main`; pull requests and manual dispatches on other branches never deploy.
 
 Actions are pinned to full commit hashes. The deployment job uses the `preproduction` environment, `contents: read`, and a non-cancelling concurrency group. Up to 100 pending deployments can queue; an older job cannot replace a newer active commit. A VPS `flock` also prevents concurrent manual rollbacks or deployments.
 

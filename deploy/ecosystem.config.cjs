@@ -16,6 +16,10 @@ module.exports = {
     instances: 1,
     autorestart: true,
     kill_timeout: 15000,
+    out_file: '/home/debian/alamino/.deploy/logs/alamino-out.log',
+    error_file: '/home/debian/alamino/.deploy/logs/alamino-error.log',
+    merge_logs: true,
+    log_date_format: 'YYYY-MM-DDTHH:mm:ss.SSSZ',
     env: {
       NODE_ENV: 'production',
       DATABASE_PATH: '/home/debian/alamino/data/app.db',
