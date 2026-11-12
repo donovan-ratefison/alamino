@@ -2,10 +2,11 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import type { FinanceAccess, FinanceSnapshot, FinanceSource } from "@/lib/finance/types";
 import { money, totals } from "@/lib/finance/metrics";
 import { useApi } from "@/components/api";
+import { useApp } from "@/components/app";
 import { btn, Empty, ErrorNote, field, Loading, PageHeader } from "@/components/ui";
 
 const Studio = dynamic(() => import("@/components/finance/studio"), { ssr: false, loading: () => <Loading text="Loading AG Studio…" /> });
@@ -36,6 +37,10 @@ export default function FinancePage() {
   const [error, setError] = useState<Error | null>(null);
   const [showLogin, setShowLogin] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // The header link "Sign in on Finance" opens /finance#sign-in: show the sign-in form at once.
+  useEffect(() => {
+    if (location.hash === "#sign-in") { setSettingsOpen(true); setShowLogin(true); } // eslint-disable-line react-hooks/set-state-in-effect
+  }, []);
   const range = useMemo(() => {
     const now = new Date(clock);
     const endOfDay = new Date(`${applied.end}T23:59:59.999Z`);
@@ -54,12 +59,13 @@ export default function FinancePage() {
   const synced = snapshot.data?.syncedAt ? ` · retrieved ${new Date(snapshot.data.syncedAt).toISOString().slice(11, 16)} UTC` : "";
   const sandboxReady = !!access.data?.authenticated && !!access.data?.paypalConfigured;
 
+  const { debts } = useApp(); // the clearing house view opens after the sign-in
   async function login(e: FormEvent) {
     e.preventDefault(); setBusy(true); setError(null);
     try {
       const result = await fetch("/api/finance/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }) });
       if (!result.ok) throw new Error((await result.json()).error);
-      setPassword(""); setShowLogin(false); access.reload();
+      setPassword(""); setShowLogin(false); access.reload(); debts.reload();
     } catch (e) { setError(e as Error); }
     finally { setBusy(false); }
   }
