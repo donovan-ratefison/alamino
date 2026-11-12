@@ -45,6 +45,13 @@ test.describe("Phone width", () => {
     }
   });
 
+  test("the market ledger fits at 375 px without its own sideways scroll", async ({ page }) => {
+    await page.goto("/");
+    const table = page.getByRole("main").locator(".ledger-table");
+    await expect(table.locator("[data-status]").first()).toBeVisible();
+    expect(await table.evaluate((el) => el.parentElement!.scrollWidth <= el.parentElement!.clientWidth)).toBe(true);
+  });
+
   test("a task page has a one-row header and no footer", async ({ page }) => {
     await page.goto("/add");
     await expect(page.getByText("Photograph your notebook")).toBeVisible();

@@ -4,14 +4,15 @@ import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import type { TraderId } from "@/lib/types";
 import { useApp } from "./app";
+import { NavIcon } from "./nav-icon";
 import { btn } from "./ui";
 
 const STEPS: { text: string; href: string; trader?: TraderId }[] = [
-  { text: "add a debt: view as Rivo, type 'I owe Hery 50 for rice'", href: "/add", trader: "rivo" },
-  { text: "view as Hery and approve it", href: "/confirm", trader: "hery" },
-  { text: "run clearing on the market page", href: "/" },
-  { text: "pay in as Soa, Lalao and Fidy, then send the payouts", href: "/rounds/latest", trader: "soa" },
-  { text: "read your statement", href: "/statement" },
+  { text: 'Add a debt as Rivo. Type "I owe Hery 50 for rice".', href: "/add", trader: "rivo" },
+  { text: "Approve it as Hery.", href: "/confirm", trader: "hery" },
+  { text: "Run clearing on the market.", href: "/" },
+  { text: "Pay in as Soa, Lalao and Fidy. Send payouts.", href: "/rounds/latest", trader: "soa" },
+  { text: "Read the statement.", href: "/statement" },
 ];
 
 // Guide state: "hidden", a step number "1" to "5", or null for a visitor who has not chosen yet.
@@ -62,31 +63,31 @@ export function DemoGuide() {
       <div className="band-content demo-guide-row">
         {step ? (
           <>
-            <p aria-live="polite" className="min-w-0 flex-1">
+            <p aria-live="polite" className="demo-guide-text">
               <span className="font-semibold">
                 Step {n} of {STEPS.length}:
               </span>{" "}
               {step.text}
             </p>
-            <Link href={step.href} className="font-medium text-accent underline" onClick={() => step.trader && setTraderId(step.trader)}>
-              Go to step {n}
+            <Link href={step.href} aria-label={`Go to step ${n}`} className="shrink-0 px-1 py-1.5 font-medium text-accent underline" onClick={() => step.trader && setTraderId(step.trader)}>
+              Go
             </Link>
-            <div className="flex gap-2">
-              <button type="button" className={`${btn.small} ui-button-compact`} disabled={n === 1} onClick={() => write(String(n - 1))}>
-                Back
+            <div className="flex gap-1">
+              <button type="button" className="demo-guide-icon" aria-label="Back" title="Back" disabled={n === 1} onClick={() => write(String(n - 1))}>
+                <NavIcon name="back" width="16" height="16" />
               </button>
-              <button type="button" className={`${btn.small} ui-button-compact`} disabled={n === STEPS.length} onClick={() => write(String(n + 1))}>
-                Next
+              <button type="button" className="demo-guide-icon" aria-label="Next" title="Next" disabled={n === STEPS.length} onClick={() => write(String(n + 1))}>
+                <NavIcon name="next" width="16" height="16" />
               </button>
-              <button type="button" className={`${btn.secondary} ui-button-compact`} onClick={() => write("hidden")}>
-                Close
+              <button type="button" className="demo-guide-icon" aria-label="Close" title="Close" onClick={() => write("hidden")}>
+                <NavIcon name="close" width="16" height="16" />
               </button>
             </div>
           </>
         ) : (
           <>
-            <p className="min-w-0 flex-1">New here? Start the demo guide.</p>
-            <div className="flex gap-2">
+            <p className="demo-guide-text">New here? Start the demo guide.</p>
+            <div className="flex gap-1">
               <button type="button" className={`${btn.small} ui-button-compact`} onClick={startGuide}>
                 Start
               </button>

@@ -26,7 +26,9 @@ test.describe("Market view", () => {
     await expect(confirmedRows).toHaveCount(9);
     await expect(main).toContainText("$990");
 
-    await page.getByRole("button", { name: /reset/i }).click();
+    // Reset demo lives in the More menu. It reloads the market.
+    await page.getByRole("button", { name: "More", exact: true }).click();
+    await page.getByRole("button", { name: "Reset demo", exact: true }).click();
 
     await expect(confirmedRows).toHaveCount(8);
     await expect(main).toContainText("$940");

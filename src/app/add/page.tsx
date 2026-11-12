@@ -6,7 +6,7 @@ import type { Debt, DebtDraft, TraderId } from "@/lib/types";
 import { api, toCents } from "@/components/api";
 import { useApp } from "@/components/app";
 import { DraftRow, problem, toDraft, type Draft } from "@/components/capture-drafts";
-import { Badge, btn, Card, ErrorNote, field, label, PageHeader } from "@/components/ui";
+import { Badge, btn, ErrorNote, field, label, PageHeader } from "@/components/ui";
 import { CaptureGuide } from "@/components/capture-guide";
 
 // A real AI call takes 5 to 10 seconds. The last step stays until the answer.
@@ -25,7 +25,7 @@ async function readImage(file: File): Promise<{ imageBase64: string; mediaType: 
 }
 
 export default function AddPage() {
-  const { traderId, name, refreshPending } = useApp();
+  const { traderId, refreshPending } = useApp();
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false); // phone: the sentence field is open
   const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
@@ -58,7 +58,9 @@ export default function AddPage() {
     setChanged(true);
   }
 
-  const viewer = name(traderId);
+  // The demo sentence. Hery cannot owe Hery, so Hery gets another trader.
+  const sample = `I owe ${traderId === "hery" ? "Rivo" : "Hery"} 50 for rice`;
+  const empty = !reading && !engine;
   const update = (n: number, patch: Partial<Draft>) => setDrafts((all) => all.map((d) => (d.n === n ? { ...d, ...patch } : d)));
   const isReady = (d: Draft) => !d.saved && problem(d) === null;
   const saved = drafts.filter((d) => d.saved).length;
@@ -156,22 +158,20 @@ export default function AddPage() {
   }
 
   const addButton = (
-    <button type="button" className={btn.secondary} disabled={saving} onClick={addLine}>
+    <button type="button" className={btn.small} disabled={saving} onClick={addLine}>
       Add a line
     </button>
   );
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8" data-page-tour="capture">
-      <PageHeader title="Add a debt">
-        {/* A phone shows the trader in "View as" and above the drafts: no need to say it here. */}
-        <span className="max-sm:hidden">
-          You add debts as <span className="font-medium text-zinc-900">{viewer}</span>. Nothing is saved before you check it.
-        </span>
-      </PageHeader>
+    <div className="mx-auto max-w-6xl space-y-6" data-page-tour="capture">
+      <div className="flex items-start justify-between gap-4">
+        <PageHeader title="Add a debt" />
+        {empty && <CaptureGuide onPrepare={prepareCaptureGuide} />}
+      </div>
 
-      {!reading && !engine && (
-        <Card title="Your debt, in your words." actions={<CaptureGuide onPrepare={prepareCaptureGuide} />}>
+      {empty && (
+        <div>
           {changed && (
             <p role="status" className="mb-4 text-sm text-zinc-600">
               Trader changed. Read the page again.
@@ -202,6 +202,17 @@ export default function AddPage() {
                   Type a sentence
                 </button>
               </div>
+              <button
+                type="button"
+                className={btn.small}
+                onClick={() => {
+                  setText(sample);
+                  setTyping(true);
+                }}
+              >
+                Try &quot;{sample}&quot;
+              </button>
+              <p className="text-sm text-zinc-500">The AI reads it. You check each line first.</p>
             </div>
             <form id="capture-form" onSubmit={submit} className={`space-y-3 sm:order-first ${typing ? "" : "max-sm:hidden"}`}>
               <label htmlFor="capture-text" className={label}>
@@ -225,25 +236,22 @@ export default function AddPage() {
               <ErrorNote error={error} />
             </div>
           )}
-        </Card>
+        </div>
       )}
 
       {(reading || engine) && (
         <div ref={view} className="capture-result space-y-4">
           {engine && (
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
                 <h2 className="text-lg font-medium text-zinc-900">Drafts</h2>
-                {engine === "fallback" && <Badge>Read without AI: check each line</Badge>}
+                {!allSaved && (
+                  <button type="button" className={btn.small} disabled={saving} onClick={again}>
+                    Read again
+                  </button>
+                )}
               </div>
-              {!allSaved && (
-                <button type="button" className={btn.small} disabled={saving} onClick={again}>
-                  Read another page
-                </button>
-              )}
-              <p className="basis-full text-sm text-zinc-600">
-                Notebook of <span className="font-medium text-zinc-900">{viewer}</span>. Every line is a debt between you and one other trader.
-              </p>
+              {engine === "fallback" && <Badge>No AI: check each line</Badge>}
             </div>
           )}
           <div className="capture-view">
@@ -270,7 +278,7 @@ export default function AddPage() {
                 </p>
               ) : drafts.length === 0 ? (
                 <div className="space-y-3">
-                  <p className="text-sm text-zinc-600">No debt to check. Add a line by hand, or read another page.</p>
+                  <p className="text-sm text-zinc-600">No debt to check. Add a line by hand, or read again.</p>
                   {addButton}
                 </div>
               ) : (
@@ -301,7 +309,7 @@ export default function AddPage() {
                           Go to Confirm
                         </Link>
                         <button type="button" className={btn.small} onClick={again}>
-                          Read another page
+                          Read again
                         </button>
                       </div>
                     </div>

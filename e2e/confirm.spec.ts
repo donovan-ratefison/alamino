@@ -21,9 +21,10 @@ test.describe("Confirm a debt", () => {
     await expect(confirmLink).toHaveAccessibleName(/1/);
 
     const waitingForYou = page.locator("section").filter({ has: page.getByRole("heading", { name: /waiting for you/i }) });
-    await expect(waitingForYou.getByText("Rivo approved. Waiting for you.")).toBeVisible();
-    // The debt reads from Hery's side.
-    await expect(waitingForYou.getByText("Rivo owes you $50")).toBeVisible();
+    await expect(waitingForYou.getByText("Rivo approved", { exact: true })).toBeVisible();
+    // The debt reads from Hery's side. The amount stands on its own.
+    await expect(waitingForYou.getByText("Rivo owes you", { exact: true })).toBeVisible();
+    await expect(waitingForYou.getByText("$50", { exact: true })).toBeVisible();
     await waitingForYou.getByRole("button", { name: /approve/i }).click();
 
     await expect.poll(async () => (await debtById(request, debt.id))?.status).toBe("confirmed");
@@ -52,11 +53,11 @@ test.describe("Confirm a debt", () => {
     await expect(panel).toHaveCount(0);
   });
 
-  test("Hery gives a different amount, then Rivo accepts it", async ({ page, request }) => {
+  test("Hery changes the amount, then Rivo accepts it", async ({ page, request }) => {
     await page.goto("/confirm");
     await viewAs(page, "hery");
 
-    await page.getByRole("button", { name: /different amount/i }).click();
+    await page.getByRole("button", { name: "Change amount", exact: true }).click();
     await page.getByLabel(/amount/i).fill("60");
     await page.getByRole("button", { name: /send/i }).click();
 

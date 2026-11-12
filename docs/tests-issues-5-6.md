@@ -1,4 +1,4 @@
-# Tests manuels — issues #5 et #6 (PayPal sandbox)
+# Tests manuels : issues #5 et #6 (PayPal sandbox)
 
 Guide pas à pas, avec les valeurs attendues et les captures à faire.
 Faire **#6 avant #5** : #5 exige un sandbox qui marche.
@@ -33,7 +33,7 @@ Sans `authenticated:true`, tous les paiements échouent avec la 401 ci-dessus.
 
 ---
 
-## Issue #6 — les 3 points ouverts
+## Issue #6 : les 3 points ouverts
 
 **Done when :** un commentaire sur l'issue avec un oui/non par point.
 
@@ -83,21 +83,21 @@ le recréditer depuis le dashboard sandbox (Add funds / reset).
 3. Noter le temps total jusqu'à `done`.
 
 Réponse : oui si `done` en **moins de ~2 minutes** (compatible démo live), non sinon.
-Si non : décision actée en section 13 d'`ARCHITECTURE.md` — afficher `sent`
+Si non : décision actée en section 13 d'`ARCHITECTURE.md` : afficher `sent`
 comme état final dans la vidéo.
 
 ### Modèle de commentaire pour #6
 
 ```
-Point 1 (payouts depuis business financé) : oui/non — batch <id>, Hery +290 $, Rivo +30 $.
-Point 2 (soldes perso suffisants) : oui/non — soldes avant : Soa X $, Lalao Y $, Fidy Z $.
-Point 3 (polling assez rapide) : oui/non — done en <durée>, N polls de 10 s.
+Point 1 (payouts depuis business financé) : oui/non, batch <id>, Hery +290 $, Rivo +30 $.
+Point 2 (soldes perso suffisants) : oui/non, soldes avant : Soa X $, Lalao Y $, Fidy Z $.
+Point 3 (polling assez rapide) : oui/non, done en <durée>, N polls de 10 s.
 Captures : <liens>.
 ```
 
 ---
 
-## Issue #5 — un round complet avec vrais paiements sandbox
+## Issue #5 : un round complet avec vrais paiements sandbox
 
 **Done when :** le round atteint `done` et un compte personal montre le payout.
 En cas d'échec : ouvrir une issue `bug` avec écran + actions + texte d'erreur.
@@ -153,7 +153,7 @@ Sur `/add`, envoyer une photo au lieu du texte :
 ### Modèle d'issue bug (si une étape échoue)
 
 ```
-Titre : [bug] <écran> — <ce qui rate>
+Titre : [bug] <écran> : <ce qui rate>
 - Étape du scénario : n°X ci-dessus
 - Ce que j'ai fait : ...
 - Attendu : ...
@@ -166,7 +166,7 @@ Titre : [bug] <écran> — <ce qui rate>
 
 ## Scénarios front (complètent #5 et #6, écran par écran)
 
-À jouer dans l'ordre, sur une base resettée (`Reset demo` sur `/`).
+À jouer dans l'ordre, sur une base resettée (`Reset demo` dans le menu « More » du header).
 Noter `NAV` = barre de navigation, `VIEW` = sélecteur « View as » du header.
 
 ### H. Header + navigation (toutes les pages)
@@ -177,7 +177,7 @@ Noter `NAV` = barre de navigation, `VIEW` = sélecteur « View as » du header.
 | H2 | Passer VIEW à chaque trader, recharger la page, changer de page | le trader choisi persiste (localStorage) |
 | H3 | Après l'étape 2 du scénario #5, VIEW = Hery | l'onglet Confirm affiche un badge compteur **1** |
 
-### M. `/` — Market
+### M. `/` : Market
 
 | # | Action | Attendu |
 |---|---|---|
@@ -185,13 +185,13 @@ Noter `NAV` = barre de navigation, `VIEW` = sélecteur « View as » du header.
 | M2 | Cliquer « Run clearing » | navigation vers `/rounds/<id>` (round `cleared`) |
 | M3 | Revenir sur `/` avec un round ouvert | bouton **« Continue round »** (mène au round), pas « Run clearing » |
 | M4 | Round `done`, cliquer « Run clearing » | message d'erreur visible (« No confirmed debt to clear »), pas de navigation ; stats : **$0.00**, 0 dettes confirmées ; registre : 9 lignes aux statuts `cleared`/`settled` |
-| M5 | Cliquer « Reset demo » | retour à M1, sans erreur |
+| M5 | Menu « More », cliquer « Reset demo » | retour à M1, sans erreur |
 
-### A. `/add` — ajout
+### A. `/add` : ajout
 
 | # | Action | Attendu |
 |---|---|---|
-| A1 | Page vide | bouton « Read with AI » **désactivé** ; le texte rappelle « You add debts as Rivo » (VIEW = Rivo) |
+| A1 | Page vide (VIEW = Rivo) | bouton « Read the sentence » **désactivé** ; « Try "I owe Hery 50 for rice" » remplit la phrase sans la lire |
 | A2 | Taper `I owe Hery 50 for rice`, « Read with AI » | 1 carte draft : Debtor Rivo, Creditor Hery, Amount 50, badge de confiance ; « Save » actif |
 | A3 | « Save » | carte « Saved: Rivo owes Hery $50.00. The other side must confirm it. » + liens Market/Confirm ; le badge Confirm de Hery passe à 1 (H3) |
 | A4 | Recommencer avec [photo-1](test-photos/photo-1-rivo-hery-50.jpg) | même draft que A2 (source photo) |
@@ -199,17 +199,17 @@ Noter `NAV` = barre de navigation, `VIEW` = sélecteur « View as » du header.
 | A6 | Draft avec débiteur = créditeur | message rouge, « Save » désactivé ; montant invalide : message rouge ; draft sans le trader courant : message « Change "View as" first », « Save » désactivé |
 | A7 | « Discard » sur un draft | la carte disparaît, rien n'est enregistré |
 
-### C. `/confirm` — approbation
+### C. `/confirm` : approbation
 
 | # | Action | Attendu |
 |---|---|---|
 | C1 | VIEW = Hery, après A3 | section « Waiting for you (1) » : « Rivo owes Hery $50.00 » + note ; badges Proposed, « Debtor approved » vert, « Creditor not approved » |
 | C2 | VIEW = Rivo | la dette est dans « Waiting for the other side », texte « Waiting for Hery. » |
 | C3 | Hery : « Approve $50.00 » | la dette quitte la liste, le badge compteur tombe à 0 ; sur `/` le registre la montre `confirmed` |
-| C4 | « Different amount » → 45 → « Send amount » | statut Disputed, tableau « Recorded amount $50.00 / Hery says $45.00 » ; bouton « Ask the AI » → encadré « AI suggestion: … » (+ bouton Accept si montant proposé) |
+| C4 | « Change amount » → 45 → « Send amount » | statut Disputed, tableau « Recorded amount $50.00 / Hery says $45.00 » ; bouton « Ask the AI » → encadré « AI suggestion: … » (+ bouton Accept si montant proposé) |
 | C5 | Dette acceptée des deux côtés | liste vide : « Nothing to confirm » |
 
-### R. `/rounds/[id]` — clearing et paiement (cœur de #5 et #6)
+### R. `/rounds/[id]` : clearing et paiement (cœur de #5 et #6)
 
 | # | Action | Attendu |
 |---|---|---|
@@ -217,15 +217,15 @@ Noter `NAV` = barre de navigation, `VIEW` = sélecteur « View as » du header.
 | R2 | Plan de règlement | pay-ins Soa $170.00 / Lalao $140.00 / Fidy $10.00, badges « Not started » ; pay-outs Hery $290.00 / Rivo $30.00 ; texte « Payouts start when every pay-in is paid. » (pas de bouton Send) |
 | R3 | VIEW ≠ payeur | bouton « View as Soa to pay » → bascule VIEW, le **bouton PayPal** apparaît (sandbox ; en simulé : bouton « Pay … (simulated) ») |
 | R4 | Payer Soa via popup PayPal (compte sandbox Soa) | badge Soa → « Paid in », statut round → `collecting` ; répéter Lalao, Fidy → bouton **« Send payouts »** |
-| R5 | « Send payouts » | « Payouts sent. Waiting for PayPal to confirm them… », statuts pay-out → « Sent » puis « Paid out » **sans recharger** (poll auto 3 s) ; final : « Round complete. Every pay-in and pay-out is done. » + « Read your statement » — chronométrer pour le point 6.3 |
+| R5 | « Send payouts » | « Payouts sent. Waiting for PayPal to confirm them… », statuts pay-out → « Sent » puis « Paid out » **sans recharger** (poll auto 3 s) ; final : « Round complete. Every pay-in and pay-out is done. » + « Read your statement »; chronométrer pour le point 6.3 |
 | R6 | `/rounds/latest` sans aucun round | état vide « No clearing round yet » + lien Market |
 
-### S. `/statement` — relevé
+### S. `/statement` : relevé
 
 | # | Action | Attendu |
 |---|---|---|
-| S1 | VIEW = Hery, round `done` | « Statement for Hery », **« You receive $290.00 »**, résumé IA, table Counterparty/Direction/Before/After/Reason, lien « View the round » |
-| S2 | VIEW = Soa | « You pay in $170.00 » ; VIEW = Fidy : « You pay in $10.00 » |
+| S1 | VIEW = Hery, round `done` | « Statement for Hery », **« You receive $290.00 »**, résumé IA, table Counterparty/Direction/Before/After/Reason, lien « View round » |
+| S2 | VIEW = Soa | « You pay $170.00 » ; VIEW = Fidy : « You pay $10.00 » |
 | S3 | Sans round | état vide « No clearing round yet » |
 
 ### P. Téléphone (complète l'issue #8)

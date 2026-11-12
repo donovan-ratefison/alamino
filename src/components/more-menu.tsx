@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { api } from "./api";
 import { useApp } from "./app";
 import { startGuide } from "./demo-guide";
-import { Badge } from "./ui";
+import { Badge, ErrorNote } from "./ui";
 import { TourTrigger } from "./guided-tour";
 
 // The PayPal and AI modes, shown in the "More" menu.
@@ -19,11 +20,28 @@ export function ModeBadges() {
   );
 }
 
-// The modes, the demo guide, and on a phone the links that do not fit the bottom bar.
+// The guides, the demo reset, the modes, and on a phone the links that do not fit the bottom bar.
 export function MoreMenu() {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState<Error | null>(null);
+
+  // Reseed the database, then reload on the market so every list shows the seed data.
+  async function reset() {
+    setResetting(true);
+    setResetError(null);
+    try {
+      await api("/api/demo/reset", {});
+      // A full reload, not router.push: every cached list (debts, rounds, traders) must load again.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      location.assign("/");
+    } catch (e) {
+      setResetError(e as Error);
+      setResetting(false);
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -63,23 +81,8 @@ export function MoreMenu() {
       </button>
       {open && (
         <div id="more-panel" className="bell-panel more-panel">
-          <nav aria-label="More">
+          <div className="grid">
             <TourTrigger menu onStart={() => setOpen(false)} />
-            <Link
-              href="/finance"
-              // The panel renders only in the browser, after a click. usePathname here would need a Suspense boundary.
-              aria-current={location.pathname.startsWith("/finance") ? "page" : undefined}
-              className="nav-link w-full sm:hidden"
-              onClick={() => setOpen(false)}
-            >
-              AI Finance
-            </Link>
-          </nav>
-          <div className="grid gap-2 px-2 pt-1 max-sm:border-t max-sm:border-zinc-200 max-sm:pt-3">
-            <p className="text-xs text-zinc-500">Modes</p>
-            <div className="flex flex-wrap gap-2"><ModeBadges /></div>
-          </div>
-          <div className="border-t border-zinc-200 pt-2">
             <button
               type="button"
               className="nav-link w-full"
@@ -90,6 +93,23 @@ export function MoreMenu() {
             >
               Demo guide
             </button>
+            <Link
+              href="/finance"
+              // The panel renders only in the browser, after a click. usePathname here would need a Suspense boundary.
+              aria-current={location.pathname.startsWith("/finance") ? "page" : undefined}
+              className="nav-link w-full sm:hidden"
+              onClick={() => setOpen(false)}
+            >
+              AI Finance
+            </Link>
+            <button type="button" className="nav-link w-full disabled:opacity-60" disabled={resetting} onClick={reset}>
+              {resetting ? "Resetting..." : "Reset demo"}
+            </button>
+            {resetError && <ErrorNote error={resetError} />}
+          </div>
+          <div className="grid gap-2 border-t border-zinc-200 px-2 pt-3">
+            <p className="text-xs text-zinc-500">Modes</p>
+            <div className="flex flex-wrap gap-2"><ModeBadges /></div>
           </div>
         </div>
       )}

@@ -11,7 +11,6 @@ interface TourOptions {
   beforeStart?: () => void;
   canStart?: () => boolean;
   returnFocus?: () => HTMLElement | null;
-  onlyIfUnseen?: boolean;
 }
 
 const TourContext = createContext<{
@@ -61,10 +60,6 @@ export function GuidedTourProvider({ children }: { children: ReactNode }) {
   const startTour = useCallback(async (options: TourOptions = {}) => {
     if (loading.current || active.current?.isActive() || options.canStart?.() === false) return;
     const storageKey = options.storageKey ?? ONBOARDING_STORAGE_KEY;
-    if (options.onlyIfUnseen) {
-      if (seenInSession.current.has(storageKey)) return;
-      try { if (localStorage.getItem(storageKey) !== null) return; } catch { /* Storage is optional. */ }
-    }
     loading.current = true;
     activeKey.current = storageKey;
     setError("");
@@ -127,7 +122,7 @@ export function GuidedTourProvider({ children }: { children: ReactNode }) {
     let seen = seenInSession.current.has(ONBOARDING_STORAGE_KEY);
     try { seen ||= localStorage.getItem(ONBOARDING_STORAGE_KEY) !== null; } catch { /* The guide also works without storage. */ }
     const timer = !seen ? window.setTimeout(() => {
-      // Pages with their own introduction handle the first visit locally.
+      // Pages marked with data-page-tour (Add) keep their task visible: their tour opens from a help button.
       if (!document.querySelector("[data-page-tour]") && !seenInSession.current.has(ONBOARDING_STORAGE_KEY)) void startTour();
     }, 600) : undefined;
     return () => {

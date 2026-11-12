@@ -195,7 +195,7 @@ sequenceDiagram
             API->>API: Read the cache
         end
         API-->>Screen: The statement
-        Screen-->>Soa: Summary, "You pay in $170", one line for each debt
+        Screen-->>Soa: Summary, "You pay $170", one line for each debt
     end
 ```
 
@@ -208,7 +208,7 @@ sequenceDiagram
     participant API
     participant Ledger
 
-    Trader->>Screen: Clicks Reset demo
+    Trader->>Screen: Opens the More menu, clicks Reset demo
     Screen->>API: POST /api/demo/reset
     API->>Ledger: Delete all rows, then seed five traders and eight confirmed debts
     API-->>Screen: ok

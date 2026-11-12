@@ -50,7 +50,7 @@ test("a skipped tour stays dismissed after reload and can be replayed from Help"
   await expect(page.getByRole("button", { name: "Take a guided tour" })).toBeFocused();
 });
 
-test("phone visitors get five labelled icons, a local Add tour and replay in More", async ({ page }) => {
+test("phone visitors get five labelled icons, an Add tour on request and replay in More", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 });
   await page.goto("/");
   const popover = page.locator(".driver-popover");
@@ -76,6 +76,10 @@ test("phone visitors get five labelled icons, a local Add tour and replay in Mor
   }
   await nav.getByRole("link", { name: "Add a debt" }).click();
   await expect(nav.getByRole("link", { name: "Add a debt" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("button", { name: "How to add a debt" })).toBeVisible();
+  await page.waitForTimeout(1000);
+  await expect(popover).toBeHidden();
+  await page.getByRole("button", { name: "How to add a debt" }).click();
   await expect(popover).toContainText("Choose your trader");
   await popover.getByRole("button", { name: "Skip tour" }).click();
   await expect(page.getByRole("complementary", { name: "Add a debt guide" })).toHaveCount(0);

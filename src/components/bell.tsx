@@ -58,7 +58,7 @@ function BellItem({ debt, onDone }: { debt: Debt; onDone: (message: string) => v
         )}
         {counter === null && (
           <button type="button" className={secondary} disabled={busy} onClick={() => setCounter("")}>
-            Different amount
+            Change amount
           </button>
         )}
       </div>

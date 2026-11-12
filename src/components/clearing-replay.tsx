@@ -5,7 +5,6 @@ import type { Edge, Round, TraderId } from "@/lib/types";
 import { formatUsd } from "./api";
 import { useApp } from "./app";
 import { Network } from "./network";
-import { btn } from "./ui";
 
 interface Frame {
   edges: Edge[];
@@ -26,22 +25,14 @@ const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").match
 export function ClearingReplay({ round, highlight }: { round: Round; highlight?: TraderId[] }) {
   const { traders, name } = useApp();
   const [view, setView] = useState<"before" | "after">("after");
-  const [frame, setFrame] = useState<Frame | null>(null); // the last replay frame, kept for its caption
+  const [frame, setFrame] = useState<Frame | null>(null); // the current replay frame
   const [running, setRunning] = useState(false);
   const { stats, cancellations, remaining } = round.result;
+  const endCaption = `No circle left. ${formatUsd(stats.clearedByCirclesCents)} cancelled, no money moved.`;
 
   async function replay() {
-    const end: Frame = {
-      edges: remaining,
-      left: stats.remainingCents,
-      cancelled: stats.clearedByCirclesCents,
-      caption: `No circle is left. ${formatUsd(stats.remainingCents)} of debt is left. ${formatUsd(stats.clearedByCirclesCents)} cancelled, no money moved.`,
-    };
     setView("after");
-    if (reducedMotion()) {
-      setFrame(end);
-      return;
-    }
+    if (reducedMotion()) return;
     setRunning(true);
 
     const amounts = new Map<string, Edge>();
@@ -56,7 +47,7 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
 
     for (const c of cancellations) {
       const circle = [...c.path, c.path[0]].map(name).join(" → ");
-      show({ highlight: c.path, caption: `${circle}: ${formatUsd(c.amountCents)} cancels on each debt` });
+      show({ highlight: c.path, caption: `${circle}: ${formatUsd(c.amountCents)} off each debt` });
       await wait(1100);
       c.path.forEach((id, i) => {
         const key = pair(id, c.path[(i + 1) % c.path.length]);
@@ -87,7 +78,6 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
     }
 
     await wait(600);
-    setFrame(end);
     setRunning(false);
   }
 
@@ -122,11 +112,8 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
         type="button"
         aria-pressed={pressed}
         disabled={running}
-        onClick={() => {
-          setView(v);
-          setFrame(null);
-        }}
-        className={`rounded-full px-3.5 py-1.5 text-sm font-medium disabled:opacity-60 ${
+        onClick={() => setView(v)}
+        className={`h-8 rounded-full px-3 text-xs font-medium disabled:opacity-60 ${
           pressed ? "bg-white text-brand shadow-sm" : "text-zinc-600 hover:text-brand"
         }`}
       >
@@ -136,25 +123,15 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
   };
 
   return (
-    <div className="min-w-0 space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div role="group" aria-label="Network view" className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 p-0.5">
-          {toggle("before", "Before")}
-          {toggle("after", "After")}
-        </div>
-        <button type="button" className={btn.small} disabled={running} onClick={replay}>
-          Replay clearing
-        </button>
-      </div>
-
+    <div className="replay min-w-0 space-y-4">
       <dl className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3">
-          <dt className="text-xs text-zinc-500">Debt left</dt>
-          <dd className="mt-1 text-2xl font-medium tabular-nums text-brand">{formatUsd(left)}</dd>
+        <div className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5">
+          <dt className="whitespace-nowrap text-[11px] text-zinc-500">Debt left</dt>
+          <dd className="mt-0.5 text-xl font-medium tabular-nums text-brand">{formatUsd(left)}</dd>
         </div>
-        <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3">
-          <dt className="text-xs text-zinc-500">Cancelled, no money moved</dt>
-          <dd className="mt-1 text-2xl font-medium tabular-nums text-brand">{formatUsd(cancelled)}</dd>
+        <div className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5">
+          <dt className="whitespace-nowrap text-[11px] text-zinc-500">Cancelled</dt>
+          <dd className="mt-0.5 text-xl font-medium tabular-nums text-brand">{formatUsd(cancelled)}</dd>
         </div>
       </dl>
 
@@ -168,9 +145,35 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
           label={running ? "Debts during the clearing replay" : before ? "Debts before the round" : "Debts after circles cancel"}
         />
       )}
-      <p aria-live="polite" className="min-h-5 text-sm text-zinc-700">
-        {frame?.caption ?? (!before && remaining.every((e) => e.amountCents === 0) ? "No debt is left." : "")}
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <p aria-live="polite" className="min-h-10 min-w-0 flex-1 text-sm text-zinc-700">
+          {running && frame
+            ? frame.caption
+            : !before
+              ? endCaption
+              : highlight
+                ? "The selected circle is in blue."
+                : "Green debts form circles. They cancel."}
+        </p>
+        <div className="flex shrink-0 items-center gap-2">
+          <div role="group" aria-label="Network view" className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 p-0.5">
+            {toggle("before", "Before")}
+            {toggle("after", "After")}
+          </div>
+          <button
+            type="button"
+            aria-label="Replay clearing"
+            title="Replay clearing"
+            className="grid size-8 place-items-center rounded-full border border-zinc-200 bg-white text-brand hover:bg-blue-50 disabled:opacity-45"
+            disabled={running}
+            onClick={replay}
+          >
+            <svg aria-hidden="true" viewBox="0 0 20 20" className="size-4 fill-none stroke-current stroke-2">
+              <path d="M16 10a6 6 0 1 1-1.8-4.3M16 3.5v3.2h-3.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

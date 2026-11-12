@@ -25,7 +25,7 @@ test.describe("Issue #7: Test photo capture with handwritten notebook pages", ()
     await expect(page.getByRole("img", { name: /notebook page/i })).toBeVisible();
 
     // In test environment without API keys, fallback capture explains that an AI key is needed
-    await expect(page.getByText(/read without ai/i).first()).toBeVisible();
+    await expect(page.getByText("No AI: check each line", { exact: true })).toBeVisible();
     await page.screenshot({ path: "test-results/screenshots/issue-7-photo-fallback.png", fullPage: true });
   });
 

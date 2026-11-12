@@ -78,7 +78,7 @@ function PayIn({ roundId, s, onPaid }: { roundId: string; s: Settlement; onPaid:
           Loading payment
         </p>
       ) : config.paypalMode === "simulated" ? (
-        <button type="button" className={btn.primary} disabled={busy} onClick={paySimulated}>
+        <button type="button" className={`${btn.primary} w-full sm:w-auto`} disabled={busy} onClick={paySimulated}>
           {busy ? "Paying..." : `Pay ${formatUsd(s.amountCents)} (simulated)`}
         </button>
       ) : !sandbox ? (
@@ -166,14 +166,6 @@ export function RoundView({ id }: { id: string }) {
   const owedToMe = sum(r.debtsBefore.filter((e) => e.creditorId === traderId));
   const facts = `You owed ${formatUsd(owed)}. You were owed ${formatUsd(owedToMe)}.`;
   const waiting = payIns.filter((s) => s.status !== "captured").map((s) => s.traderId);
-  const progress =
-    waiting.length > 0
-      ? { text: `Waiting for ${waiting.length} ${waiting.length === 1 ? "payment" : "payments"}`, tone: "amber" as const }
-      : payOuts.every((s) => s.status === "confirmed")
-        ? { text: "Done", tone: "green" as const }
-        : payOuts.some((s) => s.status !== "none")
-          ? { text: "Paying out", tone: "blue" as const }
-          : { text: "All paid in. Payouts can start.", tone: "blue" as const };
 
   async function sendPayouts() {
     setSending(true);
@@ -198,7 +190,7 @@ export function RoundView({ id }: { id: string }) {
         </div>
         {s.direction === "pay_in" && s.status !== "captured" && s.traderId !== traderId && (
           <button type="button" className={btn.small} onClick={() => setTraderId(s.traderId)}>
-            View as {name(s.traderId)} to pay
+            Switch to {name(s.traderId)} to pay
           </button>
         )}
       </li>
@@ -214,197 +206,199 @@ export function RoundView({ id }: { id: string }) {
         : "Nothing to pay";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title={`${formatUsd(stats.grossCents)} of debt ${r.status === "done" ? "settled" : "to settle"} with ${formatUsd(stats.cashMovedCents)}`}
-      >
-        <div className="flex flex-wrap items-center gap-3">
-          <span>
-            {formatUsd(stats.clearedByCirclesCents)} cancelled with no money · {stats.savedPct.toFixed(1)}% less cash
-          </span>
-          <Badge tone={progress.tone}>{progress.text}</Badge>
-        </div>
-      </PageHeader>
-      <GuideTip topic="payments" />
+      />
 
-      <Card>
-        <div className="grid gap-8 lg:grid-cols-2 lg:gap-10">
-          <div className="min-w-0 space-y-4">
-            {r.status === "done" ? (
-              <div role="status" className="space-y-4">
-                <p className="flex items-center gap-2 text-sm font-semibold text-emerald-800">
-                  <svg aria-hidden="true" viewBox="0 0 20 20" className="size-5 fill-current">
-                    <path d="M10 1.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Zm4.1 6.3-4.9 5.4a.9.9 0 0 1-1.3 0L5.9 11a.9.9 0 1 1 1.3-1.2l1.4 1.5 4.2-4.7a.9.9 0 1 1 1.3 1.2Z" />
-                  </svg>
-                  Done
-                </p>
-                <p className="text-3xl font-medium leading-tight tracking-tight text-brand">
-                  {formatUsd(stats.grossCents)} of debt settled with {formatUsd(stats.cashMovedCents)}
-                </p>
-                <p className="text-sm text-zinc-600">
-                  {payIns.length} paid in, {payOuts.length} paid out
-                </p>
-                <p className="text-base font-medium text-zinc-900">{myResult}</p>
-                <div className="flex flex-wrap gap-2 pt-2">
-                  <Link href="/statement" className={btn.primary}>
-                    Read your statement
-                  </Link>
-                  <Link href="/" className={btn.secondary}>
-                    Go to the market
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              <>
-                {me?.direction === "pay_in" ? (
-                  <>
-                    <p className="eyebrow text-zinc-500">You pay once</p>
-                    <CountUp cents={me.amountCents} className="block text-5xl font-medium leading-none tracking-tight tabular-nums text-brand" />
-                    <p className="text-sm text-zinc-600">
-                      {facts}
-                      {me.amountCents < owed && " Alamino cancelled the rest."}
-                    </p>
-                    {me.status === "captured" ? (
-                      <p role="status" className="flex flex-wrap items-center gap-2 text-sm text-zinc-700">
-                        <Badge tone="green">Paid in</Badge> You paid {formatUsd(me.amountCents)} into the clearing account.
-                      </p>
-                    ) : (
-                      <PayIn key={me.traderId} roundId={r.id} s={me} onPaid={reload} />
-                    )}
-                  </>
-                ) : me?.direction === "pay_out" ? (
-                  <>
-                    <p className="eyebrow text-zinc-500">You receive</p>
-                    <CountUp cents={me.amountCents} className="block text-5xl font-medium leading-none tracking-tight tabular-nums text-brand" />
-                    <p className="text-sm text-zinc-600">
-                      {`You were owed ${formatUsd(owedToMe)}. You owed ${formatUsd(owed)}.`}
-                      {me.amountCents < owedToMe && " Alamino cancelled the rest."}
-                    </p>
-                    {me.status === "none" ? (
-                      <p className="text-sm font-medium text-zinc-800">
-                        {waiting.length > 0
-                          ? `Paid to you when ${names(waiting)} ${waiting.length === 1 ? "has" : "have"} paid in.`
-                          : "Every pay-in is paid. Your payout can start."}
-                      </p>
-                    ) : (
-                      <p role="status" className="flex flex-wrap items-center gap-2 text-sm text-zinc-700">
-                        Your payout: <Badge tone={statusBadge[me.status].tone}>{statusBadge[me.status].text}</Badge>
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <p className="eyebrow text-zinc-500">Nothing to pay</p>
-                    <p className="text-2xl font-medium tracking-tight text-brand">
-                      {owed + owedToMe > 0 ? "Nothing to pay. Your debts cancelled." : "Nothing to pay. You have no debt in this round."}
-                    </p>
-                    {owed + owedToMe > 0 && <p className="text-sm text-zinc-600">{facts}</p>}
-                  </>
-                )}
+      {/* Phone: the replay first, above the fold, then the pay card, the details and the tip.
+          Desktop: the pay card, the details and the tip left, the replay right. */}
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-10">
+        <ClearingReplay round={r} highlight={active === null ? undefined : cancellations[active]?.path} />
 
-                {payIns.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-600">
-                    <ul className="flex gap-1.5">
-                      {payIns.map((s) => {
-                        const paid = s.status === "captured";
-                        const text = `${name(s.traderId)}: ${paid ? "paid in" : "not paid in"}`;
-                        // Paid: full chip with a check mark. Not paid: faded chip. The text says it for screen readers.
-                        return (
-                          <li key={s.traderId} title={text} className={`relative ${paid ? "" : "opacity-40"}`}>
-                            <TraderChip id={s.traderId} name={name(s.traderId)} label={text} />
-                            {paid && (
-                              <svg
-                                aria-hidden="true"
-                                viewBox="0 0 12 12"
-                                className="absolute -right-1 -bottom-1 size-3.5 rounded-full bg-emerald-700 fill-none stroke-white stroke-2 p-0.5 ring-2 ring-white"
-                              >
-                                <path d="M2.5 6.2 5 8.5l4.5-5" />
-                              </svg>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                    <span>
-                      {paidIn.length} of {payIns.length} {payIns.length === 1 ? "trader" : "traders"} paid in
-                    </span>
+        <div className="min-w-0 space-y-6 lg:order-first">
+          <Card className="min-w-0">
+            <div className="min-w-0 space-y-4">
+              {r.status === "done" ? (
+                <div role="status" className="space-y-3">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-emerald-800">
+                    <svg aria-hidden="true" viewBox="0 0 20 20" className="size-5 fill-current">
+                      <path d="M10 1.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Zm4.1 6.3-4.9 5.4a.9.9 0 0 1-1.3 0L5.9 11a.9.9 0 1 1 1.3-1.2l1.4 1.5 4.2-4.7a.9.9 0 1 1 1.3 1.2Z" />
+                    </svg>
+                    Done
+                  </p>
+                  <p className="text-3xl font-medium leading-tight tracking-tight tabular-nums text-brand">{myResult}</p>
+                  <p className="text-sm text-zinc-600">
+                    {payIns.length} paid in, {payOuts.length} paid out
+                  </p>
+                  <div className="replay-actions grid grid-cols-2 gap-2 pt-2">
+                    <Link href="/statement" className={btn.primary}>
+                      Read statement
+                    </Link>
+                    <Link href="/" className={btn.secondary}>
+                      Market
+                    </Link>
                   </div>
-                )}
+                </div>
+              ) : (
+                <>
+                  {me?.direction === "pay_in" ? (
+                    <>
+                      <div className="flex items-baseline justify-between gap-3">
+                        <p className="eyebrow text-zinc-500">You pay once</p>
+                        <Link href="/statement" className="text-sm font-medium text-accent hover:underline">
+                          Why {formatUsd(me.amountCents)}?
+                        </Link>
+                      </div>
+                      <CountUp cents={me.amountCents} className="block text-4xl font-medium leading-none tracking-tight tabular-nums text-brand" />
+                      {me.status === "captured" ? (
+                        <p role="status" className="flex flex-wrap items-center gap-2 text-sm text-zinc-700">
+                          <Badge tone="green">Paid in</Badge> You paid {formatUsd(me.amountCents)} into the clearing account.
+                        </p>
+                      ) : (
+                        <PayIn key={me.traderId} roundId={r.id} s={me} onPaid={reload} />
+                      )}
+                    </>
+                  ) : me?.direction === "pay_out" ? (
+                    <>
+                      <p className="eyebrow text-zinc-500">You receive</p>
+                      <CountUp cents={me.amountCents} className="block text-4xl font-medium leading-none tracking-tight tabular-nums text-brand" />
+                      {me.status === "none" ? (
+                        <p className="text-sm font-medium text-zinc-800">
+                          {waiting.length > 0
+                            ? `After ${names(waiting)} ${waiting.length === 1 ? "pays" : "pay"} in.`
+                            : "Every pay-in is paid. Your payout can start."}
+                        </p>
+                      ) : (
+                        <p role="status" className="flex flex-wrap items-center gap-2 text-sm text-zinc-700">
+                          Your payout: <Badge tone={statusBadge[me.status].tone}>{statusBadge[me.status].text}</Badge>
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="eyebrow text-zinc-500">Nothing to pay</p>
+                      <p className="text-2xl font-medium tracking-tight text-brand">
+                        {owed + owedToMe > 0 ? "Nothing to pay. Your debts cancelled." : "Nothing to pay. You have no debt in this round."}
+                      </p>
+                      {owed + owedToMe > 0 && <p className="text-sm text-zinc-600">{facts}</p>}
+                    </>
+                  )}
 
-                <div className="space-y-3 border-t border-zinc-200 pt-4">
+                  {payIns.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-600">
+                      <ul className="flex gap-1.5">
+                        {payIns.map((s) => {
+                          const paid = s.status === "captured";
+                          const text = `${name(s.traderId)}: ${paid ? "paid in" : "not paid in"}`;
+                          const chip = <TraderChip id={s.traderId} name={name(s.traderId)} label={text} />;
+                          // Paid: full chip with a check mark. Not paid: faded chip. The text says it for screen readers.
+                          // Another trader not paid in: the chip switches the view to that trader, to pay.
+                          return (
+                            <li key={s.traderId} title={text} className="relative flex">
+                              {paid || s.traderId === traderId ? (
+                                <span className={`flex ${paid ? "" : "opacity-40"}`}>{chip}</span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  aria-label={`Switch to ${name(s.traderId)} to pay`}
+                                  className="flex rounded-full opacity-40 hover:opacity-100 focus-visible:opacity-100"
+                                  onClick={() => setTraderId(s.traderId)}
+                                >
+                                  {chip}
+                                </button>
+                              )}
+                              {paid && (
+                                <svg
+                                  aria-hidden="true"
+                                  viewBox="0 0 12 12"
+                                  className="absolute -right-1 -bottom-1 size-3.5 rounded-full bg-emerald-700 fill-none stroke-white stroke-2 p-0.5 ring-2 ring-white"
+                                >
+                                  <path d="M2.5 6.2 5 8.5l4.5-5" />
+                                </svg>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      <span>
+                        {paidIn.length} of {payIns.length} paid in
+                      </span>
+                    </div>
+                  )}
+
                   {r.status === "paying" ? (
                     <p role="status" className="text-sm text-zinc-700">
                       Payouts sent. Waiting for PayPal to confirm them...
                     </p>
-                  ) : canSendPayouts ? (
-                    <button type="button" className={btn.primary} disabled={sending} onClick={sendPayouts}>
-                      {sending ? "Sending payouts..." : "Send payouts"}
-                    </button>
                   ) : (
-                    <p className="text-sm text-zinc-600">Payouts start when every pay-in is paid.</p>
+                    canSendPayouts && (
+                      <button type="button" className={`${btn.primary} w-full sm:w-auto`} disabled={sending} onClick={sendPayouts}>
+                        {sending ? "Sending payouts..." : "Send payouts"}
+                      </button>
+                    )
                   )}
-                </div>
-              </>
-            )}
-            {actionError && <ErrorNote error={actionError} />}
-          </div>
-
-          <ClearingReplay round={r} highlight={active === null ? undefined : cancellations[active]?.path} />
-        </div>
-      </Card>
-
-      <details className="border-t border-zinc-200 pt-4">
-        <summary className="cursor-pointer text-sm font-medium text-accent">See what cancelled</summary>
-        <div className="mt-6 space-y-6">
-          <Card title={`Circles cancelled (${cancellations.length})`}>
-            {cancellations.length === 0 ? (
-              <p className="text-sm text-zinc-600">No circle in these debts. All debts go to the settlement plan.</p>
-            ) : (
-              <ul className="space-y-2">
-                {cancellations.map((c, i) => (
-                  <li key={i}>
-                    <button
-                      type="button"
-                      aria-pressed={selected === i}
-                      onClick={() => setSelected(selected === i ? null : i)}
-                      onMouseEnter={() => setHover(i)}
-                      onMouseLeave={() => setHover(null)}
-                      onFocus={() => setHover(i)}
-                      onBlur={() => setHover(null)}
-                      className={`w-full rounded-md border px-3 py-2 text-left text-sm ${
-                        active === i ? "border-accent bg-blue-50 text-zinc-900" : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-                      }`}
-                    >
-                      {circle(c.path)}: <span className="font-semibold tabular-nums">{formatUsd(c.amountCents)}</span> cancelled
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-
-          <Card title="Settlement plan">
-            <div className="grid gap-6 md:grid-cols-2">
-              <div>
-                <h3 className="text-sm font-semibold text-zinc-900">Pay in to the clearing account</h3>
-                {payIns.length === 0 ? (
-                  <p className="mt-2 text-sm text-zinc-600">Nobody pays in.</p>
-                ) : (
-                  <ul className="divide-y divide-zinc-200">{payIns.map(row)}</ul>
-                )}
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-zinc-900">Paid out by the clearing account</h3>
-                {payOuts.length === 0 ? (
-                  <p className="mt-2 text-sm text-zinc-600">Nobody is paid out.</p>
-                ) : (
-                  <ul className="divide-y divide-zinc-200">{payOuts.map(row)}</ul>
-                )}
-              </div>
+                </>
+              )}
+              {actionError && <ErrorNote error={actionError} />}
             </div>
           </Card>
+
+          <details className="border-t border-zinc-200 pt-4">
+            <summary className="cursor-pointer text-sm font-medium text-accent">Circles and payment plan</summary>
+            <div className="mt-6 space-y-6">
+              <Card title={`Circles cancelled (${cancellations.length})`}>
+                {cancellations.length === 0 ? (
+                  <p className="text-sm text-zinc-600">No circle in these debts. All debts go to the settlement plan.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {cancellations.map((c, i) => (
+                      <li key={i}>
+                        <button
+                          type="button"
+                          aria-pressed={selected === i}
+                          onClick={() => setSelected(selected === i ? null : i)}
+                          onMouseEnter={() => setHover(i)}
+                          onMouseLeave={() => setHover(null)}
+                          onFocus={() => setHover(i)}
+                          onBlur={() => setHover(null)}
+                          className={`w-full rounded-md border px-3 py-2 text-left text-sm ${
+                            active === i ? "border-accent bg-blue-50 text-zinc-900" : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+                          }`}
+                        >
+                          {circle(c.path)}: <span className="font-semibold tabular-nums">{formatUsd(c.amountCents)}</span> cancelled
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
+
+              <Card title="Settlement plan">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div>
+                    <h3 className="text-sm font-semibold text-zinc-900">Pay in to the clearing account</h3>
+                    {payIns.length === 0 ? (
+                      <p className="mt-2 text-sm text-zinc-600">Nobody pays in.</p>
+                    ) : (
+                      <ul className="divide-y divide-zinc-200">{payIns.map(row)}</ul>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-zinc-900">Paid out by the clearing account</h3>
+                    {payOuts.length === 0 ? (
+                      <p className="mt-2 text-sm text-zinc-600">Nobody is paid out.</p>
+                    ) : (
+                      <ul className="divide-y divide-zinc-200">{payOuts.map(row)}</ul>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </details>
+          <GuideTip topic="payments" />
         </div>
-      </details>
+      </div>
     </div>
   );
 }
