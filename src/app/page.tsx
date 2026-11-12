@@ -12,6 +12,7 @@ import { Network } from "@/components/network";
 import { btn, Card, ErrorNote, Loading } from "@/components/ui";
 import { Rhythm } from "@/components/workflow";
 import { GuideTip } from "@/components/guide-tip";
+import { HouseDashboard } from "@/components/house-dashboard";
 
 // What clearing would do now. For a trader, `stats` are their own numbers, plus what they pay or receive.
 interface Preview {
@@ -74,29 +75,18 @@ export default function MarketPage() {
                 </p>
               </>
             )}
-            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 max-sm:mt-4">
-              {latest.loading ? null : openRound ? (
-                <Link href={`/rounds/${openRound.id}`} className={btn.inverse}>
-                  Continue round
-                </Link>
-              ) : !isHouse ? (
-                <p className="text-sm">The clearing house runs the next round.</p>
-              ) : (
-                <>
-                  <button type="button" className={btn.inverse} onClick={() => asOperator(runClearing)} disabled={running || debts.loading || stats === null}>
-                    {running ? "Running clearing..." : "Run clearing"}
-                  </button>
-                  {stats ? (
-                    <p className="text-base font-medium tabular-nums">
-                      <CountUp cents={stats.grossCents} /> of debt settles with <CountUp cents={stats.cashMovedCents} />
-                    </p>
-                  ) : stats === null ? (
-                    <p className="text-sm">No confirmed debt to clear yet.</p>
-                  ) : null}
-                </>
-              )}
-            </div>
-            {runError && <div className="mt-4"><ErrorNote error={runError} /></div>}
+            {/* The clearing house runs clearing from the dashboard below. */}
+            {!isHouse && (
+              <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 max-sm:mt-4">
+                {latest.loading ? null : openRound ? (
+                  <Link href={`/rounds/${openRound.id}`} className={btn.inverse}>
+                    Continue round
+                  </Link>
+                ) : (
+                  <p className="text-sm">The clearing house runs the next round.</p>
+                )}
+              </div>
+            )}
             {preview.error && <div className="mt-4"><ErrorNote error={preview.error} onRetry={preview.reload} /></div>}
           </div>
           <div className="hero-network">
@@ -113,6 +103,10 @@ export default function MarketPage() {
           </div>
         </div>
       </section>
+
+      {isHouse && (
+        <HouseDashboard total={total} stats={stats} latest={latest} running={running} onRun={() => asOperator(runClearing)} runError={runError} />
+      )}
 
       <div className="market-section">
         <Rhythm debts={debts.data} />

@@ -26,17 +26,20 @@ export function useGuidedTour() {
 
 // Resolve the visible navigation at each step: desktop links and the phone bar
 // share targets, but only one is displayed at a time.
+const visible = (id: string) => Array.from(document.querySelectorAll(`[data-tour="${id}"]`)).find((element) => element.getClientRects().length > 0);
+
 function target(id: string): () => Element {
-  return () => Array.from(document.querySelectorAll(`[data-tour="${id}"]`)).find((element) => element.getClientRects().length > 0)
-    ?? document.querySelector("main") ?? document.body;
+  return () => visible(id) ?? document.querySelector("main") ?? document.body;
 }
 
 function steps(): DriveStep[] {
   const illustration = (topic: GuideTopic) => `<img class="tour-step-art" src="${guideImage(topic)}" width="420" height="280" alt="${GUIDE_TIPS[topic].alt}" />`;
-  return [
+  // The menu shows only the links of the current role: skip the steps whose link is not there.
+  const tasks = ["market", "add", "confirm", "payments", "statement"] as const;
+  const all: DriveStep[] = [
     { popover: {
       title: "Welcome to Alamino",
-      description: '<img class="tour-welcome-art" src="/illustrations/alamino-guide.webp" width="420" height="280" alt="A friendly guide presents a notebook, a confirmation and payments." /><p class="tour-kicker">A little guidance. A clearer start.</p><p>Record debts, confirm them together, and settle only what remains. Let us show you around in eight short steps.</p>',
+      description: '<img class="tour-welcome-art" src="/illustrations/alamino-guide.webp" width="420" height="280" alt="A friendly guide presents a notebook, a confirmation and payments." /><p class="tour-kicker">A little guidance. A clearer start.</p><p>Record debts, confirm them together, and settle only what remains. Let us show you around in a few short steps.</p>',
       nextBtnText: "Show me around",
     } },
     { element: target("market"), popover: { title: "Your market, together", description: illustration("market") + "Market brings your shared ledger and debt connections together. On clearing day, the engine cancels debt circles and calculates what still needs to be paid.", side: "bottom" } },
@@ -45,8 +48,9 @@ function steps(): DriveStep[] {
     { element: target("payments"), popover: { title: "Pay only what remains", description: illustration("payments") + "After running clearing from Market, follow the pay-ins and payouts here. Check the Sandbox or simulated label before paying. Payouts start once all remaining pay-ins are captured.", side: "top" } },
     { element: target("statement"), popover: { title: "Understand your result", description: illustration("statement") + "Your Statement explains your debts before and after clearing, the amounts cancelled, and what you need to pay or receive.", side: "top" } },
     { element: target("profile"), popover: { title: "Try another trader’s view", description: "In this demo, use View as to explore each trader’s debts, confirmations and statement. Switching views helps you follow the same debt from both sides.", side: "bottom" } },
-    { element: target("help"), popover: { title: "You’re ready to begin", description: "Start by adding a debt, or explore the existing market. Replay this guide with the help button here. On a phone, it is inside More. The tour does not change your debts or payments.", side: "bottom", doneBtnText: "Let’s get started" } },
+    { element: target("help"), popover: { title: "You’re ready to begin", description: "Start by adding a debt as a trader, or explore the existing market. Replay this guide with the help button here. On a phone, it is inside More. The tour does not change your debts or payments.", side: "bottom", doneBtnText: "Let’s get started" } },
   ];
+  return all.filter((_, i) => i < 1 || i > tasks.length || visible(tasks[i - 1]));
 }
 
 export function GuidedTourProvider({ children }: { children: ReactNode }) {

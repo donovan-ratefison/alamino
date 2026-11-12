@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense } from "react";
-import { useApp } from "./app";
+import { showLink, useApp } from "./app";
 import { NavIcon, type NavIconName } from "./nav-icon";
 
 const slots = [
@@ -12,13 +12,14 @@ const slots = [
   { href: "/add", label: "Add a debt", icon: "add", match: (p: string) => p.startsWith("/add") },
   { href: "/rounds/latest", label: "Payments", icon: "payments", match: (p: string) => p.startsWith("/rounds") },
   { href: "/statement", label: "Statement", icon: "statement", match: (p: string) => p.startsWith("/statement") },
+  { href: "/finance", label: "AI Finance", icon: "finance", match: (p: string) => p.startsWith("/finance") },
 ] satisfies { href: string; label: string; icon: NavIconName; match: (p: string) => boolean }[];
 
 function Slots({ pathname }: { pathname: string }) {
-  const { pendingCount } = useApp();
+  const { pendingCount, isHouse } = useApp();
   return (
     <nav aria-label="Phone" className="bottom-bar">
-      {slots.map(({ href, label, icon, match }) => (
+      {slots.filter((s) => showLink(s.href, isHouse)).map(({ href, label, icon, match }) => (
           <Link key={href} href={href} data-tour={icon} aria-current={match(pathname) ? "page" : undefined} className="bottom-slot">
             <span className={icon === "add" ? "bottom-camera" : "bottom-icon"}><NavIcon name={icon} width="23" height="23" /></span>
             <span className="bottom-label">{label}</span>

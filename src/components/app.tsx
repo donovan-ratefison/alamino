@@ -123,11 +123,17 @@ const links = [
   { href: "/finance", label: "AI Finance", tour: "finance" },
 ];
 
+// The menu shows only what concerns the role. The pages keep their own guards for a direct URL.
+// The clearing house sees Market, Payments and AI Finance. A trader sees every link except AI Finance.
+export function showLink(href: string, isHouse: boolean): boolean {
+  return isHouse ? href === "/" || href === "/rounds/latest" || href === "/finance" : href !== "/finance";
+}
+
 function NavLinks({ pathname }: { pathname: string }) {
-  const { pendingCount } = useApp();
+  const { pendingCount, isHouse } = useApp();
   return (
     <nav aria-label="Main" className="main-nav">
-      {links.map(({ href, label, tour }) => {
+      {links.filter((l) => showLink(l.href, isHouse)).map(({ href, label, tour }) => {
         const active = href === "/" ? pathname === "/" : pathname.startsWith(href.replace("/latest", ""));
         return (
           <Link

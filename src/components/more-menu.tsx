@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { useApp } from "./app";
@@ -20,7 +19,7 @@ export function ModeBadges() {
   );
 }
 
-// The guides, the demo reset, the modes, and on a phone the links that do not fit the bottom bar.
+// The guides, the demo reset, the operator session and the modes.
 export function MoreMenu() {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -105,15 +104,6 @@ export function MoreMenu() {
             >
               Demo guide
             </button>
-            <Link
-              href="/finance"
-              // The panel renders only in the browser, after a click. usePathname here would need a Suspense boundary.
-              aria-current={location.pathname.startsWith("/finance") ? "page" : undefined}
-              className="nav-link w-full sm:hidden"
-              onClick={() => setOpen(false)}
-            >
-              AI Finance
-            </Link>
             <button type="button" className="nav-link w-full disabled:opacity-60" disabled={resetting} onClick={reset}>
               {resetting ? "Resetting..." : "Reset demo"}
             </button>

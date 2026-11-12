@@ -66,15 +66,9 @@ test.describe("Phone width", () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 
-  test("phone 'More' menu opens and provides access to AI Finance", async ({ page }) => {
+  test("the phone bottom bar gives the clearing house access to AI Finance", async ({ page }) => {
     await page.goto("/");
-    const moreButton = page.getByRole("button", { name: "More" });
-    await expect(moreButton).toBeVisible();
-    await moreButton.click();
-
-    const morePanel = page.locator("#more-panel");
-    await expect(morePanel).toBeVisible();
-    const financeLink = morePanel.getByRole("link", { name: "AI Finance" });
+    const financeLink = page.getByRole("navigation", { name: "Phone", exact: true }).getByRole("link", { name: "AI Finance" });
     await expect(financeLink).toBeVisible();
     await financeLink.click();
 

@@ -1,13 +1,17 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { ONBOARDING_STORAGE_KEY } from "../src/lib/onboarding";
 import { viewAs } from "./helpers";
 
 test.use({ storageState: { cookies: [], origins: [] }, reducedMotion: "reduce" });
 
+// The menu shows only the links of the role. A trader has the five task links, the clearing house has three.
+const asTrader = (page: Page) => page.addInitScript(() => localStorage.setItem("alamino.trader", "soa"));
+
 test("a first visit explains all five tasks without changing debts or making a payment", async ({ page, request }) => {
   const debtsBefore = await (await request.get("/api/debts")).json();
   const mutations: string[] = [];
   page.on("request", (r) => { if (!["GET", "HEAD"].includes(r.method()) && r.url().includes("/api/")) mutations.push(r.url()); });
+  await asTrader(page);
   await page.goto("/");
   const popover = page.locator(".driver-popover");
   await expect(popover).toContainText("Welcome to Alamino");
@@ -53,6 +57,7 @@ test("a skipped tour stays dismissed after reload and can be replayed from Help"
 
 test("phone visitors get five labelled icons, an Add tour on request and replay in More", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 });
+  await asTrader(page);
   await page.goto("/");
   const popover = page.locator(".driver-popover");
   await expect(popover).toContainText("Welcome to Alamino");
