@@ -1,9 +1,13 @@
 // Run a clearing round and apply it to the debts. See docs/ARCHITECTURE.md "Round rules".
 
 import { db, getRound, HttpError, insertRound, latestRound, listDebts, newId, setRoundStatus, updateDebt } from "./db.ts";
+import { logActivity } from "./activity.ts";
+import { usd } from "./ai/model.ts";
 import { clear } from "./netting.ts";
+import { HOUSE } from "./types.ts";
 import type { DebtChange, Edge, Round, Settlement } from "./types.ts";
 
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 const pairKey = (debtorId: string, creditorId: string) => `${debtorId}>${creditorId}`;
 
 export function runRound(): Round {
@@ -53,6 +57,16 @@ export function runRound(): Round {
       settlements,
       debtChanges,
     });
+    const s = result.stats;
+    logActivity({
+      kind: "round_run",
+      actor: HOUSE,
+      text:
+        `Clearing round run. Circles cancelled ${usd(s.clearedByCirclesCents)}. No cash moved. ` +
+        `Net plan: ${plural(result.payIns.length, "pay-in")}, ${plural(result.payOuts.length, "payout")}, ${usd(s.cashMovedCents)} in total.`,
+      amountCents: s.cashMovedCents,
+      roundId: round.id,
+    });
     // No pay-in means no pay-out: nothing to wait for.
     return result.payIns.length === 0 ? finishRound(round.id) : round;
   })();
@@ -65,6 +79,9 @@ export function finishRound(roundId: string): Round {
     if (!round) throw new HttpError(404, `No round ${roundId}`);
     const settle = db().prepare("UPDATE debts SET status = 'settled' WHERE id = ? AND status = 'confirmed'");
     for (const c of round.debtChanges) settle.run(c.debtId);
+    if (round.status !== "done") {
+      logActivity({ kind: "round_done", actor: HOUSE, text: "Round settled. Every debt of the round is closed.", roundId });
+    }
     return setRoundStatus(roundId, "done");
   })();
 }

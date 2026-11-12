@@ -1,4 +1,5 @@
 import { connection, type NextRequest } from "next/server";
+import { logDebtAdded } from "@/lib/activity";
 import {
   DEBT_SOURCES,
   DEBT_STATUSES,
@@ -64,6 +65,7 @@ export async function POST(req: Request) {
       creditorOk: createdBy === creditorId,
       createdAt: new Date().toISOString(),
     });
+    logDebtAdded(debt, createdBy);
     return Response.json(debt, { status: 201 });
   } catch (e) {
     return errorResponse(e);

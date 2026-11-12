@@ -1,7 +1,10 @@
 // Demo data, see docs/ARCHITECTURE.md section 11. Money is integer cents, USD.
 // The ninth debt (rivo -> hery 5000) is not here: it is added live in the demo.
 
+import { logActivity } from "./activity.ts";
+import { usd } from "./ai/model.ts";
 import { db, insertDebt, insertTrader, newId } from "./db.ts";
+import { HOUSE } from "./types.ts";
 import type { Trader } from "./types.ts";
 
 const email = (id: string) => process.env[`PAYPAL_EMAIL_${id.toUpperCase()}`] || `${id}@alamino.example`;
@@ -48,12 +51,14 @@ export function seed(): void {
         createdAt: new Date(now - DAY - (DEBTS.length - 1 - i) * (DAY / 2)).toISOString(),
       });
     });
+    const total = DEBTS.reduce((sum, d) => sum + d[2], 0);
+    logActivity({ kind: "demo_loaded", actor: HOUSE, text: `${DEBTS.length} confirmed debts loaded. Total ${usd(total)}.`, amountCents: total });
   })();
 }
 
 export function reset(): void {
   db().transaction(() => {
-    db().exec("DELETE FROM settlements; DELETE FROM rounds; DELETE FROM debts; DELETE FROM traders;");
+    db().exec("DELETE FROM settlements; DELETE FROM rounds; DELETE FROM debts; DELETE FROM traders; DELETE FROM activity;");
     seed();
   })();
 }

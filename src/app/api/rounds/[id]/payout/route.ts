@@ -1,6 +1,9 @@
+import { logActivity, traderName } from "@/lib/activity";
+import { usd } from "@/lib/ai/model";
 import { financeError, requireAdmin, sameOrigin } from "@/lib/finance/auth";
 import { getRound, listTraders, setRoundStatus, updateSettlement } from "@/lib/db";
 import { requireHouse } from "@/lib/privacy";
+import { HOUSE } from "@/lib/types";
 import { paypalMode } from "@/lib/paypal/client";
 import { createPayoutBatch } from "@/lib/paypal/payments";
 
@@ -28,6 +31,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       batchId = await createPayoutBatch(id, items);
     }
     for (const s of payOuts) updateSettlement(id, s.traderId, { status: "sent", paypalPayoutBatchId: batchId });
+    logActivity({
+      kind: "payouts_sent",
+      actor: HOUSE,
+      text: `Payout batch sent: ${payOuts.map((s) => `${traderName(s.traderId)} ${usd(s.amountCents)}`).join(", ")}.`,
+      amountCents: payOuts.reduce((sum, s) => sum + s.amountCents, 0),
+      roundId: id,
+    });
     return Response.json(setRoundStatus(id, "paying"));
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : "PayPal payout failed." }, { status: 502 });

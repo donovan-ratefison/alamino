@@ -69,6 +69,7 @@ Full definitions are in `src/lib/types.ts`.
 | `debts` | id, debtorId, creditorId, amountCents, remainingCents, note, source, status, debtorOk, creditorOk, counterAmountCents |
 | `rounds` | id, status, debtsBefore (JSON), result (JSON), debtChanges (JSON) |
 | `settlements` | roundId, traderId, direction, amountCents, status, paypalOrderId, paypalPayoutItemId |
+| `activity` | id (autoincrement, the cursor for `?after=`), at, kind, actor, text, amountCents, debtId, roundId. Cleared by reset, then one `demo_loaded` entry. |
 
 Debt status: `proposed` → `confirmed` → `cleared` or `settled`. Side paths: `disputed` (amounts differ) and `deferred` (rolled to the next round).
 
@@ -127,6 +128,7 @@ All routes return JSON. Errors return `{ error: string }` with a 4xx or 5xx stat
 | `POST /api/rounds/:id/payin/:traderId/capture` | `{ orderId }` | `Settlement` |
 | `POST /api/rounds/:id/payout` | | `Round` (only when every pay-in is captured) |
 | `POST /api/rounds/:id/payout/refresh` | | `Round` (polls PayPal for payout status) |
+| `GET /api/activity?after=` | | `Activity[]`, newest first, at most 50, only ids greater than `after`. Clearing house only (403 for a trader). |
 
 ### Confirm rules (`POST /api/debts/:id/confirm`)
 

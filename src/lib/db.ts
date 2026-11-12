@@ -5,6 +5,8 @@ import Database from "better-sqlite3";
 import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { logActivity, logConfirm, traderName } from "./activity.ts";
+import { usd } from "./ai/model.ts";
 import { seed } from "./seed.ts";
 import type {
   Debt,
@@ -59,6 +61,10 @@ CREATE TABLE IF NOT EXISTS settlements (
   amountCents INTEGER NOT NULL, status TEXT NOT NULL,
   paypalOrderId TEXT, paypalPayoutItemId TEXT, paypalPayoutBatchId TEXT,
   PRIMARY KEY (roundId, traderId)
+);
+CREATE TABLE IF NOT EXISTS activity (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, kind TEXT NOT NULL, actor TEXT NOT NULL,
+  text TEXT NOT NULL, amountCents INTEGER, debtId TEXT, roundId TEXT
 );
 `;
 
@@ -167,43 +173,50 @@ export function updateDebt(id: string, patch: Partial<Debt>): Debt {
   return saveDebt({ ...d, ...patch, id });
 }
 
-// Confirm rules, see docs/ARCHITECTURE.md section 7.
+// Confirm rules, see docs/ARCHITECTURE.md section 7. Logs the change in the activity log.
 export function confirmDebt(id: string, traderId: TraderId, ok: boolean, counterAmountCents?: number): Debt {
   return db().transaction(() => {
-    const d = getDebt(id);
-    if (!d) throw new HttpError(404, `No debt ${id}`);
-    if (d.status !== "proposed" && d.status !== "disputed") {
-      throw new HttpError(409, `Debt ${id} is ${d.status}, it cannot be confirmed`);
-    }
-    if (traderId !== d.debtorId && traderId !== d.creditorId) {
-      throw new HttpError(400, "traderId must be the debtor or the creditor");
-    }
-    if (counterAmountCents !== undefined && !validAmount(counterAmountCents)) {
-      throw new HttpError(400, `counterAmountCents must be an integer from 1 to ${MAX_AMOUNT_CENTS}`);
-    }
-    const isDebtor = traderId === d.debtorId;
-    const side = isDebtor ? "debtorOk" : "creditorOk";
-    const other = isDebtor ? "creditorOk" : "debtorOk";
-    const noCounter = { counterAmountCents: undefined, counterBy: undefined };
-
-    if (!ok) {
-      if (counterAmountCents === undefined) throw new HttpError(400, "counterAmountCents is required when ok is false");
-      return updateDebt(id, { status: "disputed", [side]: false, counterAmountCents, counterBy: traderId });
-    }
-    if (counterAmountCents === undefined) {
-      const both = d[other];
-      return updateDebt(id, { [side]: true, ...(both ? { status: "confirmed", ...noCounter } : {}) });
-    }
-    const otherOk = d.counterBy !== undefined && d.counterBy !== traderId && d.counterAmountCents === counterAmountCents;
-    return updateDebt(id, {
-      amountCents: counterAmountCents,
-      remainingCents: counterAmountCents,
-      [side]: true,
-      [other]: otherOk,
-      status: otherOk ? "confirmed" : "proposed",
-      ...noCounter,
-    });
+    const before = getDebt(id);
+    const after = applyConfirm(id, traderId, ok, counterAmountCents);
+    logConfirm(before!, after, traderId, ok);
+    return after;
   })();
+}
+
+function applyConfirm(id: string, traderId: TraderId, ok: boolean, counterAmountCents?: number): Debt {
+  const d = getDebt(id);
+  if (!d) throw new HttpError(404, `No debt ${id}`);
+  if (d.status !== "proposed" && d.status !== "disputed") {
+    throw new HttpError(409, `Debt ${id} is ${d.status}, it cannot be confirmed`);
+  }
+  if (traderId !== d.debtorId && traderId !== d.creditorId) {
+    throw new HttpError(400, "traderId must be the debtor or the creditor");
+  }
+  if (counterAmountCents !== undefined && !validAmount(counterAmountCents)) {
+    throw new HttpError(400, `counterAmountCents must be an integer from 1 to ${MAX_AMOUNT_CENTS}`);
+  }
+  const isDebtor = traderId === d.debtorId;
+  const side = isDebtor ? "debtorOk" : "creditorOk";
+  const other = isDebtor ? "creditorOk" : "debtorOk";
+  const noCounter = { counterAmountCents: undefined, counterBy: undefined };
+
+  if (!ok) {
+    if (counterAmountCents === undefined) throw new HttpError(400, "counterAmountCents is required when ok is false");
+    return updateDebt(id, { status: "disputed", [side]: false, counterAmountCents, counterBy: traderId });
+  }
+  if (counterAmountCents === undefined) {
+    const both = d[other];
+    return updateDebt(id, { [side]: true, ...(both ? { status: "confirmed", ...noCounter } : {}) });
+  }
+  const otherOk = d.counterBy !== undefined && d.counterBy !== traderId && d.counterAmountCents === counterAmountCents;
+  return updateDebt(id, {
+    amountCents: counterAmountCents,
+    remainingCents: counterAmountCents,
+    [side]: true,
+    [other]: otherOk,
+    status: otherOk ? "confirmed" : "proposed",
+    ...noCounter,
+  });
 }
 
 export const validAmount = (n: unknown): n is number =>
@@ -291,7 +304,7 @@ export function setRoundStatus(roundId: string, status: RoundStatus): Round {
   return getRound(roundId)!;
 }
 
-// Also moves the round from `cleared` to `collecting` when a pay-in becomes `captured`.
+// Also moves the round from `cleared` to `collecting` when a pay-in becomes `captured`, and logs the capture.
 export function updateSettlement(roundId: string, traderId: TraderId, patch: Partial<Settlement>): Round {
   return db().transaction(() => {
     const round = getRound(roundId);
@@ -300,6 +313,16 @@ export function updateSettlement(roundId: string, traderId: TraderId, patch: Par
     if (!s) throw new HttpError(404, `No settlement for ${traderId} in round ${roundId}`);
     const next = { ...s, ...patch, traderId };
     saveSettlement(roundId, next);
+    if (next.direction === "pay_in" && next.status === "captured" && s.status !== "captured") {
+      const all = round.settlements.every((x) => x.direction !== "pay_in" || x.traderId === traderId || x.status === "captured");
+      logActivity({
+        kind: "payin_captured",
+        actor: traderId,
+        text: `${traderName(traderId)} paid ${usd(next.amountCents)} through PayPal.${all ? " All pay-ins captured." : ""}`,
+        amountCents: next.amountCents,
+        roundId,
+      });
+    }
     if (next.direction === "pay_in" && next.status === "captured" && round.status === "cleared") {
       return setRoundStatus(roundId, "collecting");
     }

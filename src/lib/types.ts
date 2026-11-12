@@ -146,6 +146,30 @@ export interface DebtChange {
   afterCents: number; // remainingCents after circles were cancelled
 }
 
+// ---- Activity log: what the clearing house sees live ----
+
+export type ActivityKind =
+  | "demo_loaded" // demo data seeded (reset)
+  | "debt_added" // a trader saved a new debt (proposed)
+  | "debt_approved" // one side approved, the other side still has to
+  | "debt_confirmed" // both sides approved
+  | "debt_disputed" // one side gave another amount
+  | "round_run" // clearing ran: circles cancelled, net plan made
+  | "payin_captured" // PayPal captured one pay-in
+  | "payouts_sent" // the payout batch went to PayPal
+  | "round_done"; // every payout confirmed, the round is settled
+
+export interface Activity {
+  id: number; // increasing: use it as a cursor (GET /api/activity?after=id)
+  at: string; // ISO
+  kind: ActivityKind;
+  actor: Viewer; // who did it: a trader id, or "house"
+  text: string; // one or two plain sentences, built in plain code, never by the AI. Example: "Rivo added a debt from a photo. Rivo owes Hery $50. Waiting for Hery."
+  amountCents?: number;
+  debtId?: string;
+  roundId?: string;
+}
+
 export interface Statement {
   traderId: TraderId;
   roundId: string;
