@@ -292,7 +292,8 @@ body.clean #ctrl{display:none}
 #teamp{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px;padding-bottom:90px;text-align:center}
 #teamp .logo-tile{padding:14px 26px}
 #teamp .logo-tile img{height:44px}
-#teamp .k{font-size:16px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--paypal)}
+#teamp .k{font-size:16px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--paypal);opacity:.55;transition:opacity .6s,text-shadow .6s}
+#teamp .k.lit{opacity:1;text-shadow:0 0 18px rgba(255,196,57,.55)}
 #teamp .people{margin-top:30px}
 #teamp .pcol b{color:#fff;font-size:34px}
 #teamp .pcol span{color:#9cc7f5;font-size:18px}
@@ -631,7 +632,7 @@ const cam = $('#cam'), frame = $('#frame');
 
 // Voice-over timing (generated from the recorded voice, see alamino-docs/demo-video). d: scene ms. p: [start, end] ms of each
 // spoken phrase from the scene start. t: the subtitle of each phrase, word for word as spoken (so CONFIG renames do not apply).
-const VO = {"S00":{"d":3000,"p":[],"t":[]},"S01":{"d":8227,"p":[[300,3896],[4646,7627]],"t":["Banks clear what they owe each other, every single day.","Small businesses? They never could."]},"S02":{"d":6413,"p":[[350,2975],[3375,5913]],"t":["We are Donovan, Tendry and Tokiarivelo.","We built Alamino for small businesses."]},"S03":{"d":7531,"p":[[250,4250],[4600,7081]],"t":["Small businesses help each other: deliver today, pay at the end of the week.","But every debt hides in a different notebook."]},"S04":{"d":3000,"p":[[150,2487]],"t":["Meet five traders in one market."]},"S05":{"d":28029,"p":[[200,3306],[3700,7065],[8760,10943],[11830,15965],[20390,22140],[25300,27329]],"t":["All week, each trader puts their debts into Alamino.","Soa runs a restaurant, so she types hers at her desk.","Fidy types one sentence on his phone.","The AI drafts each debt, and the other side approves it.","Rivo and Lalao do the same.","Now the whole market is visible."]},"S06":{"d":13233,"p":[[400,1063],[1413,4808],[5158,6417],[6767,9998],[10398,12533]],"t":["Saturday.","Rivo finds one more note, scribbled in French.","He takes a photo.","The AI reads the handwriting and drafts the debt.","Rivo checks it, and saves."]},"S07":{"d":7283,"p":[[500,2048],[2448,5188],[5588,6483]],"t":["Hery checks his phone.","Yes, he remembers those bags of rice.","He approves."]},"S08":{"d":16356,"p":[[400,2313],[2663,4808],[5158,9629],[9979,15556]],"t":["This is the moment we love.","The clearing house looks for circles:","Fidy owes Rivo, Rivo owes Hery, Hery owes Fidy.","Three circles, and $570 simply cancel out."]},"S09":{"d":18200,"p":[[350,3273],[3623,9277],[9677,11696],[14000,17587]],"t":["What is left is one number per trader.","Soa pays $170 with PayPal, and her whole week is settled.","Lalao and Fidy do the same.","Three payments, instead of nine debts to chase."]},"S10":{"d":12800,"p":[[350,3177],[3527,7700],[8100,12100]],"t":["Then PayPal pays the traders who are owed.","Hery gets $290, Rivo gets $30.","And everyone gets a plain statement of why."]},"S11":{"d":27306,"p":[[400,1708],[2058,5731],[6081,10302],[10652,12200],[12550,15060],[15410,19429],[19779,21356],[21706,26033]],"t":["Here is how it works.","People stay in charge: they add the debts, and they approve them.","The AI model reads photos and sentences, and explains the results.","But it never sets an amount.","Every number comes from plain code:","the algorithm finds the circles and works out who pays what.","And PayPal moves the money:","Checkout for the payments in, Payouts for the payments out."]},"S12":{"d":18560,"p":[[400,2371],[2771,5108],[5508,8142],[8692,11038],[11438,15054],[15454,17560]],"t":["Let's look at what really happened.","$990 of debt.","$320 actually moved.","Two thirds of the cash, saved.","Nine debts, five PayPal transfers.","And not one amount came from the AI."]},"S13":{"d":7987,"p":[[600,4148],[4548,6087]],"t":["What banks do every day, small businesses can do now.","This is Alamino. Thank you."]}};
+const VO = {"S00":{"d":2600,"p":[],"t":[]},"S01":{"d":8227,"p":[[300,3896],[4646,7627]],"t":["Banks clear what they owe each other, every single day.","Small businesses? They never could."]},"S02":{"d":10481,"p":[[350,3148],[3548,9981]],"t":["We are Donovan, Tendry and Tokiarivelo.","For the PayPal AI Hackathon 2026, we built Alamino for small businesses."]},"S03":{"d":7531,"p":[[250,4250],[4600,7081]],"t":["Small businesses help each other: deliver today, pay at the end of the week.","But every debt hides in a different notebook."]},"S04":{"d":3000,"p":[[150,2487]],"t":["Meet five traders in one market."]},"S05":{"d":27629,"p":[[200,3306],[3700,7065],[8760,10943],[11830,15965],[20390,22140],[25300,27329]],"t":["All week, each trader puts their debts into Alamino.","Soa runs a restaurant, so she types hers at her desk.","Fidy types one sentence on his phone.","The AI drafts each debt, and the other side approves it.","Rivo and Lalao do the same.","Now the whole market is visible."]},"S06":{"d":13233,"p":[[400,1063],[1413,4808],[5158,6417],[6767,9998],[10398,12533]],"t":["Saturday.","Rivo finds one more note, scribbled in French.","He takes a photo.","The AI reads the handwriting and drafts the debt.","Rivo checks it, and saves."]},"S07":{"d":7283,"p":[[500,2048],[2448,5188],[5588,6483]],"t":["Hery checks his phone.","Yes, he remembers those bags of rice.","He approves."]},"S08":{"d":16356,"p":[[400,2313],[2663,4808],[5158,9629],[9979,15556]],"t":["This is the moment we love.","The clearing house looks for circles:","Fidy owes Rivo, Rivo owes Hery, Hery owes Fidy.","Three circles, and $570 simply cancel out."]},"S09":{"d":18200,"p":[[350,3273],[3623,9277],[9677,11696],[14000,17587]],"t":["What is left is one number per trader.","Soa pays $170 with PayPal, and her whole week is settled.","Lalao and Fidy do the same.","Three payments, instead of nine debts to chase."]},"S10":{"d":12800,"p":[[350,3177],[3527,7700],[8100,12100]],"t":["Then PayPal pays the traders who are owed.","Hery gets $290, Rivo gets $30.","And everyone gets a plain statement of why."]},"S11":{"d":26806,"p":[[400,1708],[2058,5731],[6081,10302],[10652,12200],[12550,15060],[15410,19429],[19779,21356],[21706,26033]],"t":["Here is how it works.","People stay in charge: they add the debts, and they approve them.","The AI model reads photos and sentences, and explains the results.","But it never sets an amount.","Every number comes from plain code:","the algorithm finds the circles and works out who pays what.","And PayPal moves the money:","Checkout for the payments in, Payouts for the payments out."]},"S12":{"d":18260,"p":[[400,2371],[2771,5108],[5508,8142],[8692,11038],[11438,15054],[15454,17560]],"t":["Let's look at what really happened.","$990 of debt.","$320 actually moved.","Two thirds of the cash, saved.","Nine debts, five PayPal transfers.","And not one amount came from the AI."]},"S13":{"d":7087,"p":[[600,4148],[4548,6087]],"t":["What banks do every day, small businesses can do now.","This is Alamino. Thank you."]}};
 /* Subtitles: one per spoken phrase, shown at the phrase start. They hide after the phrase when a long pause follows. */
 const SUBS = Object.fromEntries(Object.entries(VO).map(([k,v])=>[k, v.t.map((x,i)=>[v.p[i][0]/1000, x])]));
 
@@ -998,7 +999,7 @@ const ICON = {
 const LOCK = '<svg viewBox="0 0 12 12" fill="#5b21b6"><rect x="2" y="5.5" width="8" height="6" rx="1.4"/><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" fill="none" stroke="#5b21b6" stroke-width="1.4"/></svg>';
 const LANES = [
   {id:'human', label:'Human', c:'#f59e0b', role:'Adds and approves every debt.'},
-  {id:'ai', label:'AI model', c:'#8b5cf6', role:'Reads photos and sentences. Explains the results. Never sets an amount.'},
+  {id:'ai', label:'AI model', c:'#8b5cf6', role:'Reads photos and sentences. Knows each trader, even by a nickname. Explains the results. Never sets an amount.'},
   {id:'algo', label:'Algorithm', c:'#14b8a6', role:'Cancels circles. Computes who pays what. Plain code, same answer every time.'},
   {id:'pp', label:'<span style="color:#fff">Pay</span><span style="color:#009cde">Pal</span>', c:'#009cde', role:'Checkout takes the payments in. Payouts sends the payments out.'},
 ];
@@ -1061,7 +1062,7 @@ function archSteps(){
   for (let k=1;k<9;k++){ const ms=Math.min(900, A[k]-A[k-1]-100); st.push([A[k]-ms,()=>hop(k-1,ms)], [A[k],()=>pop(k)]); }
   const L=S[7]+2600;
   st.push([L,()=>{ ARCH.classList.add('all'); dotAt(0); pop(0); }]);
-  for (let k=1;k<9;k++){ const at=L+k*360; st.push([at-300,()=>hop(k-1,300)], [at,()=>pop(k)]); }
+  for (let k=1;k<9;k++){ const at=L+k*300; st.push([at-260,()=>hop(k-1,260)], [at,()=>pop(k)]); }
   return st;
 }
 
@@ -1109,7 +1110,7 @@ function state(s){
   document.querySelectorAll('.coin').forEach(c=>c.remove());
   $('#full').classList.toggle('on', !!s.full);
   [['openp','open'],['teamp','team'],['arch','arch'],['proof','proof'],['endp','end']].forEach(([id,k])=>$('#'+id).classList.toggle('on', s.full===k));
-  $('#openp').classList.remove('rise','show'); $('#teamp').classList.remove('show');
+  $('#openp').classList.remove('rise','show'); $('#teamp').classList.remove('show'); $('#teamp .k').classList.remove('lit');
   if (s.market==='draw') drawMarket();
   archReset();
   $('#proof').classList.remove('done'); $('#pnum').textContent='$'+DEBT_TOTAL; document.querySelectorAll('.tile').forEach(x=>x.classList.remove('on'));
@@ -1176,7 +1177,8 @@ const SCENES = [
    steps:[]},
   {key:'S02', label:'S02 Team', dur:VO.S02.d, step:'The team', title:'Built for small businesses', body:`${FIRST_NAMES}, for the ${CONFIG.hackathon}.`,
    setup(){ state({phone:[null,'idle'], full:'team', market:'hidden'}); },
-   steps:[[300,()=>$('#teamp').classList.add('show')]]},
+   // The hackathon line lights up when the voice says it.
+   steps:[[300,()=>$('#teamp').classList.add('show')], [VO.S02.p[1][0],()=>$('#teamp .k').classList.add('lit')]]},
   {key:'S03', label:'S03 Problem', dur:VO.S03.d, step:'The problem', title:'Five businesses, five notebooks', body:'They deliver now and get paid later. Nobody sees the whole circle.',
    setup(){ state({phone:[null,'idle'], market:'hidden'}); },
    steps:[]},
