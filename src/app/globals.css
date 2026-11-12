@@ -143,9 +143,14 @@ a.beat:hover { background: #e2efff; }
 .hero-network :focus-visible { outline-color: #0070e0; }
 .hero-network .network-shell { height: 380px; border: 0; background: white; }
 .market-section { padding-top: 48px; }
-.network-shell { height: 380px; overflow: hidden; border: 1px solid #dfebfa; border-radius: 16px; background: #f6faff; }
-.network-node { display: flex; height: 40px; width: 104px; align-items: center; justify-content: center; gap: 8px; padding-inline: 6px 10px; border: 1px solid #c6dcf7; border-radius: 9999px; background: white; font-size: 13px; font-weight: 600; color: #003087; transition: border-color .2s, box-shadow .2s; }
-.network-node-active { border-color: #0070e0; box-shadow: inset 0 0 0 1px #0070e0; }
+.network-shell { position: relative; height: 380px; overflow: hidden; border: 1px solid #dfebfa; border-radius: 16px; background: #f6faff; }
+.network-node { position: relative; display: flex; border-radius: 9999px; transition: opacity .6s, box-shadow .2s; }
+.network-node-active { box-shadow: 0 0 0 2px white, 0 0 0 4px #0070e0; }
+.network-node-faded { opacity: .35; }
+.network-name { position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 13px; font-weight: 600; line-height: 16px; color: #003087; }
+.network-name-above { top: auto; bottom: calc(100% + 4px); }
+.network-amount { position: absolute; top: 0; left: 0; padding: 1px 8px; border: 1px solid #dce5f2; border-radius: 9999px; background: white; font-size: 12px; font-weight: 600; line-height: 18px; white-space: nowrap; font-variant-numeric: tabular-nums; pointer-events: none; transition: opacity .6s, color .3s; }
+.network-defs { position: absolute; width: 0; height: 0; }
 .ledger-filter { display: inline-flex; width: fit-content; gap: 2px; padding: 3px; border: 1px solid #dce5f2; border-radius: 9999px; background: #eff6ff; }
 .ledger-filter button { min-height: 36px; padding: 6px 18px; border-radius: 9999px; color: #4b607e; font-size: 13px; font-weight: 500; }
 .ledger-filter button[aria-pressed="true"] { background: white; color: #003087; font-weight: 600; box-shadow: 0 1px 2px #05296926; }

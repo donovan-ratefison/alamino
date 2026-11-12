@@ -107,6 +107,7 @@ export default function MarketPage() {
                 traders={traders}
                 edges={confirmed.map((d) => ({ ...d, amountCents: d.remainingCents }))}
                 label={isHouse ? "Debt network" : "Your debt network"}
+                center={isHouse ? undefined : traderId}
               />
             )}
           </div>

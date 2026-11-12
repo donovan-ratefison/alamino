@@ -156,6 +156,7 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
           circles={before && !highlight ? cancellations.map((c) => c.path) : undefined}
           privateLinks={running || before ? privateLinks : undefined}
           interactive={!running}
+          center={viewer}
           label={running ? "Debts during the clearing replay" : before ? "Debts before the round" : "Debts after circles cancel"}
         />
       )}
@@ -167,7 +168,7 @@ export function ClearingReplay({ round, highlight }: { round: Round; highlight?:
               ? endCaption
               : highlight
                 ? "The selected circle is in blue."
-                : `Green debts form circles. They cancel.${privateLinks.length > 0 ? " A dotted line is a private part of a circle." : ""}`}
+                : privateLinks.length > 0 ? "Green: owed to you. Orange: you owe. Dotted: a private part of a circle." : "Green debts form circles. They cancel."}
         </p>
         <div className="flex shrink-0 items-center gap-2">
           <div role="group" aria-label="Network view" className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 p-0.5">
