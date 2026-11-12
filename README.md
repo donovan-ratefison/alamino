@@ -47,6 +47,8 @@ npm run e2e
 
 Playwright plays the user journeys in Chrome on a production build: add a debt, confirm, dispute, run clearing, settle, read the statement, phone width. It uses no keys (PayPal simulated, AI fallback) and its own database, so it moves no money and makes no AI call.
 
+The issue walks live in `e2e/issue-*.spec.ts` (`npm run test:e2e:issues`). They replay the real user path with a screenshot per step; open `npm run test:e2e:ui` to watch a walk visually in the Playwright UI. Issue #8 (`e2e/issue-8-demo-path-phone-laptop.spec.ts`) walks every screen on a phone and on a laptop and audits each screen for misplaced UI.
+
 ## Docs
 
 - [First-visit tour, illustrated guides and navigation](docs/ONBOARDING.md)

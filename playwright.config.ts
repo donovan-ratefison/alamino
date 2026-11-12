@@ -18,6 +18,17 @@ export default defineConfig({
     // Existing journeys model a returning visitor. Tour tests use a fresh browser.
     storageState: { cookies: [], origins: [{ origin: `http://localhost:${PORT}`, localStorage: [{ name: ONBOARDING_STORAGE_KEY, value: "completed" }, { name: CAPTURE_TOUR_STORAGE_KEY, value: "completed" }] }] },
   },
+  // Issue #8: the journeys run on a laptop and on a phone. Specs that test a
+  // width themselves (mobile, capture-guide, guided-tour, the issue walks)
+  // manage their own viewport; api.spec has no UI at all.
+  projects: [
+    { name: "desktop", use: { viewport: { width: 1280, height: 720 } } },
+    {
+      name: "mobile",
+      testIgnore: ["**/mobile.spec.ts", "**/capture-guide.spec.ts", "**/guided-tour.spec.ts", "**/api.spec.ts", "**/issue-*.spec.ts"],
+      use: { viewport: { width: 375, height: 800 } },
+    },
+  ],
   webServer: {
     command: `npm run build && npm run start -- -p ${PORT}`,
     url: `http://localhost:${PORT}/api/config`,

@@ -28,10 +28,14 @@ test.describe("Clearing round", () => {
     await expect(main.getByRole("heading", { level: 1 })).toHaveText(/\$990 of debt to settle with \$320/);
     for (const text of ["$990", "$570", "$320"]) await expect(main).toContainText(text);
 
-    // One network with a Before / After toggle. The replay plays once by itself, then rests on After.
+    // One network with a Before / After toggle. The replay plays once by itself, then
+    // rests on After. After reads pressed at mount, before the replay has begun, so
+    // wait for the replay to run (the buttons go disabled) and to finish first.
     const before = main.getByRole("button", { name: "Before", exact: true });
     const after = main.getByRole("button", { name: "After", exact: true });
-    await expect(after).toHaveAttribute("aria-pressed", "true", { timeout: 20_000 });
+    await expect(after).toBeDisabled({ timeout: 10_000 });
+    await expect(after).toBeEnabled({ timeout: 30_000 });
+    await expect(after).toHaveAttribute("aria-pressed", "true");
     await expect(main.getByLabel("Debts after circles cancel")).toBeVisible();
     await expect(main.getByText("Cancelled", { exact: true }).locator("..")).toContainText("$570");
     await expect(main.getByRole("button", { name: "Replay clearing" })).toBeEnabled();

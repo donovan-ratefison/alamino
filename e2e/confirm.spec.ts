@@ -1,8 +1,15 @@
-import { expect, test, type APIRequestContext } from "@playwright/test";
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import type { Debt } from "../src/lib/types";
 import { api, listDebts, proposeNinthDebt, resetDemo, viewAs } from "./helpers";
 
 const debtById = async (request: APIRequestContext, id: string) => (await listDebts(request)).find((d) => d.id === id);
+
+// The header link to Confirm carries the count of debts waiting for the current
+// trader. The nav that holds it depends on the width: Main on a laptop, Phone on a phone.
+const confirmLink = (page: Page) =>
+  (page.viewportSize()?.width ?? 1280) < 640
+    ? page.getByRole("navigation", { name: "Phone" }).getByRole("link", { name: /confirm/i })
+    : page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: /confirm/i });
 
 test.describe("Confirm a debt", () => {
   let debt: Debt;
@@ -24,8 +31,7 @@ test.describe("Confirm a debt", () => {
     await viewAs(page, "hery");
 
     // The header link to Confirm shows a count while a debt waits for the current trader.
-    const confirmLink = page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: /confirm/i });
-    await expect(confirmLink).toHaveAccessibleName(/1/);
+    await expect(confirmLink(page)).toHaveAccessibleName(/1/);
 
     const waitingForYou = page.locator("section").filter({ has: page.getByRole("heading", { name: /waiting for you/i }) });
     await expect(waitingForYou.getByText("Rivo approved", { exact: true })).toBeVisible();
@@ -35,7 +41,7 @@ test.describe("Confirm a debt", () => {
     await waitingForYou.getByRole("button", { name: /approve/i }).click();
 
     await expect.poll(async () => (await debtById(request, debt.id))?.status).toBe("confirmed");
-    await expect(confirmLink).not.toHaveAccessibleName(/\d/);
+    await expect(confirmLink(page)).not.toHaveAccessibleName(/\d/);
   });
 
   test("Hery approves Rivo's debt from the bell", async ({ page, request }) => {
